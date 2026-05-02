@@ -3385,7 +3385,6 @@ function PredictionResultsPage({ navigate }: { navigate: (path: string) => void 
 
   const totalFromApi = data?.total ?? 0;
   const offset = filters.offset ?? 0;
-  const limit = filters.limit ?? 50;
   const hasNextPage = offset + (data?.items.length ?? 0) < totalFromApi;
   const hasPrevPage = offset > 0;
 

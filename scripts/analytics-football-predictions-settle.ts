@@ -316,8 +316,14 @@ async function listReviewedEnabledSettlementContexts(database: Database, lookbac
       and p.recommendation_tier in ('primary', 'try', 'alternative')
       and p.consistency_status in ('passed', 'warning')
       and p.blocking_conflict_count = 0
-      and league_pm.provider_entity_id = any(${leagueIds}::text[])
-      and country_pm.provider_entity_id = any(${countryIds}::text[])
+      and league_pm.provider_entity_id in (${sql.join(
+        leagueIds.map((leagueId) => sql`${leagueId}`),
+        sql`, `
+      )})
+      and country_pm.provider_entity_id in (${sql.join(
+        countryIds.map((countryId) => sql`${countryId}`),
+        sql`, `
+      )})
   `);
   const rows = Array.isArray(result) ? result : "rows" in result && Array.isArray(result.rows) ? result.rows : [];
   return rows.map((row) => {
