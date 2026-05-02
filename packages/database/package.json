@@ -1,0 +1,16 @@
+{
+  "name": "@sports-data/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@sports-data/queue": "0.1.0",
+    "@sports-data/shared": "0.1.0"
+  }
+}

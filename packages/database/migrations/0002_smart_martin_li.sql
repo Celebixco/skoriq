@@ -1,0 +1,11 @@
+ALTER TABLE "players" ADD COLUMN "short_name" text;--> statement-breakpoint
+ALTER TABLE "players" ADD COLUMN "slug" text;--> statement-breakpoint
+ALTER TABLE "players" ADD COLUMN "age" integer;--> statement-breakpoint
+ALTER TABLE "players" ADD COLUMN "height_cm" integer;--> statement-breakpoint
+ALTER TABLE "players" ADD COLUMN "weight_kg" integer;--> statement-breakpoint
+ALTER TABLE "players" ADD COLUMN "preferred_foot" text;--> statement-breakpoint
+ALTER TABLE "players" ADD COLUMN "jersey_number" integer;--> statement-breakpoint
+ALTER TABLE "players" ADD COLUMN "market_value" text;--> statement-breakpoint
+ALTER TABLE "players" ADD COLUMN "contract_until" date;--> statement-breakpoint
+ALTER TABLE "players" ADD COLUMN "photo_url" text;--> statement-breakpoint
+CREATE INDEX "players_sport_slug_dob_idx" ON "players" USING btree ("sport_id","slug","date_of_birth");

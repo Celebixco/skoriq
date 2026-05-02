@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@sports-data/analysis": ["packages/analysis/src/index.ts"],
+      "@sports-data/cache": ["packages/cache/src/index.ts"],
+      "@sports-data/config": ["packages/config/src/index.ts"],
+      "@sports-data/database": ["packages/database/src/index.ts"],
+      "@sports-data/logger": ["packages/logger/src/index.ts"],
+      "@sports-data/normalizers": ["packages/normalizers/src/index.ts"],
+      "@sports-data/pipeline": ["packages/pipeline/src/index.ts"],
+      "@sports-data/providers": ["packages/providers/src/index.ts"],
+      "@sports-data/queue": ["packages/queue/src/index.ts"],
+      "@sports-data/shared": ["packages/shared/src/index.ts"]
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "@sports-data/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@sports-data/analysis": "0.1.0",
+    "@sports-data/config": "0.1.0",
+    "@sports-data/database": "0.1.0",
+    "@sports-data/logger": "0.1.0",
+    "@sports-data/queue": "0.1.0",
+    "@sports-data/shared": "0.1.0"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/shared" },
+    { "path": "packages/config" },
+    { "path": "packages/logger" },
+    { "path": "packages/database" },
+    { "path": "packages/providers" },
+    { "path": "packages/queue" },
+    { "path": "packages/pipeline" },
+    { "path": "packages/cache" },
+    { "path": "packages/normalizers" },
+    { "path": "packages/analysis" },
+    { "path": "apps/api" },
+    { "path": "apps/dashboard" },
+    { "path": "apps/worker" },
+    { "path": "apps/scheduler" }
+  ]
+}

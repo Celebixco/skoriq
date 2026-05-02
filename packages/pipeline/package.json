@@ -1,0 +1,19 @@
+{
+  "name": "@sports-data/pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@sports-data/database": "0.1.0",
+    "@sports-data/providers": "0.1.0",
+    "@sports-data/queue": "0.1.0",
+    "@sports-data/shared": "0.1.0",
+    "bullmq": "^5.65.1"
+  }
+}
