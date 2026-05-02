@@ -6,13 +6,17 @@ import {
   ActiveFilterPills,
   ResultSummaryBar,
   EmptySearchState,
-  MatchListPage
+  MatchListPage,
+  analyticsExpandedPageSize,
+  expandAnalyticsFiltersForQuickChip,
+  filterFootballAnalyticsItems,
+  isWithinNextHours
 } from "./App";
 import type { FrontendFilters } from "./App";
-import type { FootballAnalyticsMatchFilters } from "./types";
+import type { FootballAnalyticsMatchFilters, FootballAnalyticsMatchListResponse } from "./types";
 
 // NOTE: Backend does not support text search or competition/country filtering.
-// Search and advanced filters are applied frontend-side over currently loaded data.
+// Search and advanced filters are applied frontend-side over the expanded data window fetched for quick filters.
 // Pagination uses offset/limit parameters supported by the backend.
 
 describe("MatchListPage analytics search and filter area", () => {
@@ -96,6 +100,73 @@ describe("QuickFilterChips", () => {
       />
     );
     expect(html).toContain('analytics-chip-active');
+  });
+});
+
+describe("analytics frontend filtering", () => {
+  const baseFrontendFilters: FrontendFilters = {
+    searchQuery: "",
+    competitionName: "",
+    countryName: "",
+    within24h: false,
+    hasH2h: false
+  };
+
+  it("expands the API request when the 24h quick filter is enabled", () => {
+    expect(expandAnalyticsFiltersForQuickChip({ limit: 50, offset: 50 }, "within24h")).toMatchObject({
+      limit: analyticsExpandedPageSize,
+      offset: 0
+    });
+  });
+
+  it("uses UTC-safe kickoff comparison for the next 24 hours", () => {
+    const now = new Date("2026-05-02T15:00:00.000Z");
+
+    expect(isWithinNextHours("2026-05-03T14:59:59.000Z", now)).toBe(true);
+    expect(isWithinNextHours("2026-05-03T15:00:01.000Z", now)).toBe(false);
+    expect(isWithinNextHours("2026-05-02T14:59:59.000Z", now)).toBe(false);
+  });
+
+  it("includes 24h matches beyond the first 50 when expanded data is fetched", () => {
+    const now = new Date("2026-05-02T15:00:00.000Z");
+    const items = Array.from({ length: 60 }, (_, index) =>
+      matchItem({
+        id: `match-${index + 1}`,
+        home: index === 55 ? "Lille" : `Home ${index + 1}`,
+        away: index === 55 ? "Le Havre" : `Away ${index + 1}`,
+        kickoffAt: index === 55 ? "2026-05-03T14:00:00.000Z" : "2026-05-05T14:00:00.000Z"
+      })
+    );
+
+    const filtered = filterFootballAnalyticsItems(items, { ...baseFrontendFilters, within24h: true }, "", now);
+
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.match.homeTeam.name).toBe("Lille");
+  });
+
+  it("combines search with the 24h filter", () => {
+    const now = new Date("2026-05-02T15:00:00.000Z");
+    const items = [
+      matchItem({ id: "match-1", home: "Lille", away: "Le Havre", kickoffAt: "2026-05-03T14:00:00.000Z" }),
+      matchItem({ id: "match-2", home: "Arsenal FC", away: "Fulham", kickoffAt: "2026-05-03T14:00:00.000Z" }),
+      matchItem({ id: "match-3", home: "Como", away: "Napoli", kickoffAt: "2026-05-05T14:00:00.000Z" })
+    ];
+
+    const filtered = filterFootballAnalyticsItems(items, { ...baseFrontendFilters, within24h: true }, "arsenal", now);
+
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.match.homeTeam.name).toBe("Arsenal FC");
+  });
+
+  it("clearing frontend filters restores the loaded list", () => {
+    const now = new Date("2026-05-02T15:00:00.000Z");
+    const items = [
+      matchItem({ id: "match-1", home: "Lille", away: "Le Havre", kickoffAt: "2026-05-03T14:00:00.000Z" }),
+      matchItem({ id: "match-2", home: "Como", away: "Napoli", kickoffAt: "2026-05-05T14:00:00.000Z" })
+    ];
+
+    expect(filterFootballAnalyticsItems(items, { ...baseFrontendFilters, within24h: true }, "", now)).toHaveLength(1);
+    expect(filterFootballAnalyticsItems(items, baseFrontendFilters, "", now)).toHaveLength(2);
   });
 });
 
@@ -194,6 +265,24 @@ describe("ResultSummaryBar", () => {
     );
     expect(html).toContain("21–40 / 123 maç");
   });
+
+  it("shows the frontend-filtered count clearly", () => {
+    const html = renderToStaticMarkup(
+      <ResultSummaryBar
+        showing={24}
+        total={123}
+        loaded={200}
+        offset={0}
+        frontendFiltered
+        hasPrev={false}
+        hasNext={false}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+      />
+    );
+    expect(html).toContain("24 maç gösteriliyor");
+    expect(html).not.toContain("1–200 / 123 maç");
+  });
 });
 
 describe("EmptySearchState", () => {
@@ -213,3 +302,40 @@ describe("EmptySearchState", () => {
     expect(html).not.toContain("Filtreleri temizle");
   });
 });
+
+function matchItem(input: { id: string; home: string; away: string; kickoffAt: string }): FootballAnalyticsMatchListResponse["items"][number] {
+  return {
+    match: {
+      matchId: input.id,
+      competition: {
+        id: "competition-1",
+        name: "Premier League",
+        country: "England"
+      },
+      kickoffAt: input.kickoffAt,
+      status: "not_started",
+      homeTeam: {
+        id: `${input.id}-home`,
+        name: input.home,
+        logoUrl: null
+      },
+      awayTeam: {
+        id: `${input.id}-away`,
+        name: input.away,
+        logoUrl: null
+      }
+    },
+    featureStatus: "ready",
+    predictionEligible: true,
+    kuponEligible: false,
+    confidenceCeiling: 80,
+    combinedCoverageScore: 76,
+    homeForm: { sampleSize: 5, coverageScore: 70, scope: "home", windowSize: 5 },
+    awayForm: { sampleSize: 5, coverageScore: 70, scope: "away", windowSize: 5 },
+    h2h: { sampleSize: 5, coverageScore: 100, h2hMissing: false },
+    positiveSignals: [],
+    riskFactors: [],
+    missingDataWarnings: [],
+    summary: "Ready match."
+  };
+}

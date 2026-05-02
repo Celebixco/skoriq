@@ -56,13 +56,20 @@ describe("FootballMatchAnalyticsController", () => {
     });
   });
 
+  it("accepts expanded list requests for frontend quick filters", () => {
+    expect(parseListQuery({ limit: "200", offset: "0" })).toMatchObject({
+      limit: 200,
+      offset: 0
+    });
+  });
+
   it("rejects invalid list query values", () => {
     expect(() => parseListQuery({ competitionId: "not-a-uuid" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ teamId: "not-a-uuid" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ featureStatus: "excellent" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ predictionEligible: "yes" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ kuponEligible: "maybe" })).toThrow(BadRequestException);
-    expect(() => parseListQuery({ limit: "101" })).toThrow(BadRequestException);
+    expect(() => parseListQuery({ limit: "201" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ offset: "-1" })).toThrow(BadRequestException);
   });
 

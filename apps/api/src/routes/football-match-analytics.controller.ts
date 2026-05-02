@@ -6,7 +6,7 @@ import type { FootballMatchAnalyticsListFilters } from "./football-match-analyti
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const featureStatuses = ["ready", "partial", "insufficient_data"] as const;
 const defaultLimit = 20;
-const maxLimit = 100;
+const maxLimit = 200;
 
 interface FootballMatchAnalyticsListQuery {
   featureStatus?: string;

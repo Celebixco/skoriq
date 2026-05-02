@@ -70,6 +70,63 @@ const initialFilters: FootballAnalyticsMatchFilters = {
   offset: 0
 };
 
+export const analyticsExpandedPageSize = 200;
+const withinWindowHours = 24;
+
+export function isWithinNextHours(kickoffAt: string, now = new Date(), hours = withinWindowHours) {
+  const kickoffTime = Date.parse(kickoffAt);
+  const nowTime = now.getTime();
+  if (!Number.isFinite(kickoffTime)) return false;
+  return kickoffTime >= nowTime && kickoffTime <= nowTime + hours * 60 * 60 * 1000;
+}
+
+export function expandAnalyticsFiltersForQuickChip(filters: FootballAnalyticsMatchFilters, chip: QuickChipId): FootballAnalyticsMatchFilters {
+  if (chip !== "within24h") return filters;
+  return {
+    ...filters,
+    limit: Math.max(filters.limit ?? 20, analyticsExpandedPageSize),
+    offset: 0
+  };
+}
+
+export function filterFootballAnalyticsItems(
+  items: FootballAnalyticsMatchListResponse["items"],
+  frontendFilters: FrontendFilters,
+  searchQuery: string,
+  now = new Date()
+) {
+  let filtered = [...items];
+
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase().trim();
+    filtered = filtered.filter(item => {
+      const home = item.match.homeTeam.name.toLowerCase();
+      const away = item.match.awayTeam.name.toLowerCase();
+      const competition = item.match.competition.name.toLowerCase();
+      const country = item.match.competition.country?.toLowerCase() ?? "";
+      return home.includes(query) || away.includes(query) || competition.includes(query) || country.includes(query);
+    });
+  }
+
+  if (frontendFilters.competitionName) {
+    filtered = filtered.filter(item => item.match.competition.name === frontendFilters.competitionName);
+  }
+
+  if (frontendFilters.countryName) {
+    filtered = filtered.filter(item => item.match.competition.country === frontendFilters.countryName);
+  }
+
+  if (frontendFilters.within24h) {
+    filtered = filtered.filter(item => isWithinNextHours(item.match.kickoffAt, now));
+  }
+
+  if (frontendFilters.hasH2h) {
+    filtered = filtered.filter(item => !item.h2h.h2hMissing);
+  }
+
+  return filtered;
+}
+
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
@@ -214,11 +271,12 @@ export function ActiveFilterPills({ filters, frontendFilters, quickChip, onClear
   );
 }
 
-export function ResultSummaryBar({ showing, total, loaded, offset, hasPrev, hasNext, onPrev, onNext }: {
+export function ResultSummaryBar({ showing, total, loaded, offset, frontendFiltered, hasPrev, hasNext, onPrev, onNext }: {
   showing: number;
   total: number;
   loaded: number;
   offset: number;
+  frontendFiltered?: boolean;
   hasPrev: boolean;
   hasNext: boolean;
   onPrev: () => void;
@@ -230,7 +288,9 @@ export function ResultSummaryBar({ showing, total, loaded, offset, hasPrev, hasN
   return (
     <div className="analytics-results-bar">
       <p className="analytics-results-count">
-        {total > 0
+        {frontendFiltered
+          ? `${showing.toLocaleString("tr-TR")} maç gösteriliyor`
+          : total > 0
           ? `${start.toLocaleString("tr-TR")}–${end.toLocaleString("tr-TR")} / ${total.toLocaleString("tr-TR")} maç`
           : `${showing.toLocaleString("tr-TR")} maç gösteriliyor`}
       </p>
@@ -1109,41 +1169,7 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
 
   const filteredItems = useMemo(() => {
     if (!data) return [];
-    let items = [...data.items];
-
-    if (debouncedSearch.trim()) {
-      const query = debouncedSearch.toLowerCase().trim();
-      items = items.filter(item => {
-        const home = item.match.homeTeam.name.toLowerCase();
-        const away = item.match.awayTeam.name.toLowerCase();
-        const competition = item.match.competition.name.toLowerCase();
-        const country = item.match.competition.country?.toLowerCase() ?? "";
-        return home.includes(query) || away.includes(query) || competition.includes(query) || country.includes(query);
-      });
-    }
-
-    if (frontendFilters.competitionName) {
-      items = items.filter(item => item.match.competition.name === frontendFilters.competitionName);
-    }
-
-    if (frontendFilters.countryName) {
-      items = items.filter(item => item.match.competition.country === frontendFilters.countryName);
-    }
-
-    if (frontendFilters.within24h) {
-      const now = new Date();
-      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      items = items.filter(item => {
-        const kickoff = new Date(item.match.kickoffAt);
-        return kickoff >= now && kickoff <= tomorrow;
-      });
-    }
-
-    if (frontendFilters.hasH2h) {
-      items = items.filter(item => !item.h2h.h2hMissing);
-    }
-
-    return items;
+    return filterFootballAnalyticsItems(data.items, frontendFilters, debouncedSearch);
   }, [data, debouncedSearch, frontendFilters]);
 
   const matchStats = useMemo(() => {
@@ -1153,15 +1179,11 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
   const quickChipCounts = useMemo(() => {
     if (!data) return { ready: 0, predictionEligible: 0, within24h: 0, hasH2h: 0 };
     const now = new Date();
-    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
     return {
       ready: data.items.filter(item => item.featureStatus === "ready").length,
       predictionEligible: data.items.filter(item => item.predictionEligible).length,
-      within24h: data.items.filter(item => {
-        const kickoff = new Date(item.match.kickoffAt);
-        return kickoff >= now && kickoff <= tomorrow;
-      }).length,
+      within24h: data.items.filter(item => isWithinNextHours(item.match.kickoffAt, now)).length,
       hasH2h: data.items.filter(item => !item.h2h.h2hMissing).length
     };
   }, [data]);
@@ -1247,7 +1269,10 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
       setQuickChip(chip);
       if (chip === "ready") setFilters(prev => ({ ...prev, featureStatus: "ready" }));
       if (chip === "predictionEligible") setFilters(prev => ({ ...prev, predictionEligible: true }));
-      if (chip === "within24h") setFrontendFilters(prev => ({ ...prev, within24h: true }));
+      if (chip === "within24h") {
+        setFilters(prev => expandAnalyticsFiltersForQuickChip(prev, chip));
+        setFrontendFilters(prev => ({ ...prev, within24h: true }));
+      }
       if (chip === "hasH2h") setFrontendFilters(prev => ({ ...prev, hasH2h: true }));
     }
   };
@@ -1262,6 +1287,14 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
     frontendFilters.within24h ||
     frontendFilters.hasH2h ||
     quickChip !== null
+  );
+
+  const hasFrontendFilters = Boolean(
+    debouncedSearch.trim() ||
+    frontendFilters.competitionName ||
+    frontendFilters.countryName ||
+    frontendFilters.within24h ||
+    frontendFilters.hasH2h
   );
 
   return (
@@ -1328,6 +1361,7 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
             total={totalFromApi}
             loaded={totalLoaded}
             offset={offset}
+            frontendFiltered={hasFrontendFilters}
             hasPrev={hasPrevPage}
             hasNext={hasNextPage}
             onPrev={handlePrevPage}
