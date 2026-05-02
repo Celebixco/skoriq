@@ -42,6 +42,8 @@ const envSchema = z.object({
     .default(false),
   NEON_BRANCH_NAME: z.string().optional(),
   REDIS_URL: z.string().url(),
+  FRONTEND_ORIGIN: z.string().url().optional(),
+  CORS_ORIGIN: z.string().optional(),
   AUTH_ENABLED: z
     .string()
     .optional()
@@ -71,6 +73,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 
   if (config.NODE_ENV === "production" && config.APIFOOTBALL_COM_ENABLED) {
     throw new Error("APIFOOTBALL_COM_ENABLED cannot be true in production until explicit production provider approval exists.");
+  }
+
+  if (config.NODE_ENV === "production" && !config.FRONTEND_ORIGIN && !config.CORS_ORIGIN) {
+    throw new Error("FRONTEND_ORIGIN or CORS_ORIGIN is required in production.");
   }
 
   if (config.AUTH_ENABLED && !config.AUTH_JWT_SECRET) {
