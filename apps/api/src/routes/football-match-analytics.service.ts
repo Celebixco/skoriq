@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { buildFootballMatchReasoning } from "@sports-data/analysis";
 import type { FootballMatchReasoningPredictionFeature } from "@sports-data/analysis";
 import { loadConfig } from "@sports-data/config";
@@ -115,7 +115,7 @@ export interface FootballMatchAnalyticsRow {
 export class FootballMatchAnalyticsService {
   private readonly database: Database;
 
-  constructor(database?: Database) {
+  constructor(@Optional() @Inject("API_DATABASE") database?: Database) {
     this.database = database ?? createDatabase(loadConfig().DATABASE_URL);
   }
 

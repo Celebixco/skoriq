@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import { loadConfig } from "@sports-data/config";
 import { createDatabase } from "@sports-data/database";
 import type { Database } from "@sports-data/database";
@@ -154,7 +154,7 @@ const unsafeWindowStatuses = new Set(["stale", "too_early", "too_late", "unknown
 export class DashboardOverviewService {
   private readonly database: Database;
 
-  constructor(database?: Database) {
+  constructor(@Optional() @Inject("API_DATABASE") database?: Database) {
     this.database = database ?? createDatabase(loadConfig().DATABASE_URL);
   }
 

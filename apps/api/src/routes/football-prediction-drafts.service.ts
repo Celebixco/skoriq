@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { loadConfig } from "@sports-data/config";
 import { createDatabase } from "@sports-data/database";
 import type { Database } from "@sports-data/database";
@@ -120,7 +120,7 @@ interface ConflictRow {
 export class FootballPredictionDraftsService {
   private readonly database: Database;
 
-  constructor(database?: Database) {
+  constructor(@Optional() @Inject("API_DATABASE") database?: Database) {
     this.database = database ?? createDatabase(loadConfig().DATABASE_URL);
   }
 

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { FootballPublicEligibilityEvaluator } from "@sports-data/analysis";
 import type { FootballPublicEligibilityInput, FootballPublicEligibilityResult } from "@sports-data/analysis";
 import { loadConfig } from "@sports-data/config";
@@ -101,7 +101,7 @@ export class FootballPublicEligibilityService {
   private readonly database: Database;
   private readonly evaluator = new FootballPublicEligibilityEvaluator();
 
-  constructor(database?: Database) {
+  constructor(@Optional() @Inject("API_DATABASE") database?: Database) {
     this.database = database ?? createDatabase(loadConfig().DATABASE_URL);
   }
 
