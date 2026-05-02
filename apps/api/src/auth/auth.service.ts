@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Optional, UnauthorizedException } from "@nestjs/common";
 import type { AppConfig } from "@sports-data/config";
 import { loadConfig } from "@sports-data/config";
 import { createDatabase } from "@sports-data/database";
@@ -31,9 +31,12 @@ export class AuthService {
   private readonly database: Database;
   private readonly config: AppConfig;
 
-  constructor(database?: Database, config: AppConfig = loadConfig()) {
-    this.database = database ?? createDatabase(config.DATABASE_URL);
-    this.config = config;
+  constructor(
+    @Optional() @Inject("AUTH_DATABASE") database?: Database,
+    @Optional() @Inject("AUTH_CONFIG") config?: AppConfig
+  ) {
+    this.config = config ?? loadConfig();
+    this.database = database ?? createDatabase(this.config.DATABASE_URL);
   }
 
   get enabled() {
