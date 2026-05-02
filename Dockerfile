@@ -1,13 +1,11 @@
 FROM node:24-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-COPY drizzle.config.ts ./
-COPY apps ./apps
-COPY packages ./packages
 RUN npm ci
 
 FROM deps AS build
-RUN npm run build
+COPY . .
+RUN npm run build -w @sports-data/api
 RUN npm prune --omit=dev --workspaces
 
 FROM node:24-alpine AS runtime
@@ -19,4 +17,5 @@ COPY --from=build /app/apps ./apps
 COPY --from=build /app/packages ./packages
 COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
 
+EXPOSE 3000
 CMD ["node", "apps/api/dist/main.js"]
