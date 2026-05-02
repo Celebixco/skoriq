@@ -1,8 +1,11 @@
 import "dotenv/config";
 import { pathToFileURL } from "node:url";
 import { loadConfig } from "@sports-data/config";
-import { APIFootballComAdapter } from "@sports-data/providers";
+import { APIFootballComAdapter, mapAPIFootballComStatus } from "@sports-data/providers";
+import type { APIFootballComEvent, ProviderFetchResult } from "@sports-data/providers";
+import pg from "pg";
 import { manualLeagueConfigs } from "./apifootball-manual-league-config.js";
+import { providerName } from "./apifootball-manual-league-config.js";
 import { checkDatabaseReadiness, formatDatabaseReadinessResult } from "./db-readiness.js";
 import {
   closeDependencies,
@@ -20,6 +23,7 @@ interface FinishedSyncOptions {
   countryId?: string;
   leagueId?: string;
   limit: number;
+  verbose: boolean;
 }
 
 interface FinishedSyncLeagueReport {
@@ -34,6 +38,40 @@ interface FinishedSyncLeagueReport {
   scoreRowsUpdated: number;
   skippedStatuses: string[];
   unresolvedRows: number;
+  unresolvedDiagnostics?: FinishedSyncUnresolvedDiagnostic[];
+}
+
+export interface FinishedSyncUnresolvedDiagnostic {
+  operation: "events" | "scores";
+  league: {
+    countryId: string;
+    leagueId: string;
+  };
+  providerEventId?: string;
+  canonicalMatchId?: string;
+  matchLabel?: string;
+  rawStatus?: string;
+  canonicalStatusDecision: string;
+  reason:
+    | "unsupported_status"
+    | "live_numeric_status"
+    | "after_pen"
+    | "missing_team_mapping"
+    | "missing_competition_mapping"
+    | "missing_score"
+    | "match_not_finished"
+    | "already_processed"
+    | "date_window_mismatch"
+    | "unknown";
+  scoreFieldPresence: {
+    fulltimePresent: boolean;
+    halftimePresent: boolean;
+  };
+}
+
+interface CapturedProviderResult {
+  operation: "events" | "scores";
+  result: ProviderFetchResult<unknown>;
 }
 
 export function parseFinishedSyncArgs(argv: string[]): FinishedSyncOptions {
@@ -41,7 +79,8 @@ export function parseFinishedSyncArgs(argv: string[]): FinishedSyncOptions {
     execute: false,
     lookbackHours: 72,
     allReviewedEnabled: false,
-    limit: 200
+    limit: 200,
+    verbose: false
   };
 
   for (const arg of argv) {
@@ -55,6 +94,10 @@ export function parseFinishedSyncArgs(argv: string[]): FinishedSyncOptions {
     }
     if (arg === "--all-reviewed-enabled") {
       options.allReviewedEnabled = true;
+      continue;
+    }
+    if (arg === "--verbose") {
+      options.verbose = true;
       continue;
     }
 
@@ -93,6 +136,9 @@ export async function runFinishedSync(options: FinishedSyncOptions): Promise<{
   scoreRowsUpdated: number;
   skippedStatuses: string[];
   unresolvedRows: number;
+  unresolvedReasonCounts?: Record<string, number>;
+  unresolvedRowsAreSafeSkips?: boolean;
+  unresolvedDiagnostics?: FinishedSyncUnresolvedDiagnostic[];
   leagues: FinishedSyncLeagueReport[];
   secretExposureCheck: "clean";
 }> {
@@ -122,6 +168,7 @@ export async function runFinishedSync(options: FinishedSyncOptions): Promise<{
   const reports: FinishedSyncLeagueReport[] = [];
   try {
     for (const league of leagues) {
+      const capturedResults: CapturedProviderResult[] = [];
       const manualOptions = {
         execute: options.execute,
         verifyAfter: options.execute,
@@ -133,8 +180,24 @@ export async function runFinishedSync(options: FinishedSyncOptions): Promise<{
         to
       };
       validateManualIngestionOptions(manualOptions, process.env);
-      const result = await runManualAPIFootballComIngestion(manualOptions, { ...dependencies, log: () => undefined });
-      reports.push(mapManualResult(league.countryId, league.leagueId, from, to, result));
+      const result = await runManualAPIFootballComIngestion(manualOptions, {
+        ...dependencies,
+        fetchProviderResult: async (request) => {
+          const result = await dependencies.fetchProviderResult(request);
+          if (request.operation === "list_finished_matches") {
+            capturedResults.push({ operation: "events", result });
+          }
+          if (request.operation === "get_football_match_score") {
+            capturedResults.push({ operation: "scores", result });
+          }
+          return result;
+        },
+        log: () => undefined
+      });
+      const unresolvedDiagnostics = options.verbose
+        ? await enrichCanonicalMatchIds(buildUnresolvedDiagnostics(league.countryId, league.leagueId, capturedResults), config.DATABASE_URL)
+        : undefined;
+      reports.push(mapManualResult(league.countryId, league.leagueId, from, to, result, unresolvedDiagnostics));
     }
   } finally {
     await closeDependencies(dependencies);
@@ -150,12 +213,22 @@ export async function runFinishedSync(options: FinishedSyncOptions): Promise<{
     scoreRowsUpdated: reports.reduce((sum, report) => sum + report.scoreRowsUpdated, 0),
     skippedStatuses: [...new Set(reports.flatMap((report) => report.skippedStatuses))],
     unresolvedRows: reports.reduce((sum, report) => sum + report.unresolvedRows, 0),
+    unresolvedReasonCounts: options.verbose ? countUnresolvedReasons(reports.flatMap((report) => report.unresolvedDiagnostics ?? [])) : undefined,
+    unresolvedRowsAreSafeSkips: options.verbose ? reports.flatMap((report) => report.unresolvedDiagnostics ?? []).every(isSafeExpectedSkip) : undefined,
+    unresolvedDiagnostics: options.verbose ? reports.flatMap((report) => report.unresolvedDiagnostics ?? []) : undefined,
     leagues: reports,
     secretExposureCheck: "clean"
   };
 }
 
-function mapManualResult(countryId: string, leagueId: string, from: string, to: string, result: ManualIngestionRunResult): FinishedSyncLeagueReport {
+function mapManualResult(
+  countryId: string,
+  leagueId: string,
+  from: string,
+  to: string,
+  result: ManualIngestionRunResult,
+  unresolvedDiagnostics?: FinishedSyncUnresolvedDiagnostic[]
+): FinishedSyncLeagueReport {
   return {
     countryId,
     leagueId,
@@ -167,8 +240,170 @@ function mapManualResult(countryId: string, leagueId: string, from: string, to: 
     finishedMatchesUpdated: result.mode === "execute" ? result.totals.eventsCount : 0,
     scoreRowsUpdated: result.mode === "execute" ? result.totals.scoresCount : 0,
     skippedStatuses: result.ingestionRunReport.warnings.filter((warning) => /status/i.test(warning)),
-    unresolvedRows: result.totals.unresolvedRowsCount
+    unresolvedRows: result.totals.unresolvedRowsCount,
+    unresolvedDiagnostics
   };
+}
+
+export function buildUnresolvedDiagnostics(countryId: string, leagueId: string, capturedResults: CapturedProviderResult[]): FinishedSyncUnresolvedDiagnostic[] {
+  return capturedResults.flatMap(({ operation, result }) => {
+    const mappedProviderIds = new Set(
+      asArray(result.data)
+        .map((row) => optionalString(asRecord(row).providerEntityId ?? asRecord(row).matchProviderId))
+        .filter((value): value is string => Boolean(value))
+    );
+
+    return asArray(result.rawPayload ?? result.data)
+      .map((row) => asRecord(row) as APIFootballComEvent)
+      .filter((row) => {
+        const providerEventId = optionalString(row.match_id);
+        return !providerEventId || !mappedProviderIds.has(providerEventId);
+      })
+      .map((row) => classifyUnresolvedEvent(countryId, leagueId, operation, row));
+  });
+}
+
+export function classifyUnresolvedEvent(
+  countryId: string,
+  leagueId: string,
+  operation: "events" | "scores",
+  row: APIFootballComEvent
+): FinishedSyncUnresolvedDiagnostic {
+  const rawStatus = optionalString(row.match_status);
+  const providerEventId = optionalString(row.match_id);
+  const homeName = optionalString(row.match_hometeam_name);
+  const awayName = optionalString(row.match_awayteam_name);
+  const statusDecision = safeStatusDecision(rawStatus);
+  const reason = classifyUnresolvedReason(row, statusDecision);
+
+  return {
+    operation,
+    league: { countryId, leagueId },
+    providerEventId,
+    matchLabel: homeName && awayName ? `${homeName} vs ${awayName}` : undefined,
+    rawStatus,
+    canonicalStatusDecision: statusDecision.status,
+    reason,
+    scoreFieldPresence: {
+      fulltimePresent: hasFulltimeScorePair(row, statusDecision),
+      halftimePresent: hasScorePair(row.match_hometeam_halftime_score, row.match_awayteam_halftime_score)
+    }
+  };
+}
+
+function classifyUnresolvedReason(
+  row: APIFootballComEvent,
+  statusDecision: { status: string; supported: boolean }
+): FinishedSyncUnresolvedDiagnostic["reason"] {
+  if (!optionalString(row.league_id)) {
+    return "missing_competition_mapping";
+  }
+  if (!optionalString(row.match_hometeam_id) || !optionalString(row.match_awayteam_id)) {
+    return "missing_team_mapping";
+  }
+
+  const rawStatus = optionalString(row.match_status) ?? "";
+  const normalizedStatus = rawStatus.trim().toLowerCase();
+  if (!statusDecision.supported) {
+    if (/^\d+$/.test(normalizedStatus) && optionalString(row.match_live) === "1") {
+      return "live_numeric_status";
+    }
+    if (normalizedStatus === "after pen.") {
+      return "after_pen";
+    }
+    if (["half time", "ht", "1st half", "2nd half", "live", "in play"].includes(normalizedStatus)) {
+      return "match_not_finished";
+    }
+    return "unsupported_status";
+  }
+
+  if (!["finished", "after_extra_time", "after_penalties"].includes(statusDecision.status)) {
+    return "match_not_finished";
+  }
+
+  if (!hasScorePair(row.match_hometeam_ft_score, row.match_awayteam_ft_score) && !hasScorePair(row.match_hometeam_score, row.match_awayteam_score)) {
+    return "missing_score";
+  }
+
+  return "unknown";
+}
+
+function safeStatusDecision(rawStatus: string | undefined) {
+  try {
+    return {
+      status: mapAPIFootballComStatus(rawStatus),
+      supported: true
+    };
+  } catch {
+    return {
+      status: "unsupported",
+      supported: false
+    };
+  }
+}
+
+async function enrichCanonicalMatchIds(
+  diagnostics: FinishedSyncUnresolvedDiagnostic[],
+  databaseUrl: string | undefined
+): Promise<FinishedSyncUnresolvedDiagnostic[]> {
+  const providerEventIds = [...new Set(diagnostics.map((diagnostic) => diagnostic.providerEventId).filter((value): value is string => Boolean(value)))];
+  if (!databaseUrl || providerEventIds.length === 0) {
+    return diagnostics;
+  }
+
+  const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
+  try {
+    const result = await pool.query<{ provider_entity_id: string; internal_entity_id: string }>(
+      "select provider_entity_id, internal_entity_id from provider_mappings where provider = $1 and entity_type = 'match' and provider_entity_id = any($2::text[])",
+      [providerName, providerEventIds]
+    );
+    const canonicalByProviderId = new Map(result.rows.map((row) => [row.provider_entity_id, row.internal_entity_id]));
+    return diagnostics.map((diagnostic) => ({
+      ...diagnostic,
+      canonicalMatchId: diagnostic.providerEventId ? canonicalByProviderId.get(diagnostic.providerEventId) : undefined
+    }));
+  } finally {
+    await pool.end();
+  }
+}
+
+function countUnresolvedReasons(diagnostics: FinishedSyncUnresolvedDiagnostic[]) {
+  return diagnostics.reduce<Record<string, number>>((counts, diagnostic) => {
+    counts[diagnostic.reason] = (counts[diagnostic.reason] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+function isSafeExpectedSkip(diagnostic: FinishedSyncUnresolvedDiagnostic) {
+  return ["live_numeric_status", "after_pen", "match_not_finished"].includes(diagnostic.reason);
+}
+
+function hasFulltimeScorePair(row: APIFootballComEvent, statusDecision: { status: string; supported: boolean }) {
+  if (hasScorePair(row.match_hometeam_ft_score, row.match_awayteam_ft_score)) {
+    return true;
+  }
+  if (["finished", "after_extra_time", "after_penalties"].includes(statusDecision.status)) {
+    return hasScorePair(row.match_hometeam_score, row.match_awayteam_score);
+  }
+  return false;
+}
+
+function hasScorePair(home: unknown, away: unknown) {
+  return optionalString(home) !== undefined && optionalString(away) !== undefined;
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : value === undefined || value === null ? [] : [value];
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function optionalString(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  const normalized = String(value).trim();
+  return normalized ? normalized : undefined;
 }
 
 function dateOnly(date: Date) {
