@@ -15,10 +15,16 @@ describe("FootballMatchAnalyticsController", () => {
 
     expect(service.listMatchAnalytics).toHaveBeenCalledWith({
       featureStatus: undefined,
+      status: "upcoming",
+      analysisWindowStatus: undefined,
+      countryId: undefined,
       competitionId: undefined,
       teamId: undefined,
+      search: undefined,
       predictionEligible: undefined,
       kuponEligible: undefined,
+      hasH2h: undefined,
+      hasPrediction: undefined,
       limit: 20,
       offset: 0,
       debug: false
@@ -27,18 +33,25 @@ describe("FootballMatchAnalyticsController", () => {
     expect(response.items[0]).toMatchObject({ featureStatus: "ready", predictionEligible: true, kuponEligible: false });
   });
 
-  it("parses list filters for readiness, eligibility, competition, team, pagination, and debug", async () => {
+  it("parses list filters for readiness, eligibility, search, competition, team, pagination, and debug", async () => {
     const service = mockService();
     const controller = new FootballMatchAnalyticsController(service);
+    const countryId = "a91bf32e-3683-49f6-8077-6247889e58a5";
     const competitionId = "e91bf32e-3683-49f6-8077-6247889e58a5";
     const teamId = "b4235ef3-4d8c-4461-aeec-37e9abef3130";
 
     await controller.listFootballMatchAnalytics({
       featureStatus: "ready",
+      status: "upcoming",
+      analysisWindowStatus: "within_window",
       predictionEligible: "true",
       kuponEligible: "false",
+      hasH2h: "true",
+      hasPrediction: "true",
+      countryId,
       competitionId,
       teamId,
+      search: " Arsenal ",
       limit: "10",
       offset: "5",
       debug: "true"
@@ -46,10 +59,16 @@ describe("FootballMatchAnalyticsController", () => {
 
     expect(service.listMatchAnalytics).toHaveBeenCalledWith({
       featureStatus: "ready",
+      status: "upcoming",
+      analysisWindowStatus: "within_window",
       predictionEligible: true,
       kuponEligible: false,
+      hasH2h: true,
+      hasPrediction: true,
+      countryId,
       competitionId,
       teamId,
+      search: "Arsenal",
       limit: 10,
       offset: 5,
       debug: true
@@ -58,6 +77,7 @@ describe("FootballMatchAnalyticsController", () => {
 
   it("accepts expanded list requests for frontend quick filters", () => {
     expect(parseListQuery({ limit: "200", offset: "0" })).toMatchObject({
+      status: "upcoming",
       limit: 200,
       offset: 0
     });
@@ -66,9 +86,15 @@ describe("FootballMatchAnalyticsController", () => {
   it("rejects invalid list query values", () => {
     expect(() => parseListQuery({ competitionId: "not-a-uuid" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ teamId: "not-a-uuid" })).toThrow(BadRequestException);
+    expect(() => parseListQuery({ countryId: "not-a-uuid" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ featureStatus: "excellent" })).toThrow(BadRequestException);
+    expect(() => parseListQuery({ status: "finished" })).toThrow(BadRequestException);
+    expect(() => parseListQuery({ analysisWindowStatus: "next_week" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ predictionEligible: "yes" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ kuponEligible: "maybe" })).toThrow(BadRequestException);
+    expect(() => parseListQuery({ hasH2h: "yes" })).toThrow(BadRequestException);
+    expect(() => parseListQuery({ hasPrediction: "maybe" })).toThrow(BadRequestException);
+    expect(() => parseListQuery({ search: "x".repeat(81) })).toThrow(BadRequestException);
     expect(() => parseListQuery({ limit: "201" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ offset: "-1" })).toThrow(BadRequestException);
   });
@@ -182,7 +208,7 @@ const baseResponse: FootballMatchAnalyticsResponse = {
       country: "Germany"
     },
     kickoffAt: "2026-04-26T17:30:00.000Z",
-    status: "finished",
+    status: "not_started",
     homeTeam: {
       id: "team-home",
       name: "Borussia Dortmund",
@@ -229,7 +255,7 @@ function baseRow() {
     competition: "Bundesliga",
     country: "Germany",
     kickoff_at: new Date("2026-04-26T17:30:00.000Z"),
-    status: "finished",
+    status: "not_started",
     home_team_id: "team-home",
     home_team: "Borussia Dortmund",
     home_team_logo_url: "https://example.test/dortmund.png",

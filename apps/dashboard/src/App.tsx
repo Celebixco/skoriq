@@ -70,13 +70,11 @@ const initialFilters: FootballAnalyticsMatchFilters = {
   featureStatus: "",
   predictionEligible: "",
   kuponEligible: "",
+  status: "upcoming",
   limit: 20,
   offset: 0
 };
 
-// BACKEND LIMITATION: The analytics API does not support match status filtering.
-// Finished matches are filtered out frontend-side until the backend adds a
-// status=upcoming (or equivalent) query parameter.
 const EXCLUDED_ANALYTICS_STATUSES = ["finished", "after_extra_time", "after_penalties", "abandoned", "cancelled"] as const;
 
 export const analyticsExpandedPageSize = 200;
@@ -93,6 +91,7 @@ export function expandAnalyticsFiltersForQuickChip(filters: FootballAnalyticsMat
   if (chip !== "within24h") return filters;
   return {
     ...filters,
+    analysisWindowStatus: "within_window",
     limit: Math.max(filters.limit ?? 20, analyticsExpandedPageSize),
     offset: 0
   };
@@ -104,7 +103,8 @@ export function filterFootballAnalyticsItems(
   searchQuery: string,
   now = new Date()
 ) {
-  // Always exclude finished/cancelled matches (backend does not support status filter)
+  // Defense-in-depth: the API defaults this page to upcoming matches, but the
+  // UI still refuses finished/result statuses if stale cached data arrives.
   let filtered = items.filter(item => !EXCLUDED_ANALYTICS_STATUSES.includes(item.match.status as typeof EXCLUDED_ANALYTICS_STATUSES[number]));
 
   if (searchQuery.trim()) {
@@ -293,10 +293,11 @@ export function ActiveFilterPills({ filters, frontendFilters, quickChip, onClear
   );
 }
 
-export function ResultSummaryBar({ showing, total, loaded, offset, frontendFiltered, hasPrev, hasNext, onPrev, onNext }: {
+export function ResultSummaryBar({ showing, total, loaded, limit, offset, frontendFiltered, hasPrev, hasNext, onPrev, onNext }: {
   showing: number;
   total: number;
   loaded: number;
+  limit: number;
   offset: number;
   frontendFiltered?: boolean;
   hasPrev: boolean;
@@ -306,15 +307,17 @@ export function ResultSummaryBar({ showing, total, loaded, offset, frontendFilte
 }) {
   const start = total > 0 ? offset + 1 : 0;
   const end = Math.min(offset + loaded, total);
+  const pageSize = Math.max(1, limit);
+  const page = Math.floor(offset / pageSize) + 1;
 
   return (
     <div className="analytics-results-bar">
       <p className="analytics-results-count">
         {frontendFiltered
-          ? `${showing.toLocaleString("tr-TR")} maç gösteriliyor`
+          ? `Gösterilen: ${showing.toLocaleString("tr-TR")} maç`
           : total > 0
-          ? `${start.toLocaleString("tr-TR")}–${end.toLocaleString("tr-TR")} / ${total.toLocaleString("tr-TR")} maç`
-          : `${showing.toLocaleString("tr-TR")} maç gösteriliyor`}
+          ? `Sayfa ${page.toLocaleString("tr-TR")} · Gösterilen: ${start.toLocaleString("tr-TR")}–${end.toLocaleString("tr-TR")} · Toplam: ${total.toLocaleString("tr-TR")}`
+          : `Sayfa ${page.toLocaleString("tr-TR")} · Gösterilen: ${showing.toLocaleString("tr-TR")} · Toplam: ${total.toLocaleString("tr-TR")}`}
       </p>
       <div className="analytics-pagination">
         <button
@@ -1188,8 +1191,8 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
   const debouncedSearch = useDebounce(frontendFilters.searchQuery, 300);
 
   const { data, loading, error } = useLoad(
-    () => fetchFootballAnalyticsMatches(filters),
-    [filters]
+    () => fetchFootballAnalyticsMatches({ ...filters, status: "upcoming", search: debouncedSearch }),
+    [filters, debouncedSearch]
   );
 
   const availableCompetitions = useMemo(() => {
@@ -1282,6 +1285,7 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
         setFilters(prev => ({ ...prev, kuponEligible: "" }));
         break;
       case "searchQuery":
+        setFilters(prev => ({ ...prev, offset: 0 }));
         setFrontendFilters(prev => ({ ...prev, searchQuery: "" }));
         break;
       case "competitionName":
@@ -1291,14 +1295,17 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
         setFrontendFilters(prev => ({ ...prev, countryName: "" }));
         break;
       case "within24h":
+        setFilters(prev => ({ ...prev, analysisWindowStatus: undefined, limit: initialFilters.limit, offset: 0 }));
         setFrontendFilters(prev => ({ ...prev, within24h: false }));
         setQuickChip(prev => prev === "within24h" ? null : prev);
         break;
       case "hasH2h":
+        setFilters(prev => ({ ...prev, hasH2h: "" }));
         setFrontendFilters(prev => ({ ...prev, hasH2h: false }));
         setQuickChip(prev => prev === "hasH2h" ? null : prev);
         break;
       case "hasPrediction":
+        setFilters(prev => ({ ...prev, hasPrediction: "" }));
         setFrontendFilters(prev => ({ ...prev, hasPrediction: false }));
         setQuickChip(prev => prev === "hasPrediction" ? null : prev);
         break;
@@ -1314,9 +1321,18 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
       setQuickChip(null);
       if (chip === "ready") setFilters(prev => ({ ...prev, featureStatus: "" }));
       if (chip === "predictionEligible") setFilters(prev => ({ ...prev, predictionEligible: "" }));
-      if (chip === "within24h") setFrontendFilters(prev => ({ ...prev, within24h: false }));
-      if (chip === "hasH2h") setFrontendFilters(prev => ({ ...prev, hasH2h: false }));
-      if (chip === "hasPrediction") setFrontendFilters(prev => ({ ...prev, hasPrediction: false }));
+      if (chip === "within24h") {
+        setFilters(prev => ({ ...prev, analysisWindowStatus: undefined, limit: initialFilters.limit, offset: 0 }));
+        setFrontendFilters(prev => ({ ...prev, within24h: false }));
+      }
+      if (chip === "hasH2h") {
+        setFilters(prev => ({ ...prev, hasH2h: "" }));
+        setFrontendFilters(prev => ({ ...prev, hasH2h: false }));
+      }
+      if (chip === "hasPrediction") {
+        setFilters(prev => ({ ...prev, hasPrediction: "" }));
+        setFrontendFilters(prev => ({ ...prev, hasPrediction: false }));
+      }
     } else {
       setQuickChip(chip);
       if (chip === "ready") setFilters(prev => ({ ...prev, featureStatus: "ready" }));
@@ -1325,8 +1341,14 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
         setFilters(prev => expandAnalyticsFiltersForQuickChip(prev, chip));
         setFrontendFilters(prev => ({ ...prev, within24h: true }));
       }
-      if (chip === "hasH2h") setFrontendFilters(prev => ({ ...prev, hasH2h: true }));
-      if (chip === "hasPrediction") setFrontendFilters(prev => ({ ...prev, hasPrediction: true }));
+      if (chip === "hasH2h") {
+        setFilters(prev => ({ ...prev, hasH2h: true, offset: 0 }));
+        setFrontendFilters(prev => ({ ...prev, hasH2h: true }));
+      }
+      if (chip === "hasPrediction") {
+        setFilters(prev => ({ ...prev, hasPrediction: true, offset: 0 }));
+        setFrontendFilters(prev => ({ ...prev, hasPrediction: true }));
+      }
     }
   };
 
@@ -1334,7 +1356,10 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
     filters.featureStatus ||
     filters.predictionEligible !== "" ||
     filters.kuponEligible !== "" ||
-    debouncedSearch.trim() ||
+    filters.analysisWindowStatus ||
+    filters.hasH2h !== "" ||
+    filters.hasPrediction !== "" ||
+    frontendFilters.searchQuery.trim() ||
     frontendFilters.competitionName ||
     frontendFilters.countryName ||
     frontendFilters.within24h ||
@@ -1344,12 +1369,8 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
   );
 
   const hasFrontendFilters = Boolean(
-    debouncedSearch.trim() ||
     frontendFilters.competitionName ||
-    frontendFilters.countryName ||
-    frontendFilters.within24h ||
-    frontendFilters.hasH2h ||
-    frontendFilters.hasPrediction
+    frontendFilters.countryName
   );
 
   return (
@@ -1374,8 +1395,14 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
         <div className="analytics-search-row">
           <SearchBar
             query={frontendFilters.searchQuery}
-            onChange={(value) => setFrontendFilters(prev => ({ ...prev, searchQuery: value }))}
-            onClear={() => setFrontendFilters(prev => ({ ...prev, searchQuery: "" }))}
+            onChange={(value) => {
+              setFilters(prev => ({ ...prev, offset: 0 }));
+              setFrontendFilters(prev => ({ ...prev, searchQuery: value }));
+            }}
+            onClear={() => {
+              setFilters(prev => ({ ...prev, offset: 0 }));
+              setFrontendFilters(prev => ({ ...prev, searchQuery: "" }));
+            }}
           />
           <button
             type="button"
@@ -1410,11 +1437,19 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
           onClearAll={handleClearAll}
         />
 
+        <div className="analytics-results-link-panel">
+          <span>Biten maçlar ve tahmin sonuçları için Sonuçlar sayfasına git.</span>
+          <button type="button" onClick={() => navigate("/football/prediction-results")}>
+            Sonuçlar sayfası
+          </button>
+        </div>
+
         {!loading && data ? (
           <ResultSummaryBar
             showing={filteredItems.length}
             total={totalFromApi}
             loaded={totalLoaded}
+            limit={filters.limit ?? initialFilters.limit ?? 20}
             offset={offset}
             frontendFiltered={hasFrontendFilters}
             hasPrev={hasPrevPage}

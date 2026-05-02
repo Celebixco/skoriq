@@ -83,10 +83,17 @@ export async function fetchFootballAnalyticsMatches(filters: FootballAnalyticsMa
   const params = new URLSearchParams();
   params.set("limit", String(filters.limit ?? 20));
   params.set("offset", String(filters.offset ?? 0));
+  params.set("status", filters.status ?? "upcoming");
   if (filters.featureStatus) params.set("featureStatus", filters.featureStatus);
   if (filters.predictionEligible !== "" && filters.predictionEligible !== undefined) params.set("predictionEligible", String(filters.predictionEligible));
   if (filters.kuponEligible !== "" && filters.kuponEligible !== undefined) params.set("kuponEligible", String(filters.kuponEligible));
+  if (filters.analysisWindowStatus) params.set("analysisWindowStatus", filters.analysisWindowStatus);
+  if (filters.hasH2h !== "" && filters.hasH2h !== undefined) params.set("hasH2h", String(filters.hasH2h));
+  if (filters.hasPrediction !== "" && filters.hasPrediction !== undefined) params.set("hasPrediction", String(filters.hasPrediction));
+  if (filters.countryId) params.set("countryId", filters.countryId);
   if (filters.competitionId) params.set("competitionId", filters.competitionId);
+  if (filters.teamId) params.set("teamId", filters.teamId);
+  if (filters.search?.trim()) params.set("search", filters.search.trim());
   return requestJson<FootballAnalyticsMatchListResponse>(`/analytics/football/matches?${params.toString()}`);
 }
 

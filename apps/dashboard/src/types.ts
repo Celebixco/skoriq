@@ -164,9 +164,16 @@ export interface FootballAnalyticsMatchFilters {
   featureStatus?: FeatureStatus | "";
   predictionEligible?: boolean | "";
   kuponEligible?: boolean | "";
+  status?: "upcoming" | "all" | "not_started" | "scheduled";
+  analysisWindowStatus?: AnalysisWindowStatus;
+  hasH2h?: boolean | "";
+  hasPrediction?: boolean | "";
+  countryId?: string;
   limit?: number;
   offset?: number;
   competitionId?: string;
+  teamId?: string;
+  search?: string;
 }
 
 export interface Pagination {

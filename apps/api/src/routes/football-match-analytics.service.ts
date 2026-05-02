@@ -65,10 +65,16 @@ export interface FootballMatchAnalyticsResponse {
 
 export interface FootballMatchAnalyticsListFilters {
   featureStatus?: "ready" | "partial" | "insufficient_data";
+  status: "upcoming" | "all" | "not_started" | "scheduled";
+  analysisWindowStatus?: "within_window" | "too_early" | "too_late" | "stale" | "unknown";
   predictionEligible?: boolean;
   kuponEligible?: boolean;
+  hasH2h?: boolean;
+  hasPrediction?: boolean;
+  countryId?: string;
   competitionId?: string;
   teamId?: string;
+  search?: string;
   limit: number;
   offset: number;
   debug: boolean;
@@ -134,15 +140,14 @@ export class FootballMatchAnalyticsService {
   }
 
   async listMatchAnalytics(filters: FootballMatchAnalyticsListFilters): Promise<FootballMatchAnalyticsListResponse> {
-    const allRows = await this.findAnalyticsRows(filters);
-    const mappedItems = allRows.map((row) => mapAnalyticsRow(row, filters.debug));
-    const filteredItems = mappedItems.filter((item) => matchesDerivedFilters(item, filters));
+    const [rows, total] = await Promise.all([this.findAnalyticsRows(filters), this.countAnalyticsRows(filters)]);
+    const filteredItems = rows.map((row) => mapAnalyticsRow(row, filters.debug));
     return {
-      items: filteredItems.slice(0, filters.limit),
+      items: filteredItems,
       pagination: {
         limit: filters.limit,
         offset: filters.offset,
-        total: filteredItems.length
+        total
       }
     };
   }
@@ -210,10 +215,7 @@ export class FootballMatchAnalyticsService {
   }
 
   private async findAnalyticsRows(filters: FootballMatchAnalyticsListFilters): Promise<FootballMatchAnalyticsRow[]> {
-    const featureStatusFilter = filters.featureStatus ? sql`and f.feature_status = ${filters.featureStatus}` : sql``;
-    const competitionFilter = filters.competitionId ? sql`and m.competition_id = ${filters.competitionId}` : sql``;
-    const teamFilter = filters.teamId ? sql`and (m.home_team_id = ${filters.teamId} or m.away_team_id = ${filters.teamId})` : sql``;
-    const fetchLimit = filters.limit + filters.offset;
+    const where = buildAnalyticsWhere(filters);
     const rows = await executeRows<FootballMatchAnalyticsRow>(
       this.database,
       sql`
@@ -252,16 +254,32 @@ export class FootballMatchAnalyticsService {
         inner join teams away on away.id = m.away_team_id
         left join football_team_form_features home_form on home_form.id = f.home_form_feature_id
         left join football_team_form_features away_form on away_form.id = f.away_form_feature_id
-        where f.form_window_size = 5
-          and f.h2h_window_size = 5
-          ${featureStatusFilter}
-          ${competitionFilter}
-          ${teamFilter}
-        order by m.scheduled_start_at desc, m.id asc
-        limit ${fetchLimit}
+        where ${where}
+        order by m.scheduled_start_at asc, m.id asc
+        limit ${filters.limit}
+        offset ${filters.offset}
       `
     );
-    return rows.slice(filters.offset);
+    return rows;
+  }
+
+  private async countAnalyticsRows(filters: FootballMatchAnalyticsListFilters): Promise<number> {
+    const where = buildAnalyticsWhere(filters);
+    const rows = await executeRows<{ total: string | number }>(
+      this.database,
+      sql`
+        select count(*) as total
+        from football_match_prediction_features f
+        inner join matches m on m.id = f.match_id
+        inner join sports s on s.id = m.sport_id and s.slug = 'football'
+        inner join competitions c on c.id = m.competition_id
+        left join countries co on co.id = c.country_id
+        inner join teams home on home.id = m.home_team_id
+        inner join teams away on away.id = m.away_team_id
+        where ${where}
+      `
+    );
+    return Number(rows[0]?.total ?? 0);
   }
 }
 
@@ -343,12 +361,6 @@ export function mapAnalyticsRow(row: FootballMatchAnalyticsRow, debug: boolean):
   };
 }
 
-function matchesDerivedFilters(item: FootballMatchAnalyticsResponse, filters: FootballMatchAnalyticsListFilters): boolean {
-  if (filters.predictionEligible !== undefined && item.predictionEligible !== filters.predictionEligible) return false;
-  if (filters.kuponEligible !== undefined && item.kuponEligible !== filters.kuponEligible) return false;
-  return true;
-}
-
 async function executeRows<T>(database: Database, query: ReturnType<typeof sql>): Promise<T[]> {
   const result = await database.execute(query);
   if (Array.isArray(result)) {
@@ -368,4 +380,85 @@ function numberOrNull(value: string | number | null): number | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function buildAnalyticsWhere(filters: FootballMatchAnalyticsListFilters) {
+  const predictionEligibleFilter =
+    filters.predictionEligible === undefined
+      ? sql``
+      : filters.predictionEligible
+        ? sql`and f.feature_status = 'ready' and coalesce(f.combined_coverage_score, 0) >= 60`
+        : sql`and not (f.feature_status = 'ready' and coalesce(f.combined_coverage_score, 0) >= 60)`;
+  const kuponEligibleFilter =
+    filters.kuponEligible === undefined
+      ? sql``
+      : filters.kuponEligible
+        ? sql`and f.feature_status = 'ready' and coalesce(f.combined_coverage_score, 0) >= 70`
+        : sql`and not (f.feature_status = 'ready' and coalesce(f.combined_coverage_score, 0) >= 70)`;
+  const hasH2hFilter =
+    filters.hasH2h === undefined
+      ? sql``
+      : filters.hasH2h
+        ? sql`and coalesce(lower(f.metadata_json ->> 'h2hMissing'), 'false') not in ('true', '1', 'yes')`
+        : sql`and coalesce(lower(f.metadata_json ->> 'h2hMissing'), 'false') in ('true', '1', 'yes')`;
+  const hasPredictionFilter =
+    filters.hasPrediction === undefined
+      ? sql``
+      : filters.hasPrediction
+        ? sql`and exists (${safePredictionExistsSql()})`
+        : sql`and not exists (${safePredictionExistsSql()})`;
+  const searchFilter = filters.search
+    ? sql`and (
+        lower(home.name) like ${`%${filters.search.toLowerCase()}%`}
+        or lower(away.name) like ${`%${filters.search.toLowerCase()}%`}
+        or lower(c.name) like ${`%${filters.search.toLowerCase()}%`}
+        or lower(coalesce(co.name, '')) like ${`%${filters.search.toLowerCase()}%`}
+      )`
+    : sql``;
+
+  return sql`
+    f.form_window_size = 5
+    and f.h2h_window_size = 5
+    ${statusFilterSql(filters.status)}
+    ${filters.featureStatus ? sql`and f.feature_status = ${filters.featureStatus}` : sql``}
+    ${filters.countryId ? sql`and co.id = ${filters.countryId}` : sql``}
+    ${filters.competitionId ? sql`and m.competition_id = ${filters.competitionId}` : sql``}
+    ${filters.teamId ? sql`and (m.home_team_id = ${filters.teamId} or m.away_team_id = ${filters.teamId})` : sql``}
+    ${analysisWindowFilterSql(filters.analysisWindowStatus)}
+    ${predictionEligibleFilter}
+    ${kuponEligibleFilter}
+    ${hasH2hFilter}
+    ${hasPredictionFilter}
+    ${searchFilter}
+  `;
+}
+
+function statusFilterSql(status: FootballMatchAnalyticsListFilters["status"]) {
+  if (status === "all") return sql``;
+  if (status === "not_started") return sql`and m.status = 'not_started'`;
+  if (status === "scheduled") return sql`and m.status = 'scheduled'`;
+  return sql`and m.status in ('not_started', 'scheduled')`;
+}
+
+function analysisWindowFilterSql(status: FootballMatchAnalyticsListFilters["analysisWindowStatus"]) {
+  if (!status) return sql``;
+  if (status === "within_window") return sql`and m.scheduled_start_at > now() + interval '30 minutes' and m.scheduled_start_at <= now() + interval '36 hours'`;
+  if (status === "too_early") return sql`and m.scheduled_start_at > now() + interval '36 hours'`;
+  if (status === "too_late") return sql`and m.scheduled_start_at <= now() + interval '30 minutes'`;
+  if (status === "stale") return sql`and exists (select 1 from football_prediction_outputs p where p.match_id = m.id and p.rebuild_required = true)`;
+  return sql`and m.scheduled_start_at is null`;
+}
+
+function safePredictionExistsSql() {
+  return sql`
+    select 1
+    from football_prediction_outputs p
+    where p.match_id = m.id
+      and p.status in ('draft', 'member_visible')
+      and p.recommendation_tier in ('primary', 'try', 'alternative')
+      and p.consistency_status in ('passed', 'warning')
+      and p.rebuild_required = false
+      and coalesce(lower(p.metadata_json ->> 'blockedOrAvoidAuditOnly'), 'false') not in ('true', '1', 'yes')
+      and coalesce(lower(p.metadata_json ->> 'auditOnly'), 'false') not in ('true', '1', 'yes')
+  `;
 }

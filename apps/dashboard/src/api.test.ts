@@ -37,14 +37,30 @@ describe("football analytics dashboard API client", () => {
       featureStatus: "ready",
       predictionEligible: true,
       kuponEligible: false,
+      status: "upcoming",
+      analysisWindowStatus: "within_window",
+      hasH2h: true,
+      hasPrediction: true,
+      countryId: "country-1",
+      competitionId: "competition-1",
+      teamId: "team-1",
+      search: " Arsenal ",
       limit: 20
     });
 
     const requestedUrl = String(fetchMock.mock.calls[0]?.[0]);
     expect(requestedUrl).toContain("/analytics/football/matches?");
     expect(requestedUrl).toContain("featureStatus=ready");
+    expect(requestedUrl).toContain("status=upcoming");
+    expect(requestedUrl).toContain("analysisWindowStatus=within_window");
     expect(requestedUrl).toContain("predictionEligible=true");
     expect(requestedUrl).toContain("kuponEligible=false");
+    expect(requestedUrl).toContain("hasH2h=true");
+    expect(requestedUrl).toContain("hasPrediction=true");
+    expect(requestedUrl).toContain("countryId=country-1");
+    expect(requestedUrl).toContain("competitionId=competition-1");
+    expect(requestedUrl).toContain("teamId=team-1");
+    expect(requestedUrl).toContain("search=Arsenal");
     expect(requestedUrl).toContain("limit=20");
     expect(requestedUrl).toContain("offset=0");
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ credentials: "include" });

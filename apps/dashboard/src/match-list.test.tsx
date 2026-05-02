@@ -15,10 +15,9 @@ import {
 import type { FrontendFilters } from "./App";
 import type { FootballAnalyticsMatchFilters, FootballAnalyticsMatchListResponse } from "./types";
 
-// NOTE: Backend does not support text search, competition/country filtering, or match status filtering.
-// These are applied frontend-side over the data window fetched from the backend.
-// Finished matches are filtered out client-side until the backend adds status=upcoming support.
-// Pagination uses offset/limit parameters supported by the backend.
+// NOTE: The API now defaults this page to upcoming matches and supports broad
+// search/filter pagination. Frontend filtering remains as a safety net for
+// cached or defensive client-only cases.
 
 describe("MatchListPage analytics search and filter area", () => {
   it("renders search input with correct placeholder", () => {
@@ -123,6 +122,7 @@ describe("analytics frontend filtering", () => {
 
   it("expands the API request when the 36h quick filter is enabled", () => {
     expect(expandAnalyticsFiltersForQuickChip({ limit: 50, offset: 50 }, "within24h")).toMatchObject({
+      analysisWindowStatus: "within_window",
       limit: analyticsExpandedPageSize,
       offset: 0
     });
@@ -287,6 +287,7 @@ describe("ResultSummaryBar", () => {
         showing={20}
         total={123}
         loaded={20}
+        limit={20}
         offset={0}
         hasPrev={false}
         hasNext={true}
@@ -294,7 +295,9 @@ describe("ResultSummaryBar", () => {
         onNext={vi.fn()}
       />
     );
-    expect(html).toContain("1–20 / 123 maç");
+    expect(html).toContain("Sayfa 1");
+    expect(html).toContain("Gösterilen: 1–20");
+    expect(html).toContain("Toplam: 123");
   });
 
   it("disables prev button on first page", () => {
@@ -303,6 +306,7 @@ describe("ResultSummaryBar", () => {
         showing={20}
         total={123}
         loaded={20}
+        limit={20}
         offset={0}
         hasPrev={false}
         hasNext={true}
@@ -319,6 +323,7 @@ describe("ResultSummaryBar", () => {
         showing={20}
         total={123}
         loaded={20}
+        limit={20}
         offset={20}
         hasPrev={true}
         hasNext={true}
@@ -326,7 +331,9 @@ describe("ResultSummaryBar", () => {
         onNext={vi.fn()}
       />
     );
-    expect(html).toContain("21–40 / 123 maç");
+    expect(html).toContain("Sayfa 2");
+    expect(html).toContain("Gösterilen: 21–40");
+    expect(html).toContain("Toplam: 123");
   });
 
   it("shows the frontend-filtered count clearly", () => {
@@ -335,6 +342,7 @@ describe("ResultSummaryBar", () => {
         showing={24}
         total={123}
         loaded={200}
+        limit={200}
         offset={0}
         frontendFiltered
         hasPrev={false}
@@ -343,8 +351,8 @@ describe("ResultSummaryBar", () => {
         onNext={vi.fn()}
       />
     );
-    expect(html).toContain("24 maç gösteriliyor");
-    expect(html).not.toContain("1–200 / 123 maç");
+    expect(html).toContain("Gösterilen: 24 maç");
+    expect(html).not.toContain("Gösterilen: 1–200");
   });
 });
 
@@ -378,6 +386,12 @@ describe("EmptySearchState", () => {
       <EmptySearchState hasFilters={false} apiHasData={false} onClear={vi.fn()} navigate={vi.fn()} />
     );
     expect(html).toContain("Sonuçlar sayfasına git");
+  });
+
+  it("renders the finished results navigation hint on the analytics page", () => {
+    const html = renderToStaticMarkup(<MatchListPage navigate={vi.fn()} />);
+    expect(html).toContain("Biten maçlar ve tahmin sonuçları için Sonuçlar sayfasına git.");
+    expect(html).toContain("Sonuçlar sayfası");
   });
 });
 
