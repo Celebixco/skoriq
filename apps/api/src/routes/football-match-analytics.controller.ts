@@ -12,6 +12,7 @@ const maxLimit = 200;
 
 interface FootballMatchAnalyticsListQuery {
   featureStatus?: string;
+  analysisStatus?: string;
   predictionEligible?: string;
   kuponEligible?: string;
   status?: string;
@@ -48,7 +49,7 @@ export class FootballMatchAnalyticsController {
 }
 
 export function parseListQuery(query: FootballMatchAnalyticsListQuery): FootballMatchAnalyticsListFilters {
-  const featureStatus = parseFeatureStatus(query.featureStatus);
+  const featureStatus = parseFeatureStatus(query.featureStatus ?? query.analysisStatus);
   const status = parseMatchStatusFilter(query.status);
   const analysisWindowStatus = parseAnalysisWindowStatus(query.analysisWindowStatus);
   const countryId = parseOptionalUuid("countryId", query.countryId);

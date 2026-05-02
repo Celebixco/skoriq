@@ -1378,8 +1378,8 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
       <header className="hero analytics-header">
         <div>
           <p className="eyebrow">SkorIQ Futbol</p>
-          <h1>Maç Analizleri</h1>
-          <p>Veri kapsamı yeterli olan maçları incele.</p>
+          <h1>Yaklaşan Maç Analizleri</h1>
+          <p>Analiz ve tahmin üretimi için yaklaşan maçları incele.</p>
         </div>
         {matchStats ? (
           <div className="analytics-summary-grid" aria-label="Maç analizi özet metrikleri">

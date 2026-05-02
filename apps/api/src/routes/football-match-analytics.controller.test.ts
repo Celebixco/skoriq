@@ -83,11 +83,27 @@ describe("FootballMatchAnalyticsController", () => {
     });
   });
 
+  it("keeps the analytics list upcoming-only by default with 20-row pagination", () => {
+    expect(parseListQuery({})).toMatchObject({
+      status: "upcoming",
+      limit: 20,
+      offset: 0
+    });
+  });
+
+  it("accepts analysisStatus as a safe alias for featureStatus", () => {
+    expect(parseListQuery({ analysisStatus: "ready" })).toMatchObject({
+      featureStatus: "ready",
+      status: "upcoming"
+    });
+  });
+
   it("rejects invalid list query values", () => {
     expect(() => parseListQuery({ competitionId: "not-a-uuid" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ teamId: "not-a-uuid" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ countryId: "not-a-uuid" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ featureStatus: "excellent" })).toThrow(BadRequestException);
+    expect(() => parseListQuery({ analysisStatus: "excellent" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ status: "finished" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ analysisWindowStatus: "next_week" })).toThrow(BadRequestException);
     expect(() => parseListQuery({ predictionEligible: "yes" })).toThrow(BadRequestException);

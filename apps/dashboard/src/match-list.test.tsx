@@ -20,6 +20,12 @@ import type { FootballAnalyticsMatchFilters, FootballAnalyticsMatchListResponse 
 // cached or defensive client-only cases.
 
 describe("MatchListPage analytics search and filter area", () => {
+  it("renders the upcoming-only page title and subtitle", () => {
+    const html = renderToStaticMarkup(<MatchListPage navigate={vi.fn()} />);
+    expect(html).toContain("Yaklaşan Maç Analizleri");
+    expect(html).toContain("Analiz ve tahmin üretimi için yaklaşan maçları incele.");
+  });
+
   it("renders search input with correct placeholder", () => {
     const html = renderToStaticMarkup(<MatchListPage navigate={vi.fn()} />);
     expect(html).toContain('placeholder="Takım, lig veya maç ara…"');
