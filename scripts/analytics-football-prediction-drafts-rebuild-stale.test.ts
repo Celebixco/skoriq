@@ -13,7 +13,7 @@ import type {
 const baseOptions: FootballStaleDraftRebuildOptions = {
   matchId: "match-1",
   execute: false,
-  windowHours: 24,
+  windowHours: 36,
   minimumLeadMinutes: 30
 };
 

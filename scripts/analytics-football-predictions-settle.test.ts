@@ -9,6 +9,8 @@ import type { FootballPredictionSettlementDependencies, FootballPredictionSettle
 const baseOptions: FootballPredictionSettlementRunnerOptions = {
   execute: false,
   reportJson: false,
+  lookbackHours: 96,
+  allReviewedEnabled: false,
   matchId: "match-1"
 };
 
@@ -23,12 +25,14 @@ describe("football prediction settlement runner", () => {
     expect(parseFootballPredictionSettlementArgs(["--prediction-id=prediction-1", "--execute", "--report-json"])).toEqual({
       execute: true,
       reportJson: true,
+      lookbackHours: 96,
+      allReviewedEnabled: false,
       predictionId: "prediction-1"
     });
   });
 
   it("validates target and production safety", () => {
-    expect(() => validateFootballPredictionSettlementOptions({ execute: false, reportJson: false }, baseEnv)).toThrow("requires --match-id or --prediction-id");
+    expect(() => validateFootballPredictionSettlementOptions({ execute: false, reportJson: false, lookbackHours: 96, allReviewedEnabled: false }, baseEnv)).toThrow("requires --match-id");
     expect(() => validateFootballPredictionSettlementOptions({ ...baseOptions, predictionId: "prediction-1" }, baseEnv)).toThrow("not both");
     expect(() => validateFootballPredictionSettlementOptions(baseOptions, { ...baseEnv, NODE_ENV: "production" })).toThrow("forbidden in production");
   });

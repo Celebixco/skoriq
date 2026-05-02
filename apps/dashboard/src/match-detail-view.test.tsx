@@ -115,7 +115,7 @@ function mockMemberPreviewResponse(): FootballMemberPredictionPreviewResponse {
     status: "available",
     reasonCode: "available",
     message: "Bu maç için SkorIQ ön tahmin yorumu hazır.",
-    analysisWindow: { status: "within_window", windowHours: 24, minimumLeadMinutes: 30 },
+    analysisWindow: { status: "within_window", windowHours: 36, minimumLeadMinutes: 30 },
     groups: {
       primary: [],
       try: [
@@ -253,7 +253,7 @@ describe("MatchDetailReportView", () => {
 
     expect(html).toContain("SkorIQ Tahmin Yorumu");
     expect(html).toContain("Bu bölüm mevcut veri kapsamına göre üretilen ön tahminleri gösterir. Nihai sonuç garantisi değildir.");
-    expect(html).toContain("24 saat kuralı tahmin üretim zamanını belirler.");
+    expect(html).toContain("36 saat kuralı tahmin üretim zamanını belirler.");
     expect(html).toContain("SkorIQ ön tahmin özeti.");
     expect(html).toContain("Veri kapsamı sınırlı alanlar içeriyor.");
     expect(html).not.toContain("Mevcut veri kapsamına göre üretilen adaylar. Nihai sonuç garantisi değildir.");

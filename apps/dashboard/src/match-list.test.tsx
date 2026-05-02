@@ -39,7 +39,7 @@ describe("MatchListPage analytics search and filter area", () => {
     expect(html).toContain(">Tümü</button>");
     expect(html).toContain(">Hazır<span");
     expect(html).toContain(">Tahmine uygun<span");
-    expect(html).toContain(">24 saat içinde<span");
+    expect(html).toContain(">36 saat içinde<span");
     expect(html).toContain(">H2H mevcut<span");
   });
 
@@ -85,7 +85,7 @@ describe("QuickFilterChips", () => {
     expect(html).toContain(">Tümü</button>");
     expect(html).toContain(">Hazır<span");
     expect(html).toContain(">Tahmine uygun<span");
-    expect(html).toContain(">24 saat içinde<span");
+    expect(html).toContain(">36 saat içinde<span");
     expect(html).toContain(">H2H mevcut<span");
     expect(html).toContain(">5</span>");
     expect(html).toContain(">3</span>");
@@ -112,22 +112,22 @@ describe("analytics frontend filtering", () => {
     hasH2h: false
   };
 
-  it("expands the API request when the 24h quick filter is enabled", () => {
+  it("expands the API request when the 36h quick filter is enabled", () => {
     expect(expandAnalyticsFiltersForQuickChip({ limit: 50, offset: 50 }, "within24h")).toMatchObject({
       limit: analyticsExpandedPageSize,
       offset: 0
     });
   });
 
-  it("uses UTC-safe kickoff comparison for the next 24 hours", () => {
+  it("uses UTC-safe kickoff comparison for the next 36 hours", () => {
     const now = new Date("2026-05-02T15:00:00.000Z");
 
-    expect(isWithinNextHours("2026-05-03T14:59:59.000Z", now)).toBe(true);
-    expect(isWithinNextHours("2026-05-03T15:00:01.000Z", now)).toBe(false);
+    expect(isWithinNextHours("2026-05-04T02:59:59.000Z", now)).toBe(true);
+    expect(isWithinNextHours("2026-05-04T03:00:01.000Z", now)).toBe(false);
     expect(isWithinNextHours("2026-05-02T14:59:59.000Z", now)).toBe(false);
   });
 
-  it("includes 24h matches beyond the first 50 when expanded data is fetched", () => {
+  it("includes 36h matches beyond the first 50 when expanded data is fetched", () => {
     const now = new Date("2026-05-02T15:00:00.000Z");
     const items = Array.from({ length: 60 }, (_, index) =>
       matchItem({
@@ -144,7 +144,7 @@ describe("analytics frontend filtering", () => {
     expect(filtered[0]?.match.homeTeam.name).toBe("Lille");
   });
 
-  it("combines search with the 24h filter", () => {
+  it("combines search with the 36h filter", () => {
     const now = new Date("2026-05-02T15:00:00.000Z");
     const items = [
       matchItem({ id: "match-1", home: "Lille", away: "Le Havre", kickoffAt: "2026-05-03T14:00:00.000Z" }),

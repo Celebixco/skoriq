@@ -31,7 +31,7 @@ describe("FootballMemberPredictionPreviewController", () => {
           status: "available",
           reasonCode: "available",
           message: "Bu maç için SkorIQ ön tahmin yorumu hazır.",
-          analysisWindow: { status: "within_window", windowHours: 24, minimumLeadMinutes: 30 },
+          analysisWindow: { status: "within_window", windowHours: 36, minimumLeadMinutes: 30 },
           groups: {
             primary: [],
             try: [
@@ -189,7 +189,7 @@ describe("FootballMemberPredictionPreviewService", () => {
     expect(response.message).toBe("Tahmin üretimi bekliyor.");
   });
 
-  it("tells members predictions will be created in the 24 hour window when analysis is ready but kickoff is too early", async () => {
+  it("tells members predictions will be created in the 36 hour window when analysis is ready but kickoff is too early", async () => {
     const service = new FootballMemberPredictionPreviewService(
       createDatabaseMock([[matchRow({ kickoff_at: farFutureKickoff(), feature_status: "ready" })], []]) as never
     );
@@ -198,10 +198,10 @@ describe("FootballMemberPredictionPreviewService", () => {
 
     expect(response.status).toBe("not_available");
     expect(response.reasonCode).toBe("too_early");
-    expect(response.message).toBe("Tahminler maç öncesi analiz penceresinde oluşturulacak.");
+    expect(response.message).toBe("Tahminler maç öncesi 36 saatlik analiz penceresinde oluşturulacak.");
   });
 
-  it("tells members prediction generation is pending when analysis is ready inside the 24 hour window", async () => {
+  it("tells members prediction generation is pending when analysis is ready inside the 36 hour window", async () => {
     const service = new FootballMemberPredictionPreviewService(
       createDatabaseMock([[matchRow({ kickoff_at: withinWindowKickoff(), feature_status: "ready" })], []]) as never
     );

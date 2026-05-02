@@ -15,7 +15,7 @@ const baseOptions: FootballPredictionCandidateOptions = {
   h2hWindowSize: 5,
   checkConsistency: false,
   persistDraft: false,
-  windowHours: 24,
+  windowHours: 36,
   minimumLeadMinutes: 30,
   enforceWindow: false
 };
@@ -64,7 +64,7 @@ describe("football prediction candidate runner", () => {
     expect(result.report.candidates.every((candidate) => candidate.consistency_status === "unchecked")).toBe(true);
     expect(result.report.analysisWindow).toMatchObject({
       analysisWindowStatus: "within_window",
-      windowHours: 24,
+      windowHours: 36,
       minimumLeadMinutes: 30
     });
     expect(JSON.stringify(result)).not.toContain("postgres://");
@@ -286,12 +286,34 @@ describe("football prediction candidate runner", () => {
 describe("evaluatePreMatchAnalysisWindow", () => {
   const evaluatedAt = new Date("2026-04-30T12:00:00.000Z");
 
-  it("reports within_window when kickoff is inside 24h and beyond minimum lead", () => {
+  it("reports too_early 37h before kickoff with the 36h policy", () => {
     expect(
       evaluatePreMatchAnalysisWindow({
-        kickoffAt: "2026-05-01T10:00:00.000Z",
+        kickoffAt: "2026-05-02T01:00:00.000Z",
         evaluatedAt,
-        windowHours: 24,
+        windowHours: 36,
+        minimumLeadMinutes: 30
+      }).analysisWindowStatus
+    ).toBe("too_early");
+  });
+
+  it("reports within_window 35h before kickoff with the 36h policy", () => {
+    expect(
+      evaluatePreMatchAnalysisWindow({
+        kickoffAt: "2026-05-01T23:00:00.000Z",
+        evaluatedAt,
+        windowHours: 36,
+        minimumLeadMinutes: 30
+      }).analysisWindowStatus
+    ).toBe("within_window");
+  });
+
+  it("reports within_window 20h before kickoff and beyond minimum lead", () => {
+    expect(
+      evaluatePreMatchAnalysisWindow({
+        kickoffAt: "2026-05-01T08:00:00.000Z",
+        evaluatedAt,
+        windowHours: 36,
         minimumLeadMinutes: 30
       }).analysisWindowStatus
     ).toBe("within_window");
@@ -302,7 +324,7 @@ describe("evaluatePreMatchAnalysisWindow", () => {
       evaluatePreMatchAnalysisWindow({
         kickoffAt: "2026-05-02T18:30:00.000Z",
         evaluatedAt,
-        windowHours: 24,
+        windowHours: 36,
         minimumLeadMinutes: 30
       }).analysisWindowStatus
     ).toBe("too_early");
@@ -313,7 +335,7 @@ describe("evaluatePreMatchAnalysisWindow", () => {
       evaluatePreMatchAnalysisWindow({
         kickoffAt: "2026-04-30T12:20:00.000Z",
         evaluatedAt,
-        windowHours: 24,
+        windowHours: 36,
         minimumLeadMinutes: 30
       }).analysisWindowStatus
     ).toBe("too_late");
@@ -324,7 +346,7 @@ describe("evaluatePreMatchAnalysisWindow", () => {
       evaluatePreMatchAnalysisWindow({
         kickoffAt: "2026-04-30T11:59:00.000Z",
         evaluatedAt,
-        windowHours: 24,
+        windowHours: 36,
         minimumLeadMinutes: 30
       }).analysisWindowStatus
     ).toBe("too_late");
@@ -334,7 +356,7 @@ describe("evaluatePreMatchAnalysisWindow", () => {
     const report = evaluatePreMatchAnalysisWindow({
       kickoffAt: null,
       evaluatedAt,
-      windowHours: 24,
+      windowHours: 36,
       minimumLeadMinutes: 30
     });
 

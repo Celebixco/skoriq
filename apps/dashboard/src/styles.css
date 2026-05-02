@@ -30,6 +30,25 @@
   --shadow: 0 24px 70px rgba(2, 6, 23, 0.34);
 }
 
+.settlement-won {
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+}
+
+.settlement-lost {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+}
+
+.settlement-pending,
+.settlement-void,
+.settlement-missing_score,
+.settlement-unsupported_market,
+.settlement-not_settleable {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fcd34d;
+}
+
 * {
   box-sizing: border-box;
 }

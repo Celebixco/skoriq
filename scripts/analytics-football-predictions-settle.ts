@@ -6,6 +6,8 @@ import { FootballPredictionSettlementEngine } from "@sports-data/analysis";
 import type { FootballPredictionSettlementResult } from "@sports-data/analysis";
 import { createDatabase, FootballPredictionOutputRepository } from "@sports-data/database";
 import type { Database } from "@sports-data/database";
+import { sql } from "drizzle-orm";
+import { manualLeagueConfigs, providerName } from "./apifootball-manual-league-config.js";
 import { checkDatabaseReadiness, formatDatabaseReadinessResult } from "./db-readiness.js";
 
 const reportProvider = "manual-football-prediction-settlement";
@@ -16,6 +18,8 @@ export interface FootballPredictionSettlementRunnerOptions {
   reportJson: boolean;
   matchId?: string;
   predictionId?: string;
+  lookbackHours: number;
+  allReviewedEnabled: boolean;
 }
 
 export interface FootballPredictionSettlementEnvironment {
@@ -35,10 +39,15 @@ export interface FootballPredictionSettlementContext {
     status: string;
     consistencyStatus?: string | null;
     recommendationTier?: string | null;
+    generatedAt?: Date | string | null;
+    generationWindowStatus?: string | null;
+    rebuildRequired?: boolean | null;
+    staleAt?: Date | string | null;
   };
   match: {
     id: string;
     status: string;
+    scheduledStartAt?: Date | string | null;
   };
   score?: {
     homeScoreFulltime?: number | null;
@@ -51,6 +60,7 @@ export interface FootballPredictionSettlementContext {
 
 export interface FootballPredictionSettlementDependencies {
   listContextsByMatchId(matchId: string): Promise<FootballPredictionSettlementContext[]>;
+  listContextsForReviewedEnabled?(lookbackHours: number): Promise<FootballPredictionSettlementContext[]>;
   findContextByPredictionId(predictionId: string): Promise<FootballPredictionSettlementContext | undefined>;
   persistSettlement?(settlement: FootballPredictionSettlementResult): Promise<void>;
   persistRunReport?(report: FootballPredictionSettlementRunReport): Promise<void>;
@@ -92,7 +102,9 @@ export interface FootballPredictionSettlementRunResult {
 export function parseFootballPredictionSettlementArgs(argv: string[]): FootballPredictionSettlementRunnerOptions {
   const options: FootballPredictionSettlementRunnerOptions = {
     execute: false,
-    reportJson: false
+    reportJson: false,
+    lookbackHours: 96,
+    allReviewedEnabled: false
   };
 
   for (const arg of argv) {
@@ -104,6 +116,10 @@ export function parseFootballPredictionSettlementArgs(argv: string[]): FootballP
       options.reportJson = true;
       continue;
     }
+    if (arg === "--all-reviewed-enabled") {
+      options.allReviewedEnabled = true;
+      continue;
+    }
 
     const [key, value] = parseFlag(arg);
     switch (key) {
@@ -112,6 +128,9 @@ export function parseFootballPredictionSettlementArgs(argv: string[]): FootballP
         break;
       case "--prediction-id":
         options.predictionId = requiredFlagValue(key, value);
+        break;
+      case "--lookback-hours":
+        options.lookbackHours = parsePositiveInteger(key, value);
         break;
       default:
         throw new Error(`Unknown football prediction settlement flag "${key}".`);
@@ -134,8 +153,8 @@ export function validateFootballPredictionSettlementOptions(
   if (options.matchId && options.predictionId) {
     throw new Error("Use either --match-id or --prediction-id, not both.");
   }
-  if (!options.matchId && !options.predictionId) {
-    throw new Error("Football prediction settlement requires --match-id or --prediction-id.");
+  if (!options.matchId && !options.predictionId && !options.allReviewedEnabled) {
+    throw new Error("Football prediction settlement requires --match-id, --prediction-id, or --all-reviewed-enabled.");
   }
 }
 
@@ -147,7 +166,9 @@ export async function runFootballPredictionSettlement(
   const warnings: string[] = [];
   const contexts = options.predictionId
     ? compact([await dependencies.findContextByPredictionId(options.predictionId)])
-    : await dependencies.listContextsByMatchId(options.matchId!);
+    : options.matchId
+      ? await dependencies.listContextsByMatchId(options.matchId)
+      : await dependencies.listContextsForReviewedEnabled?.(options.lookbackHours) ?? [];
 
   if (contexts.length === 0) {
     warnings.push("No settleable prediction outputs were found for the selected target.");
@@ -162,7 +183,12 @@ export async function runFootballPredictionSettlement(
         predictionType: context.predictionOutput.predictionType,
         predictionValue: context.predictionOutput.predictionValue,
         consistencyStatus: context.predictionOutput.consistencyStatus,
-        recommendationTier: context.predictionOutput.recommendationTier
+        recommendationTier: context.predictionOutput.recommendationTier,
+        generatedAt: context.predictionOutput.generatedAt,
+        kickoffAt: context.match.scheduledStartAt,
+        generationWindowStatus: context.predictionOutput.generationWindowStatus,
+        rebuildRequired: context.predictionOutput.rebuildRequired,
+        staleAt: context.predictionOutput.staleAt
       },
       match: {
         id: context.match.id,
@@ -228,6 +254,7 @@ function createDependencies(database: Database): FootballPredictionSettlementDep
   const repository = new FootballPredictionOutputRepository(database);
   return {
     listContextsByMatchId: (matchId) => repository.listPredictionOutputSettlementContextsByMatchId(matchId),
+    listContextsForReviewedEnabled: (lookbackHours) => listReviewedEnabledSettlementContexts(database, lookbackHours),
     findContextByPredictionId: (predictionId) => repository.findPredictionOutputSettlementContextById(predictionId),
     persistSettlement: (settlement) =>
       repository.settlePredictionOutput({
@@ -242,6 +269,87 @@ function createDependencies(database: Database): FootballPredictionSettlementDep
     persistRunReport: persistSettlementReport,
     log: (message) => console.log(message)
   };
+}
+
+async function listReviewedEnabledSettlementContexts(database: Database, lookbackHours: number): Promise<FootballPredictionSettlementContext[]> {
+  const reviewed = manualLeagueConfigs.filter((league) => league.reviewed && league.enabled);
+  if (reviewed.length === 0) return [];
+  const leagueIds = reviewed.map((league) => league.leagueId);
+  const countryIds = reviewed.map((league) => league.countryId);
+  const since = new Date(Date.now() - lookbackHours * 60 * 60 * 1000).toISOString();
+  const result = await database.execute(sql`
+    select
+      p.id as prediction_id,
+      p.match_id,
+      p.prediction_type,
+      p.prediction_value,
+      p.status as prediction_status,
+      p.consistency_status,
+      p.recommendation_tier,
+      p.generated_at,
+      p.generation_window_status,
+      p.rebuild_required,
+      p.stale_at,
+      m.id as match_id,
+      m.status as match_status,
+      m.scheduled_start_at,
+      fs.home_score_fulltime,
+      fs.away_score_fulltime,
+      fs.home_score_halftime,
+      fs.away_score_halftime,
+      fs.status as score_status
+    from football_prediction_outputs p
+    inner join matches m on m.id = p.match_id
+    inner join sports s on s.id = m.sport_id and s.slug = 'football'
+    inner join competitions c on c.id = m.competition_id
+    left join football_match_scores fs on fs.match_id = m.id
+    inner join provider_mappings league_pm
+      on league_pm.provider = ${providerName}
+     and league_pm.entity_type = 'competition'
+     and league_pm.internal_entity_id = m.competition_id
+    left join provider_mappings country_pm
+      on country_pm.provider = ${providerName}
+     and country_pm.entity_type = 'country'
+     and country_pm.internal_entity_id = c.country_id
+    where m.scheduled_start_at >= ${since}
+      and p.status in ('draft', 'generated', 'member_visible', 'locked', 'settlement_pending')
+      and p.recommendation_tier in ('primary', 'try', 'alternative')
+      and p.consistency_status in ('passed', 'warning')
+      and p.blocking_conflict_count = 0
+      and league_pm.provider_entity_id = any(${leagueIds}::text[])
+      and country_pm.provider_entity_id = any(${countryIds}::text[])
+  `);
+  const rows = Array.isArray(result) ? result : "rows" in result && Array.isArray(result.rows) ? result.rows : [];
+  return rows.map((row) => {
+    const record = row as Record<string, unknown>;
+    return {
+      predictionOutput: {
+        id: String(record.prediction_id),
+        matchId: String(record.match_id),
+        predictionType: String(record.prediction_type),
+        predictionValue: String(record.prediction_value),
+        status: String(record.prediction_status),
+        consistencyStatus: nullableString(record.consistency_status),
+        recommendationTier: nullableString(record.recommendation_tier),
+        generatedAt: record.generated_at as Date | string | null,
+        generationWindowStatus: nullableString(record.generation_window_status),
+        rebuildRequired: Boolean(record.rebuild_required),
+        staleAt: record.stale_at as Date | string | null
+      },
+      match: {
+        id: String(record.match_id),
+        status: String(record.match_status),
+        scheduledStartAt: record.scheduled_start_at as Date | string | null
+      },
+      score: {
+        homeScoreFulltime: numberOrNull(record.home_score_fulltime),
+        awayScoreFulltime: numberOrNull(record.away_score_fulltime),
+        homeScoreHalftime: numberOrNull(record.home_score_halftime),
+        awayScoreHalftime: numberOrNull(record.away_score_halftime),
+        status: nullableString(record.score_status)
+      }
+    };
+  });
 }
 
 async function persistSettlementReport(report: FootballPredictionSettlementRunReport) {
@@ -262,6 +370,12 @@ function requiredFlagValue(flag: string, value: string | undefined): string {
   return value;
 }
 
+function parsePositiveInteger(flag: string, value: string | undefined) {
+  const parsed = Number(requiredFlagValue(flag, value));
+  if (!Number.isInteger(parsed) || parsed <= 0) throw new Error(`${flag} must be a positive integer.`);
+  return parsed;
+}
+
 function compact<T>(items: Array<T | undefined>): T[] {
   return items.filter((item): item is T => item !== undefined);
 }
@@ -271,6 +385,16 @@ function countBy(values: string[]) {
     accumulator[value] = (accumulator[value] ?? 0) + 1;
     return accumulator;
   }, {});
+}
+
+function nullableString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function numberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 async function main() {

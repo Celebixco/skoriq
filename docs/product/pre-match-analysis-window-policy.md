@@ -13,13 +13,13 @@ Current implementation status: the football prediction candidate generator repor
 Default pre-match analysis window:
 
 - Start: `now`
-- End: `now + 24 hours`
+- End: `now + 36 hours`
 - Suggested minimum lead time: `30 minutes before kickoff`
 
 A match is eligible for default pre-match analysis only if all conditions are true:
 
 - `kickoff_at > now + minimum_lead_time`
-- `kickoff_at <= now + 24 hours`
+- `kickoff_at <= now + 36 hours`
 - Match status is `scheduled` or `not_started`.
 - Home and away teams are mapped to canonical SkorIQ teams.
 - Enough historical team-form, H2H, and match feature data exists for the current readiness policy.
@@ -30,8 +30,8 @@ The 30-minute minimum lead time prevents generating member-facing candidates too
 
 Fixture sync and analysis generation are intentionally different workflows:
 
-- Fixture sync may fetch upcoming fixtures beyond 24 hours when needed for schedule visibility, team mapping, dashboard browsing, and operator planning.
-- Prediction feature builds and candidate generation should default to matches in the next 24 hours.
+- Fixture sync may fetch upcoming fixtures beyond 36 hours when needed for schedule visibility, team mapping, dashboard browsing, and operator planning.
+- Prediction feature builds and candidate generation should default to matches in the next 36 hours.
 - The dashboard may show future fixtures outside the analysis window, but they should be marked as not analyzed yet or too early for pre-match generation.
 - Fetching future fixtures does not authorize prediction candidate generation for those fixtures.
 
@@ -41,15 +41,15 @@ This lets SkorIQ know the schedule early without presenting early, stale, or inc
 
 Pre-match analysis is time-sensitive:
 
-- A pre-match feature snapshot generated more than 24 hours before kickoff should be considered stale by default.
+- A pre-match feature snapshot generated more than 36 hours before kickoff should be considered stale by default.
 - Candidate outputs generated outside the allowed window should not be member-visible eligible by default.
-- If important data changes inside the 24-hour window, related feature snapshots and draft candidates should be rebuilt.
+- If important data changes inside the 36-hour window, related feature snapshots and draft candidates should be rebuilt.
 - Future injury, suspension, referee, lineup, player availability, weather, or team-news updates should mark affected analysis as requiring refresh.
 - Future systems should preserve the original generation time for audit and public proof checks.
 
 The system should treat early analysis as internal experimentation unless an admin explicitly overrides the window with logged context.
 
-Stale draft handling is defined in [Stale Draft Rebuild Workflow](./stale-draft-rebuild-workflow.md). The MVP policy is to treat drafts generated more than 24 hours before kickoff as rebuild-required audit data, not member/public/tahmin-kombini candidates.
+Stale draft handling is defined in [Stale Draft Rebuild Workflow](./stale-draft-rebuild-workflow.md). The MVP policy is to treat drafts generated more than 36 hours before kickoff as rebuild-required audit data, not member/public/tahmin-kombini candidates.
 
 ## Admin Overrides
 
@@ -93,7 +93,7 @@ A future scheduler should:
 
 - Run periodically, not continuously.
 - Fetch or refresh fixtures according to the ingestion roadmap.
-- Select only matches in the next 24 hours by default.
+- Select only matches in the next 36 hours by default.
 - Exclude matches inside the minimum lead-time cutoff unless explicitly allowed.
 - Build team form, H2H, and match prediction feature snapshots.
 - Run reasoning checks.
@@ -109,7 +109,7 @@ The scheduler should not call settlement, public publishing, or tahmin kombini f
 
 ## Data Completeness Context
 
-The 24-hour window matters because several important pre-match inputs become more reliable close to kickoff:
+The 36-hour window matters because several important pre-match inputs become more reliable close to kickoff:
 
 - Referee assignments.
 - Injuries and late fitness updates.
@@ -166,10 +166,10 @@ The Bayer Leverkusen vs RB Leipzig pre-match smoke test is a useful lifecycle ex
 - Candidates remained `draft` only.
 - `member_visible=0`.
 - Public eligibility remained `0` because there was no settlement yet.
-- The current draft set is marked `stale` because it was generated more than 24 hours before kickoff.
+- The current draft set is marked `stale` because it was generated more than 36 hours before kickoff.
 - `--enforce-window` blocks regeneration until the match is inside the valid analysis window.
 
-Future default automation should still enforce the 24-hour window before generating similar candidates. This existing smoke validates pre-kickoff generation mechanics, not broad early-generation policy.
+Future default automation should still enforce the 36-hour window before generating similar candidates. This existing smoke validates pre-kickoff generation mechanics, not broad early-generation policy.
 
 ## Non-Goals
 

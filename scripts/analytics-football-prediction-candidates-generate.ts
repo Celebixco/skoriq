@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { pathToFileURL } from "node:url";
 import { FootballPredictionCandidateGenerator, FootballPredictionConsistencyEngine } from "@sports-data/analysis";
+import { resolveFootballPrematchWindowPolicy } from "@sports-data/shared";
 import type {
   FootballPredictionCandidate,
   FootballPredictionAnalysisWindowReport,
@@ -64,13 +65,14 @@ export interface PersistFootballPredictionDraftsResult {
 }
 
 export function parseFootballPredictionCandidateArgs(argv: string[]): FootballPredictionCandidateOptions {
+  const policy = resolveFootballPrematchWindowPolicy();
   const options: FootballPredictionCandidateOptions = {
     formWindowSize: 5,
     h2hWindowSize: 5,
     checkConsistency: false,
     persistDraft: false,
-    windowHours: 24,
-    minimumLeadMinutes: 30,
+    windowHours: policy.windowHours,
+    minimumLeadMinutes: policy.minimumLeadMinutes,
     enforceWindow: false
   };
 

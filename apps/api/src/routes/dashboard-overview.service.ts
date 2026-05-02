@@ -2,6 +2,7 @@ import { Inject, Injectable, Optional } from "@nestjs/common";
 import { loadConfig } from "@sports-data/config";
 import { createDatabase } from "@sports-data/database";
 import type { Database } from "@sports-data/database";
+import { resolveFootballPrematchWindowPolicy } from "@sports-data/shared";
 import { sql } from "drizzle-orm";
 import type { AuthUser } from "../auth/auth.types.js";
 
@@ -146,8 +147,9 @@ interface AdminSummaryRow {
   rebuild_required_count: string | number | null;
 }
 
-const defaultWindowHours = 24;
-const defaultMinimumLeadMinutes = 30;
+const defaultPrematchPolicy = resolveFootballPrematchWindowPolicy();
+const defaultWindowHours = defaultPrematchPolicy.windowHours;
+const defaultMinimumLeadMinutes = defaultPrematchPolicy.minimumLeadMinutes;
 const unsafeWindowStatuses = new Set(["stale", "too_early", "too_late", "unknown"]);
 
 @Injectable()

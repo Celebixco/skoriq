@@ -15,6 +15,8 @@ import {
   fetchFootballPredictionDraft,
   fetchFootballPredictionDrafts,
   fetchFootballPredictionSettlement,
+  fetchFootballPredictionResults,
+  fetchFootballPredictionResultsSummary,
   fetchFootballPredictionSettlements,
   fetchFootballPublicEligibility,
   fetchFootballTeamProfile,
@@ -51,6 +53,8 @@ import type {
   FootballMatchPublicEligibilityResponse,
   FootballPredictionSettlementDetail,
   FootballPredictionSettlementFilters,
+  FootballPredictionResultItem,
+  FootballPredictionResultsFilters,
   FootballPredictionSettlementListItem,
   FootballPredictionSettlementsListResponse,
   FootballTeamListItem,
@@ -71,7 +75,7 @@ const initialFilters: FootballAnalyticsMatchFilters = {
 };
 
 export const analyticsExpandedPageSize = 200;
-const withinWindowHours = 24;
+const withinWindowHours = 36;
 
 export function isWithinNextHours(kickoffAt: string, now = new Date(), hours = withinWindowHours) {
   const kickoffTime = Date.parse(kickoffAt);
@@ -193,7 +197,7 @@ export function QuickFilterChips({ activeChip, onChipClick, counts }: {
     { id: "all", label: "Tümü" },
     { id: "ready", label: "Hazır", count: counts.ready },
     { id: "predictionEligible", label: "Tahmine uygun", count: counts.predictionEligible },
-    { id: "within24h", label: "24 saat içinde", count: counts.within24h },
+    { id: "within24h", label: "36 saat içinde", count: counts.within24h },
     { id: "hasH2h", label: "H2H mevcut", count: counts.hasH2h },
   ];
 
@@ -244,7 +248,7 @@ export function ActiveFilterPills({ filters, frontendFilters, quickChip, onClear
     pills.push({ key: "countryName", label: `Ülke: ${frontendFilters.countryName}` });
   }
   if (frontendFilters.within24h || quickChip === "within24h") {
-    pills.push({ key: "within24h", label: "24 saat içinde" });
+    pills.push({ key: "within24h", label: "36 saat içinde" });
   }
   if (frontendFilters.hasH2h || quickChip === "hasH2h") {
     pills.push({ key: "hasH2h", label: "H2H mevcut" });
@@ -443,6 +447,7 @@ export function App() {
       {route.kind === "draft-list" ? <DraftPredictionListPage navigate={navigate} /> : null}
       {route.kind === "draft-detail" ? <DraftPredictionDetailPage predictionId={route.id} navigate={navigate} /> : null}
       {route.kind === "match-drafts" ? <MatchPredictionDraftsPage matchId={route.id} navigate={navigate} /> : null}
+      {route.kind === "prediction-results" ? <PredictionResultsPage navigate={navigate} /> : null}
       {route.kind === "settlement-list" ? <SettlementListPage navigate={navigate} /> : null}
       {route.kind === "settlement-detail" ? <SettlementDetailPage settlementId={route.id} navigate={navigate} /> : null}
       {route.kind === "match-settlements" ? <MatchSettlementsPage matchId={route.id} navigate={navigate} /> : null}
@@ -1027,7 +1032,8 @@ function OverviewQuickActions({ userRole, navigate }: { userRole: AuthUser["role
   const actions = [
     { label: "Maç Analizleri", path: "/football/analytics" },
     { label: "Takımlar", path: "/football/teams" },
-    { label: "Ligler", path: "/football/competitions" }
+    { label: "Ligler", path: "/football/competitions" },
+    { label: "Tahmin Sonuçları", path: "/football/prediction-results" }
   ];
   const adminActions = [
     { label: "Draft Tahminler", path: "/football/predictions/drafts" },
@@ -1968,7 +1974,7 @@ export function MemberPredictionPreviewSection({ data }: { data: FootballMemberP
         <div>
           <h2>SkorIQ Tahmin Yorumu</h2>
           <p className="muted">Bu bölüm mevcut veri kapsamına göre üretilen ön tahminleri gösterir. Nihai sonuç garantisi değildir.</p>
-          <p className="muted">24 saat kuralı tahmin üretim zamanını belirler.</p>
+          <p className="muted">36 saat kuralı tahmin üretim zamanını belirler.</p>
         </div>
       </div>
       {data.status !== "available" ? (
@@ -3324,6 +3330,132 @@ const initialSettlementFilters: FootballPredictionSettlementFilters = {
   offset: 0
 };
 
+const initialPredictionResultsFilters: FootballPredictionResultsFilters = {
+  status: "",
+  tier: "",
+  marketType: "",
+  limit: 50,
+  offset: 0
+};
+
+function PredictionResultsPage({ navigate }: { navigate: (path: string) => void }) {
+  const [filters, setFilters] = useState<FootballPredictionResultsFilters>(initialPredictionResultsFilters);
+  const { data, loading, error } = useLoad(() => fetchFootballPredictionResults(filters), [filters]);
+  const { data: summary } = useLoad(() => fetchFootballPredictionResultsSummary(filters), [filters]);
+  return (
+    <>
+      <header className="hero">
+        <div>
+          <p className="eyebrow">SkorIQ Futbol</p>
+          <h1>Tahmin Sonuçları</h1>
+          <p>Ülke, lig ve maç bazında SkorIQ tahminlerinin gerçekleşen sonuçlarla güvenli karşılaştırması.</p>
+        </div>
+      </header>
+      <section className="panel">
+        <div className="panel-header">
+          <h2>Sonuç Özeti</h2>
+          <span className="muted">Otomatik yayın yok, kupon dili yok.</span>
+        </div>
+        <div className="stats-grid">
+          <MetricCard title="Toplam" value={summary?.totalSettled ?? 0} />
+          <MetricCard title="Başarılı" value={summary?.won ?? 0} />
+          <MetricCard title="Başarısız" value={summary?.lost ?? 0} />
+          <MetricCard title="Bekliyor" value={summary?.pending ?? 0} />
+        </div>
+      </section>
+      <PredictionResultsFilterBar filters={filters} setFilters={setFilters} />
+      {loading ? <StatePanel title="Tahmin sonuçları yükleniyor..." /> : null}
+      {error ? <StatePanel title="Tahmin sonuçları yüklenemedi" body={error} /> : null}
+      {!loading && !error && data?.items.length === 0 ? <StatePanel title="Tahmin sonucu bulunamadı" /> : null}
+      {!loading && !error && data ? <PredictionResultsList items={data.items} total={data.total} navigate={navigate} /> : null}
+    </>
+  );
+}
+
+function PredictionResultsFilterBar({ filters, setFilters }: { filters: FootballPredictionResultsFilters; setFilters: (filters: FootballPredictionResultsFilters) => void }) {
+  const update = (patch: Partial<FootballPredictionResultsFilters>) => setFilters({ ...filters, ...patch, offset: 0 });
+  return (
+    <section className="filters" aria-label="Tahmin sonuçları filtreleri">
+      <label>
+        Durum
+        <select value={filters.status} onChange={(event) => update({ status: event.target.value as FootballPredictionResultsFilters["status"] })}>
+          <option value="">Tümü</option>
+          <option value="won">Başarılı</option>
+          <option value="lost">Başarısız</option>
+          <option value="pending">Bekliyor</option>
+          <option value="missing_score">Skor Eksik</option>
+          <option value="not_settleable">Değerlendirilemedi</option>
+        </select>
+      </label>
+      <label>
+        Kademe
+        <select value={filters.tier} onChange={(event) => update({ tier: event.target.value as FootballPredictionResultsFilters["tier"] })}>
+          <option value="">Tümü</option>
+          <option value="primary">Tahminim</option>
+          <option value="try">Denenir</option>
+          <option value="alternative">Alternatif</option>
+        </select>
+      </label>
+      <label>
+        Market tipi
+        <input value={filters.marketType ?? ""} onChange={(event) => update({ marketType: event.target.value.trim() })} placeholder="over_under_goals" />
+      </label>
+    </section>
+  );
+}
+
+function PredictionResultsList({ items, total, navigate }: { items: FootballPredictionResultItem[]; total: number; navigate: (path: string) => void }) {
+  return (
+    <section className="panel">
+      <div className="panel-header">
+        <h2>Ülke → Lig → Maç</h2>
+        <span className="muted">{total} sonuçtan {items.length} gösteriliyor</span>
+      </div>
+      <div className="draft-grid">
+        {items.map((item) => (
+          <PredictionResultCard key={`${item.match.id}-${item.prediction.marketType}-${item.prediction.selection}-${item.prediction.tier}`} item={item} navigate={navigate} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PredictionResultCard({ item, navigate }: { item: FootballPredictionResultItem; navigate: (path: string) => void }) {
+  return (
+    <article className="draft-card">
+      <div className="draft-card-header">
+        <span className="eyebrow">{item.country.name ?? "Ülke"} → {item.competition.name}</span>
+        <span className={`badge settlement-${item.settlement.status}`}>{predictionResultStatusLabel(item.settlement.status)}</span>
+      </div>
+      <h3>{item.match.homeTeam.name} vs {item.match.awayTeam.name}</h3>
+      <p className="muted">{formatDateTime(item.match.kickoffAt)}</p>
+      <div className="draft-card-grid">
+        <span>SkorIQ Tahmini</span>
+        <strong>{tierLabel(item.prediction.tier)} · {item.prediction.displayLabel}</strong>
+        <span>Maç Sonucu</span>
+        <strong>{item.match.finalScore ?? "Bekliyor"}</strong>
+        <span>İlk Yarı</span>
+        <strong>{item.match.halftimeScore ?? "Bekliyor"}</strong>
+      </div>
+      <p>{item.settlement.explanation}</p>
+      <button type="button" onClick={() => navigate(`/football/analytics/${item.match.id}`)}>Maç detayına git</button>
+    </article>
+  );
+}
+
+function predictionResultStatusLabel(status: FootballPredictionResultItem["settlement"]["status"]) {
+  const labels: Record<FootballPredictionResultItem["settlement"]["status"], string> = {
+    won: "Başarılı",
+    lost: "Başarısız",
+    void: "Geçersiz",
+    pending: "Bekliyor",
+    missing_score: "Skor Eksik",
+    unsupported_market: "Desteklenmiyor",
+    not_settleable: "Değerlendirilemedi"
+  };
+  return labels[status];
+}
+
 function SettlementListPage({ navigate }: { navigate: (path: string) => void }) {
   const [filters, setFilters] = useState<FootballPredictionSettlementFilters>(initialSettlementFilters);
   const { data, loading, error } = useLoad(() => fetchFootballPredictionSettlements(filters), [filters]);
@@ -3940,6 +4072,7 @@ function Shell({
         <NavGroup title="Futbol">
           <NavButton icon="globe" label="Futbol Keşfi" path="/football" currentPath={currentPath} navigate={navigateFromSidebar} />
           <NavButton icon="analytics" label="Maç Analizi" path="/football/analytics" currentPath={currentPath} navigate={navigateFromSidebar} />
+          <NavButton icon="results" label="Tahmin Sonuçları" path="/football/prediction-results" currentPath={currentPath} navigate={navigateFromSidebar} />
           {isAdmin ? (
             <>
               <NavButton
@@ -4263,6 +4396,7 @@ function resolveRoute(path: string):
   | { kind: "draft-list" }
   | { kind: "draft-detail"; id: string }
   | { kind: "match-drafts"; id: string }
+  | { kind: "prediction-results" }
   | { kind: "settlement-list" }
   | { kind: "settlement-detail"; id: string }
   | { kind: "match-settlements"; id: string }
@@ -4290,6 +4424,7 @@ function resolveRoute(path: string):
   const countryDetail = path.match(/^\/football\/countries\/([^/]+)$/);
   if (countryDetail?.[1]) return { kind: "country-detail", id: countryDetail[1] };
   if (path === "/football/analytics") return { kind: "match-list" };
+  if (path === "/football/prediction-results") return { kind: "prediction-results" };
   if (path === "/football/predictions/drafts") return { kind: "draft-list" };
   if (path === "/football/predictions/settlements") return { kind: "settlement-list" };
   if (path === "/football/public-eligibility") return { kind: "public-eligibility-list" };

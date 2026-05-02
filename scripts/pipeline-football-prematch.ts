@@ -2,6 +2,7 @@ import "dotenv/config";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
 import { createDatabase } from "@sports-data/database";
+import { resolveFootballPrematchWindowPolicy } from "@sports-data/shared";
 import type { FootballMatchPredictionFeatureInput, FootballPredictionCandidate, FootballPredictionCandidateFeature } from "@sports-data/analysis";
 import { manualLeagueConfigs, providerName, resolveManualLeagueConfig } from "./apifootball-manual-league-config.js";
 import type { ManualLeagueReviewConfig } from "./apifootball-manual-league-config.js";
@@ -17,8 +18,6 @@ import {
 } from "./analytics-football-prediction-candidates-generate.js";
 import type { FootballPredictionCandidateRunResult } from "./analytics-football-prediction-candidates-generate.js";
 
-const defaultWindowHours = 24;
-const defaultMinimumLeadMinutes = 30;
 const defaultLimit = 20;
 
 export interface FootballPrematchPipelineOptions {
@@ -113,9 +112,10 @@ export interface FootballPrematchPipelineDependencies {
 }
 
 export function parseFootballPrematchPipelineArgs(argv: string[]): FootballPrematchPipelineOptions {
+  const policy = resolveFootballPrematchWindowPolicy();
   const options: FootballPrematchPipelineOptions = {
-    windowHours: defaultWindowHours,
-    minimumLeadMinutes: defaultMinimumLeadMinutes,
+    windowHours: policy.windowHours,
+    minimumLeadMinutes: policy.minimumLeadMinutes,
     limit: defaultLimit,
     execute: false
   };

@@ -10,7 +10,7 @@ Football MVP prediction work should prioritize goal-related outputs over exact s
 
 Current implementation status: persistence foundation exists for `football_prediction_outputs`, `football_prediction_conflicts`, and `football_prediction_settlements`. A deterministic candidate generator can persist checked candidates as `draft` only, and a manual settlement runner can evaluate existing outputs against normalized football scores. No output is member-visible, public, or tahmin-kombini eligible by default.
 
-Pre-match generation timing is defined in [Pre-Match Analysis Window Policy](./pre-match-analysis-window-policy.md). Future automated candidate generation should default to matches in the next 24 hours and should not make outputs member-visible if they were generated too early, too late, or from stale snapshots.
+Pre-match generation timing is defined in [Pre-Match Analysis Window Policy](./pre-match-analysis-window-policy.md). Future automated candidate generation should default to matches in the next 36 hours and should not make outputs member-visible if they were generated too early, too late, or from stale snapshots.
 
 Stale draft refresh rules are defined in [Stale Draft Rebuild Workflow](./stale-draft-rebuild-workflow.md). Stale drafts should remain audit-only until the match is rebuilt inside the valid window; they must not be used for member visibility, public proof, or future tahmin kombini.
 
@@ -80,7 +80,7 @@ npm run analytics:football:prediction-candidates:generate -- --match-id=<match-u
 
 Without `--persist-draft`, it reads an existing `ready` `football_match_prediction_features` row and emits dry-run candidate ideas only. The generator consumes match-level goal-profile proxy fields such as `goal_profile`, `expected_total_goals_proxy`, `first_half_goal_profile`, `btts_profile`, and team goal profiles. It does not write `football_prediction_outputs`, does not mark anything `member_visible`, does not publish, and does not settle.
 
-Future default selection should require the match to be inside the pre-match analysis window: kickoff later than the minimum lead time and no more than 24 hours away. Fixture records may exist earlier for schedule visibility, but candidate generation should not treat far-future fixtures as ready for member-facing analysis.
+Future default selection should require the match to be inside the pre-match analysis window: kickoff later than the minimum lead time and no more than 36 hours away. Fixture records may exist earlier for schedule visibility, but candidate generation should not treat far-future fixtures as ready for member-facing analysis.
 
 Reporting phase: the manual candidate runner accepts `--window-hours` and `--minimum-lead-minutes` and emits an `analysisWindow` report. `--persist-draft` may store that report in audit metadata.
 

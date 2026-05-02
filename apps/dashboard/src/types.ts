@@ -536,6 +536,63 @@ export interface FootballMatchPredictionSettlementsResponse {
   note: string;
 }
 
+export interface FootballPredictionResultsFilters {
+  countryId?: string;
+  competitionId?: string;
+  teamId?: string;
+  matchId?: string;
+  status?: "won" | "lost" | "void" | "pending" | "not_settleable" | "missing_score" | "unsupported_market" | "";
+  tier?: "primary" | "try" | "alternative" | "";
+  marketType?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface FootballPredictionResultItem {
+  country: { id: string | null; name: string | null };
+  competition: { id: string; name: string; logoUrl: string | null };
+  match: {
+    id: string;
+    homeTeam: { id: string; name: string; logoUrl: string | null };
+    awayTeam: { id: string; name: string; logoUrl: string | null };
+    kickoffAt: string;
+    finalScore: string | null;
+    halftimeScore: string | null;
+  };
+  prediction: {
+    marketType: string;
+    selection: string;
+    displayLabel: string;
+    tier: "primary" | "try" | "alternative";
+    confidence: number | null;
+  };
+  settlement: {
+    status: "won" | "lost" | "void" | "pending" | "not_settleable" | "missing_score" | "unsupported_market";
+    settledAt: string | null;
+    explanation: string;
+  };
+}
+
+export interface FootballPredictionResultsResponse {
+  items: FootballPredictionResultItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface FootballPredictionResultsSummary {
+  totalSettled: number;
+  won: number;
+  lost: number;
+  pending: number;
+  byCountry: Array<{ id: string | null; name: string | null; count: number }>;
+  byLeague: Array<{ id: string; name: string; count: number }>;
+  byTier: Array<{ tier: string; count: number }>;
+  byMarketType: Array<{ marketType: string; count: number }>;
+}
+
 export interface FootballPublicEligibilityFilters {
   matchId?: string;
   predictionId?: string;

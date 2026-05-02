@@ -42,6 +42,7 @@ If the variable is omitted, the dashboard defaults to `http://localhost:3000/api
 | `/` | Dashboard home overview. | `GET /api/dashboard/overview` |
 | `/football/analytics` | Football analytics match list with simple filters. | `GET /api/analytics/football/matches?limit=20` |
 | `/football/analytics/:matchId` | One match analytics readiness detail. | `GET /api/analytics/football/matches/:matchId` |
+| `/football/prediction-results` | Member-safe Tahmin Sonuçları page with Country → League → Match result cards. | `GET /api/football/prediction-results`, `GET /api/football/prediction-results/summary` |
 | `/football/predictions/drafts` | Internal draft Tahmin candidate review list. | `GET /api/football/predictions/drafts` |
 | `/football/predictions/drafts/:predictionId` | One draft Tahmin candidate with conflicts. | `GET /api/football/predictions/drafts/:predictionId` |
 | `/football/matches/:matchId/prediction-drafts` | Match-level grouped draft Tahmin review. | `GET /api/football/matches/:matchId/prediction-drafts` |
@@ -72,12 +73,14 @@ The Explorer APIs are read-only and must not expose provider IDs by default, raw
 The dashboard has a simple left navigation:
 
 - Overview
-- Football for members: Match Analytics, Teams, Competitions
+- Football for members: Match Analytics, Tahmin Sonuçları, Teams, Competitions
 - Football for admins: Match Analytics, Draft Tahminler, Tahmin Sonuçları, Public Uygunluk, Teams, Competitions
 - Basketball: Match Analytics, Teams, Competitions marked coming soon
 - System for admins: Provider Runs, Users, Settings marked coming soon
 
 Disabled items are placeholders only. They do not trigger provider calls, ingestion, writes, final Tahmin output, or scheduler behavior.
+
+The member-safe results page uses Turkish product labels: Tahmin Sonuçları, Ülke, Lig, Maç, SkorIQ Tahmini, Maç Sonucu, Durum, Başarılı, Başarısız, Bekliyor, Değerlendirilemedi, Açıklama. It must not show odds, profit/loss language, raw provider/internal fields, or admin-only settlement internals.
 
 Authenticated navigation shows the current user email/role and a logout button. Logout calls `POST /api/auth/logout`, clears local auth state, and returns to `/login`.
 

@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { pathToFileURL } from "node:url";
 import { and, count, eq, inArray } from "drizzle-orm";
+import { resolveFootballPrematchWindowPolicy } from "@sports-data/shared";
 import {
   createDatabase,
   competitions,
@@ -133,10 +134,11 @@ export interface FootballStaleDraftRebuildRunResult {
 const allowedMatchStatuses = new Set<MatchStatus>(["scheduled", "not_started"]);
 
 export function parseFootballStaleDraftRebuildArgs(argv: string[]): FootballStaleDraftRebuildOptions {
+  const policy = resolveFootballPrematchWindowPolicy();
   const options: FootballStaleDraftRebuildOptions = {
     execute: false,
-    windowHours: 24,
-    minimumLeadMinutes: 30
+    windowHours: policy.windowHours,
+    minimumLeadMinutes: policy.minimumLeadMinutes
   };
 
   for (const arg of argv) {

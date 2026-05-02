@@ -20,6 +20,9 @@ import type {
   FootballPublicEligibilityResponse,
   FootballPredictionSettlementDetail,
   FootballPredictionSettlementFilters,
+  FootballPredictionResultsFilters,
+  FootballPredictionResultsResponse,
+  FootballPredictionResultsSummary,
   FootballPredictionSettlementsListResponse,
   FootballTeamDetail,
   FootballTeamProfileResponse,
@@ -172,6 +175,36 @@ export async function fetchFootballPredictionSettlement(settlementId: string): P
 
 export async function fetchFootballMatchPredictionSettlements(matchId: string): Promise<FootballMatchPredictionSettlementsResponse> {
   return requestJson<FootballMatchPredictionSettlementsResponse>(`/football/matches/${encodeURIComponent(matchId)}/prediction-settlements`);
+}
+
+export async function fetchFootballPredictionResults(filters: FootballPredictionResultsFilters = {}): Promise<FootballPredictionResultsResponse> {
+  const params = new URLSearchParams();
+  params.set("limit", String(filters.limit ?? 50));
+  params.set("offset", String(filters.offset ?? 0));
+  if (filters.countryId) params.set("countryId", filters.countryId);
+  if (filters.competitionId) params.set("competitionId", filters.competitionId);
+  if (filters.teamId) params.set("teamId", filters.teamId);
+  if (filters.matchId) params.set("matchId", filters.matchId);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.tier) params.set("tier", filters.tier);
+  if (filters.marketType) params.set("marketType", filters.marketType);
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  return requestJson<FootballPredictionResultsResponse>(`/football/prediction-results?${params.toString()}`);
+}
+
+export async function fetchFootballPredictionResultsSummary(filters: FootballPredictionResultsFilters = {}): Promise<FootballPredictionResultsSummary> {
+  const params = new URLSearchParams();
+  if (filters.countryId) params.set("countryId", filters.countryId);
+  if (filters.competitionId) params.set("competitionId", filters.competitionId);
+  if (filters.teamId) params.set("teamId", filters.teamId);
+  if (filters.matchId) params.set("matchId", filters.matchId);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.tier) params.set("tier", filters.tier);
+  if (filters.marketType) params.set("marketType", filters.marketType);
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  return requestJson<FootballPredictionResultsSummary>(`/football/prediction-results/summary?${params.toString()}`);
 }
 
 export async function fetchFootballPublicEligibility(filters: FootballPublicEligibilityFilters = {}): Promise<FootballPublicEligibilityResponse> {

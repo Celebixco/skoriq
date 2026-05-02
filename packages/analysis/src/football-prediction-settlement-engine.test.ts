@@ -68,7 +68,7 @@ describe("FootballPredictionSettlementEngine", () => {
   });
 
   it("settles first_half_over_0_5 and voids missing halftime scores", () => {
-    expect(engine.settle({ ...baseInput, prediction: { ...baseInput.prediction, predictionType: "first_half_over_0_5", predictionValue: "avoid_missing_first_half_evidence" } })).toMatchObject({
+    expect(engine.settle({ ...baseInput, prediction: { ...baseInput.prediction, predictionType: "first_half_over_0_5", predictionValue: "over_0_5" } })).toMatchObject({
       settlementStatus: "settled_success",
       actualResult: "halftime=1-0; halftime_total=1"
     });
@@ -76,7 +76,7 @@ describe("FootballPredictionSettlementEngine", () => {
     expect(
       engine.settle({
         ...baseInput,
-        prediction: { ...baseInput.prediction, predictionType: "first_half_over_0_5", predictionValue: "avoid_missing_first_half_evidence" },
+        prediction: { ...baseInput.prediction, predictionType: "first_half_over_0_5", predictionValue: "over_0_5" },
         score: { ...baseInput.score, homeScoreHalftime: null }
       })
     ).toMatchObject({
@@ -107,7 +107,7 @@ describe("FootballPredictionSettlementEngine", () => {
     });
   });
 
-  it("marks blocked/avoid outputs as audit-only metadata without blocking internal settlement", () => {
+  it("voids blocked/avoid outputs instead of settling them as recommendations", () => {
     const result = engine.settle({
       ...baseInput,
       prediction: {
@@ -117,7 +117,8 @@ describe("FootballPredictionSettlementEngine", () => {
       }
     });
 
-    expect(result.settlementStatus).toBe("settled_success");
+    expect(result.settlementStatus).toBe("settled_void");
+    expect(result.actualResult).toBe("blocked_or_audit_only");
     expect(result.settlementMetadata.blockedOrAvoidAuditOnly).toBe(true);
   });
 });

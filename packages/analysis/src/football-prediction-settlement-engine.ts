@@ -10,6 +10,11 @@ export interface FootballPredictionSettlementPrediction {
   predictionValue: string;
   consistencyStatus?: string | null;
   recommendationTier?: string | null;
+  generatedAt?: Date | string | null;
+  kickoffAt?: Date | string | null;
+  generationWindowStatus?: string | null;
+  rebuildRequired?: boolean | null;
+  staleAt?: Date | string | null;
 }
 
 export interface FootballPredictionSettlementMatch {
@@ -54,9 +59,21 @@ export class FootballPredictionSettlementEngine {
         predictionValue: input.prediction.predictionValue,
         consistencyStatus: input.prediction.consistencyStatus ?? null,
         recommendationTier: input.prediction.recommendationTier ?? null,
-        blockedOrAvoidAuditOnly: input.prediction.consistencyStatus === "blocked" || input.prediction.recommendationTier === "avoid"
+        blockedOrAvoidAuditOnly: isBlockedOrAuditOnly(input.prediction)
       }
     };
+
+    if (isBlockedOrAuditOnly(input.prediction)) {
+      return voidResult(base, "blocked_or_audit_only", "Blocked, avoid, or audit-only prediction outputs are not settled as recommendations.");
+    }
+
+    if (wasGeneratedAfterKickoff(input.prediction)) {
+      return voidResult(base, "generated_after_kickoff", "Prediction output was generated at or after kickoff and is not valid for settlement.");
+    }
+
+    if (input.prediction.rebuildRequired || input.prediction.staleAt) {
+      return voidResult(base, "stale_or_rebuild_required", "Prediction output is stale or marked rebuild_required.");
+    }
 
     if (voidStatuses.has(input.match.status)) {
       return voidResult(base, "match_status_void", `Match status ${input.match.status} cannot be settled.`);
@@ -93,7 +110,7 @@ export class FootballPredictionSettlementEngine {
     if (!["1", "X", "2"].includes(input.prediction.predictionValue)) {
       return voidResult(base, "unsupported_prediction_value", `Unsupported match_result_1x2 value ${input.prediction.predictionValue}.`);
     }
-    return decidedResult(base, result === input.prediction.predictionValue, actualResult(fulltime, `result=${result}`), `Match result was ${result}.`);
+    return decidedResult(base, result === input.prediction.predictionValue, actualResult(fulltime, `result=${result}`), settlementExplanation(input, `Maç sonucu ${result} oldu.`));
   }
 
   private settleDoubleChance(input: FootballPredictionSettlementInput, base: BaseSettlementFields) {
@@ -108,7 +125,7 @@ export class FootballPredictionSettlementEngine {
     if (!["1X", "X2", "12"].includes(value)) {
       return voidResult(base, "unsupported_prediction_value", `Unsupported double_chance value ${input.prediction.predictionValue}.`);
     }
-    return decidedResult(base, success, actualResult(fulltime, `result=${result}`), `Double chance ${value} evaluated against result ${result}.`);
+    return decidedResult(base, success, actualResult(fulltime, `result=${result}`), settlementExplanation(input, `Çifte şans ${value}, maç sonucu ${result} ile değerlendirildi.`));
   }
 
   private settleOverUnderGoals(input: FootballPredictionSettlementInput, base: BaseSettlementFields) {
@@ -118,7 +135,7 @@ export class FootballPredictionSettlementEngine {
     if (!parsed) return voidResult(base, "unsupported_prediction_value", `Unsupported over_under_goals value ${input.prediction.predictionValue}.`);
     const total = fulltime.home + fulltime.away;
     const success = parsed.kind === "over" ? total >= parsed.minimumForOver : total < parsed.minimumForOver;
-    return decidedResult(base, success, actualResult(fulltime, `total=${total}`), `${input.prediction.predictionValue} evaluated against fulltime total ${total}.`);
+    return decidedResult(base, success, actualResult(fulltime, `total=${total}`), settlementExplanation(input, `${input.prediction.predictionValue} seçimi maç toplam golü ${total} ile değerlendirildi.`));
   }
 
   private settleBtts(input: FootballPredictionSettlementInput, base: BaseSettlementFields) {
@@ -127,7 +144,7 @@ export class FootballPredictionSettlementEngine {
     const value = input.prediction.predictionValue.toLowerCase();
     if (!["yes", "no"].includes(value)) return voidResult(base, "unsupported_prediction_value", `Unsupported both_teams_to_score value ${input.prediction.predictionValue}.`);
     const btts = fulltime.home >= 1 && fulltime.away >= 1;
-    return decidedResult(base, value === "yes" ? btts : !btts, actualResult(fulltime, `btts=${btts ? "yes" : "no"}`), `BTTS was ${btts ? "yes" : "no"}.`);
+    return decidedResult(base, value === "yes" ? btts : !btts, actualResult(fulltime, `btts=${btts ? "yes" : "no"}`), settlementExplanation(input, `KG sonucu ${btts ? "var" : "yok"} olarak gerçekleşti.`));
   }
 
   private settleFirstHalfOver05(input: FootballPredictionSettlementInput, base: BaseSettlementFields) {
@@ -137,11 +154,15 @@ export class FootballPredictionSettlementEngine {
       return voidResult(base, "missing_halftime_score", "Halftime score is required for first_half_over_0_5 settlement.");
     }
     const total = home + away;
+    const value = input.prediction.predictionValue.toLowerCase();
+    if (!["over_0_5", "under_0_5"].includes(value)) {
+      return voidResult(base, "unsupported_prediction_value", `Unsupported first_half_over_0_5 value ${input.prediction.predictionValue}.`);
+    }
     return decidedResult(
       base,
-      total >= 1,
+      value === "over_0_5" ? total >= 1 : total < 1,
       `halftime=${home}-${away}; halftime_total=${total}`,
-      `first_half_over_0_5 evaluated against halftime total ${total}.`
+      settlementExplanation(input, `İlk yarı toplam golü ${total} olarak gerçekleşti.`)
     );
   }
 }
@@ -192,4 +213,25 @@ function voidResult(base: BaseSettlementFields, reasonCode: string, reason: stri
     settlementReason: reason,
     settlementMetadata: { ...base.settlementMetadata, decision: "void", reasonCode }
   };
+}
+
+function isBlockedOrAuditOnly(prediction: FootballPredictionSettlementPrediction) {
+  return prediction.consistencyStatus === "blocked" || prediction.recommendationTier === "avoid" || prediction.recommendationTier === null;
+}
+
+function wasGeneratedAfterKickoff(prediction: FootballPredictionSettlementPrediction) {
+  const generated = parseDate(prediction.generatedAt);
+  const kickoff = parseDate(prediction.kickoffAt);
+  return Boolean(generated && kickoff && generated.getTime() >= kickoff.getTime());
+}
+
+function parseDate(value: Date | string | null | undefined) {
+  if (!value) return undefined;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function settlementExplanation(input: FootballPredictionSettlementInput, outcome: string) {
+  const tier = input.prediction.recommendationTier ?? "öneri";
+  return `SkorIQ bu adayda ${input.prediction.predictionType}=${input.prediction.predictionValue} sinyalini ${tier} katmanında değerlendirmişti. ${outcome} Bu sonuç, tahmini destekleyen veri sinyalinin maç sonucuyla karşılaştırılmış halidir; risk ve tutarlılık notları sonraki model değerlendirmesinde izlenmelidir.`;
 }

@@ -25,6 +25,11 @@ Dashboard overview:
 Member-safe prediction preview:
 
 - `GET /api/member/football/matches/:matchId/prediction-preview` returns a protected, sanitized match-level prediction preview for authenticated members and admins.
+- Pre-match draft generation now uses a configurable 36-hour window by default: `FOOTBALL_PREMATCH_WINDOW_HOURS=36` and `FOOTBALL_PREMATCH_MINIMUM_LEAD_MINUTES=30`.
+- `npm run pipeline:football:daily-prematch -- --all-reviewed-enabled --execute` is the documented daily 09:00 Europe/Istanbul scan command. It uses normalized DB data only and keeps outputs draft-only.
+- `npm run provider:football:finished-sync -- --all-reviewed-enabled --lookback-hours=72 --execute` refreshes recent final scores for reviewed/enabled leagues only.
+- `npm run analytics:football:settle-predictions -- --all-reviewed-enabled --lookback-hours=96 --execute` stores internal settlement results without publishing or changing member visibility.
+- `GET /api/football/prediction-results` and `/summary` power the member-safe Tahmin Sonuçları page.
 - It is separate from admin draft review endpoints and does not expose conflicts, raw metadata, expectation snapshots, audit-only rows, blocked/avoid candidates, provider IDs, or generated-after-kickoff candidates.
 - It does not publish predictions, mark outputs member-visible, run settlement, call providers, run ingestion, or generate tahmin kombini output.
 
@@ -449,12 +454,12 @@ Future public publication workflow is planned in `docs/product/public-eligibilit
 
 Public eligibility storage now includes future visibility timestamps on `football_prediction_outputs` and the `public_successful_predictions` table. The evaluator is report-only: no `public_successful_predictions` rows are inserted, no statuses are changed, and internal review is still required before any future public page.
 
-Pre-match analysis timing is planned in `docs/product/pre-match-analysis-window-policy.md`. Fixture sync may fetch beyond 24 hours for schedule visibility, but automated analytics and draft Tahmin generation should default to matches from now through the next 24 hours, with a suggested 30-minute minimum lead time before kickoff. Outputs generated too early or from stale snapshots should remain internal and must not become member-visible or public by default.
+Pre-match analysis timing is planned in `docs/product/pre-match-analysis-window-policy.md`. Fixture sync may fetch beyond 36 hours for schedule visibility, but automated analytics and draft Tahmin generation should default to matches from now through the next 36 hours, with a suggested 30-minute minimum lead time before kickoff. Outputs generated too early or from stale snapshots should remain internal and must not become member-visible or public by default.
 
 The candidate generator now reports this timing status without enforcing it yet:
 
 ```bash
-npm run analytics:football:prediction-candidates:generate -- --match-id=<match-uuid> --window-hours=24 --minimum-lead-minutes=30
+npm run analytics:football:prediction-candidates:generate -- --match-id=<match-uuid> --window-hours=36 --minimum-lead-minutes=30
 ```
 
 The report includes `analysisWindowStatus`, lead time, and rebuild/staleness notes. `--persist-draft` remains draft-only and is not blocked by the window report in this phase.
@@ -467,7 +472,7 @@ npm run analytics:football:prediction-candidates:generate -- --match-id=<match-u
 
 `--enforce-window` allows generation only when `analysisWindowStatus=within_window`. It blocks `too_early`, `too_late`, `stale`, and `unknown` cases without writing drafts. This is not the default yet; future scheduler work should enforce it by default.
 
-Stale draft rebuild policy is planned in `docs/product/stale-draft-rebuild-workflow.md`. Drafts generated more than 24 hours before kickoff should be treated as audit-only stale data until team form, H2H, match features, reasoning, and candidates are rebuilt inside the valid window with `--enforce-window`. `football_prediction_outputs` has metadata fields for stale/rebuild tracking, and a manual one-match rebuild command exists. No automatic scheduler exists yet.
+Stale draft rebuild policy is planned in `docs/product/stale-draft-rebuild-workflow.md`. Drafts generated more than 36 hours before kickoff should be treated as audit-only stale data until team form, H2H, match features, reasoning, and candidates are rebuilt inside the valid window with `--enforce-window`. `football_prediction_outputs` has metadata fields for stale/rebuild tracking, and manual commands exist. Scheduled execution is documented but must be explicitly enabled by operations.
 
 ```bash
 npm run analytics:football:prediction-drafts:rebuild-stale -- --match-id=<match-uuid>

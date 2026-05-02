@@ -17,6 +17,7 @@ import { FootballPublicEligibilityController } from "./routes/football-public-el
 import { FootballPublicEligibilityService } from "./routes/football-public-eligibility.service.js";
 import { FootballPredictionSettlementsController } from "./routes/football-prediction-settlements.controller.js";
 import { FootballPredictionSettlementsService } from "./routes/football-prediction-settlements.service.js";
+import { FootballPredictionResultsController } from "./routes/football-prediction-results.controller.js";
 import { HealthController } from "./routes/health.controller.js";
 import { SyncStatusController } from "./routes/sync-status.controller.js";
 
@@ -31,6 +32,7 @@ import { SyncStatusController } from "./routes/sync-status.controller.js";
     FootballCatalogController,
     FootballPredictionDraftsController,
     FootballPublicEligibilityController,
+    FootballPredictionResultsController,
     FootballPredictionSettlementsController
   ],
   providers: [

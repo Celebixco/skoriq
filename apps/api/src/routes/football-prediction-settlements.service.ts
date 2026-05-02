@@ -15,6 +15,63 @@ export interface FootballPredictionSettlementFilters {
   offset: number;
 }
 
+export interface FootballPredictionResultsFilters {
+  countryId?: string;
+  competitionId?: string;
+  teamId?: string;
+  matchId?: string;
+  status?: string;
+  tier?: string;
+  marketType?: string;
+  from?: string;
+  to?: string;
+  limit: number;
+  offset: number;
+}
+
+export interface FootballPredictionResultsResponse {
+  items: FootballPredictionResultItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface FootballPredictionResultItem {
+  country: { id: string | null; name: string | null };
+  competition: { id: string; name: string; logoUrl: string | null };
+  match: {
+    id: string;
+    homeTeam: { id: string; name: string; logoUrl: string | null };
+    awayTeam: { id: string; name: string; logoUrl: string | null };
+    kickoffAt: string;
+    finalScore: string | null;
+    halftimeScore: string | null;
+  };
+  prediction: {
+    marketType: string;
+    selection: string;
+    displayLabel: string;
+    tier: string;
+    confidence: number | null;
+  };
+  settlement: {
+    status: "won" | "lost" | "void" | "pending" | "missing_score" | "unsupported_market" | "not_settleable";
+    settledAt: string | null;
+    explanation: string;
+  };
+}
+
+export interface FootballPredictionResultsSummary {
+  totalSettled: number;
+  won: number;
+  lost: number;
+  pending: number;
+  byCountry: Array<{ id: string | null; name: string | null; count: number }>;
+  byLeague: Array<{ id: string; name: string; count: number }>;
+  byTier: Array<{ tier: string; count: number }>;
+  byMarketType: Array<{ marketType: string; count: number }>;
+}
+
 export interface FootballPredictionSettlementListResponse {
   items: FootballPredictionSettlementListItem[];
   pagination: {
@@ -147,6 +204,36 @@ interface ConflictRow {
   reason: string;
 }
 
+interface FootballPredictionResultRow {
+  country_id: string | null;
+  country_name: string | null;
+  competition_id: string;
+  competition_name: string;
+  competition_logo_url: string | null;
+  match_id: string;
+  home_team_id: string;
+  home_team_name: string;
+  home_team_logo_url: string | null;
+  away_team_id: string;
+  away_team_name: string;
+  away_team_logo_url: string | null;
+  kickoff_at: Date | string;
+  home_score_fulltime: string | number | null;
+  away_score_fulltime: string | number | null;
+  home_score_halftime: string | number | null;
+  away_score_halftime: string | number | null;
+  prediction_type: string;
+  prediction_value: string;
+  display_label: string | null;
+  recommendation_tier: string;
+  confidence_score: string | number | null;
+  settlement_status: string | null;
+  actual_result: string | null;
+  settlement_reason: string | null;
+  settlement_metadata: unknown;
+  evaluated_at: Date | string | null;
+}
+
 @Injectable()
 export class FootballPredictionSettlementsService {
   private readonly database: Database;
@@ -194,6 +281,96 @@ export class FootballPredictionSettlementsService {
       conflictsSummary: summarizeConflicts(rows),
       note: "Bu sonuç iç denetim amaçlıdır. Public başarılı tahmin olarak yayınlanmamıştır, üyelere görünür tahmin değildir ve tahmin kombini için kullanılmaz."
     };
+  }
+
+  async listPredictionResults(filters: FootballPredictionResultsFilters): Promise<FootballPredictionResultsResponse> {
+    const rows = await this.findPredictionResultRows(filters);
+    const total = await this.countPredictionResultRows(filters);
+    return {
+      items: rows.map(mapPredictionResultRow),
+      total,
+      limit: filters.limit,
+      offset: filters.offset
+    };
+  }
+
+  async getPredictionResultsSummary(filters: Omit<FootballPredictionResultsFilters, "limit" | "offset"> = {}): Promise<FootballPredictionResultsSummary> {
+    const rows = await this.findPredictionResultRows({ ...filters, limit: 500, offset: 0 });
+    return {
+      totalSettled: rows.filter((row) => row.settlement_status).length,
+      won: rows.filter((row) => publicSettlementStatus(row) === "won").length,
+      lost: rows.filter((row) => publicSettlementStatus(row) === "lost").length,
+      pending: rows.filter((row) => publicSettlementStatus(row) === "pending").length,
+      byCountry: countObjects(rows, (row) => row.country_id ?? "none", (row) => ({ id: row.country_id, name: row.country_name })),
+      byLeague: countObjects(rows, (row) => row.competition_id, (row) => ({ id: row.competition_id, name: row.competition_name })),
+      byTier: countObjects(rows, (row) => row.recommendation_tier, (row) => ({ tier: row.recommendation_tier })),
+      byMarketType: countObjects(rows, (row) => row.prediction_type, (row) => ({ marketType: row.prediction_type }))
+    };
+  }
+
+  private async findPredictionResultRows(filters: FootballPredictionResultsFilters): Promise<FootballPredictionResultRow[]> {
+    return executeRows<FootballPredictionResultRow>(
+      this.database,
+      sql`
+        select
+          co.id as country_id,
+          co.name as country_name,
+          c.id as competition_id,
+          c.name as competition_name,
+          null::text as competition_logo_url,
+          m.id as match_id,
+          home.id as home_team_id,
+          home.name as home_team_name,
+          home.logo_url as home_team_logo_url,
+          away.id as away_team_id,
+          away.name as away_team_name,
+          away.logo_url as away_team_logo_url,
+          m.scheduled_start_at as kickoff_at,
+          fs.home_score_fulltime,
+          fs.away_score_fulltime,
+          fs.home_score_halftime,
+          fs.away_score_halftime,
+          p.prediction_type,
+          p.prediction_value,
+          p.display_label,
+          p.recommendation_tier,
+          p.confidence_score,
+          st.settlement_status,
+          st.actual_result,
+          st.settlement_reason,
+          st.settlement_metadata,
+          st.evaluated_at
+        from football_prediction_outputs p
+        inner join matches m on m.id = p.match_id
+        inner join sports s on s.id = m.sport_id and s.slug = 'football'
+        inner join competitions c on c.id = m.competition_id
+        left join countries co on co.id = c.country_id
+        inner join teams home on home.id = m.home_team_id
+        inner join teams away on away.id = m.away_team_id
+        left join football_match_scores fs on fs.match_id = m.id
+        left join football_prediction_settlements st on st.prediction_output_id = p.id
+        where p.status in ('draft', 'member_visible', 'locked', 'settlement_pending', 'settled_success', 'settled_failed', 'settled_void')
+          and p.recommendation_tier in ('primary', 'try', 'alternative')
+          and p.consistency_status in ('passed', 'warning')
+          and p.blocking_conflict_count = 0
+          and p.generated_at < m.scheduled_start_at
+          ${filters.countryId ? sql`and co.id = ${filters.countryId}` : sql``}
+          ${filters.competitionId ? sql`and c.id = ${filters.competitionId}` : sql``}
+          ${filters.teamId ? sql`and (home.id = ${filters.teamId} or away.id = ${filters.teamId})` : sql``}
+          ${filters.matchId ? sql`and m.id = ${filters.matchId}` : sql``}
+          ${filters.tier ? sql`and p.recommendation_tier = ${filters.tier}` : sql``}
+          ${filters.marketType ? sql`and p.prediction_type = ${filters.marketType}` : sql``}
+          ${filters.from ? sql`and m.scheduled_start_at >= ${filters.from}` : sql``}
+          ${filters.to ? sql`and m.scheduled_start_at <= ${filters.to}` : sql``}
+        order by m.scheduled_start_at desc, p.generated_at desc
+        limit ${filters.limit}
+        offset ${filters.offset}
+      `
+    ).then((rows) => (filters.status ? rows.filter((row) => publicSettlementStatus(row) === filters.status) : rows));
+  }
+
+  private async countPredictionResultRows(filters: FootballPredictionResultsFilters): Promise<number> {
+    return (await this.findPredictionResultRows({ ...filters, limit: 500, offset: 0 })).length;
   }
 
   private async findSettlementRows(filters: FootballPredictionSettlementFilters, settlementId?: string): Promise<FootballPredictionSettlementRow[]> {
@@ -406,6 +583,70 @@ export function mapSettlementListRow(row: FootballPredictionSettlementRow): Foot
     evaluatedAt: dateString(row.evaluated_at),
     createdAt: dateString(row.created_at)
   };
+}
+
+function mapPredictionResultRow(row: FootballPredictionResultRow): FootballPredictionResultItem {
+  return {
+    country: { id: row.country_id, name: row.country_name },
+    competition: { id: row.competition_id, name: row.competition_name, logoUrl: row.competition_logo_url },
+    match: {
+      id: row.match_id,
+      homeTeam: { id: row.home_team_id, name: row.home_team_name, logoUrl: row.home_team_logo_url },
+      awayTeam: { id: row.away_team_id, name: row.away_team_name, logoUrl: row.away_team_logo_url },
+      kickoffAt: dateString(row.kickoff_at),
+      finalScore: scoreLabel(row.home_score_fulltime, row.away_score_fulltime),
+      halftimeScore: scoreLabel(row.home_score_halftime, row.away_score_halftime)
+    },
+    prediction: {
+      marketType: row.prediction_type,
+      selection: row.prediction_value,
+      displayLabel: predictionDisplayLabel(row),
+      tier: row.recommendation_tier,
+      confidence: numberOrNull(row.confidence_score)
+    },
+    settlement: {
+      status: publicSettlementStatus(row),
+      settledAt: row.evaluated_at ? dateString(row.evaluated_at) : null,
+      explanation: row.settlement_reason ?? "Bu tahmin için sonuç değerlendirmesi henüz tamamlanmadı."
+    }
+  };
+}
+
+function publicSettlementStatus(row: Pick<FootballPredictionResultRow, "settlement_status" | "actual_result" | "settlement_metadata">): FootballPredictionResultItem["settlement"]["status"] {
+  if (!row.settlement_status) return "pending";
+  if (row.settlement_status === "settled_success") return "won";
+  if (row.settlement_status === "settled_failed") return "lost";
+  const reasonCode = isRecord(row.settlement_metadata) && typeof row.settlement_metadata.reasonCode === "string" ? row.settlement_metadata.reasonCode : row.actual_result;
+  if (reasonCode === "missing_score" || reasonCode === "missing_final_score" || reasonCode === "missing_halftime_score") return "missing_score";
+  if (reasonCode === "unsupported_prediction_type" || reasonCode === "unsupported_prediction_value") return "unsupported_market";
+  if (reasonCode === "match_not_final") return "pending";
+  if (reasonCode === "blocked_or_audit_only" || reasonCode === "generated_after_kickoff" || reasonCode === "stale_or_rebuild_required") return "not_settleable";
+  return "void";
+}
+
+function predictionDisplayLabel(row: Pick<FootballPredictionResultRow, "display_label" | "prediction_type" | "prediction_value">) {
+  return row.display_label?.trim() || `${row.prediction_type}=${row.prediction_value}`;
+}
+
+function scoreLabel(home: string | number | null, away: string | number | null) {
+  const homeScore = numberOrNull(home);
+  const awayScore = numberOrNull(away);
+  return homeScore === null || awayScore === null ? null : `${homeScore}-${awayScore}`;
+}
+
+function countObjects<T extends Record<string, unknown>>(
+  rows: FootballPredictionResultRow[],
+  key: (row: FootballPredictionResultRow) => string,
+  base: (row: FootballPredictionResultRow) => T
+): Array<T & { count: number }> {
+  const map = new Map<string, T & { count: number }>();
+  for (const row of rows) {
+    const entryKey = key(row);
+    const current = map.get(entryKey);
+    if (current) current.count += 1;
+    else map.set(entryKey, { ...base(row), count: 1 });
+  }
+  return [...map.values()];
 }
 
 export function mapSettlementDetailRow(row: FootballPredictionSettlementRow, conflicts: ConflictRow[]): FootballPredictionSettlementDetail {

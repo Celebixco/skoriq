@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException, Optional } from "@nestjs/common"
 import { loadConfig } from "@sports-data/config";
 import { createDatabase } from "@sports-data/database";
 import type { Database } from "@sports-data/database";
+import { resolveFootballPrematchWindowPolicy } from "@sports-data/shared";
 import { sql } from "drizzle-orm";
 
 export interface FootballMemberPredictionPreviewResponse {
@@ -72,8 +73,9 @@ interface PreviewCandidateRow {
 
 const staleWindowStatuses = new Set(["stale", "too_early", "too_late"]);
 const unsafeWindowStatuses = new Set(["stale", "too_early", "too_late", "unknown"]);
-const defaultWindowHours = 24;
-const defaultMinimumLeadMinutes = 30;
+const defaultPrematchPolicy = resolveFootballPrematchWindowPolicy();
+const defaultWindowHours = defaultPrematchPolicy.windowHours;
+const defaultMinimumLeadMinutes = defaultPrematchPolicy.minimumLeadMinutes;
 
 @Injectable()
 export class FootballMemberPredictionPreviewService {
@@ -143,7 +145,7 @@ export class FootballMemberPredictionPreviewService {
       analysisWindow: currentWindow,
       groups: groupCandidates(candidates.map(mapCandidateRow)),
       summary: "Bu ön tahminler mevcut veri kapsamına göre üretilmiştir; nihai sonuç garantisi değildir.",
-      warnings: ["24 saat kuralı tahmin üretim zamanını belirler."]
+      warnings: ["36 saat kuralı tahmin üretim zamanını belirler."]
     };
   }
 
@@ -310,7 +312,7 @@ function resolveEmptyPreviewState(
     return {
       status: "not_available",
       reasonCode: "too_early",
-      message: "Tahminler maç öncesi analiz penceresinde oluşturulacak.",
+      message: "Tahminler maç öncesi 36 saatlik analiz penceresinde oluşturulacak.",
       summary: "Analiz hazır; maç henüz tahmin üretim penceresinde değil."
     };
   }

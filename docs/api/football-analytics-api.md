@@ -32,6 +32,17 @@ GET /api/dashboard/overview
 
 It is authenticated, read-only, role-aware, and returns member-safe analytics overview data plus admin-only summary fields when the authenticated user has `role=admin`. It does not call providers, run ingestion, write to the database, or expose admin/internal prediction review data to members.
 
+## Prediction Results
+
+```http
+GET /api/football/prediction-results
+GET /api/football/prediction-results/summary
+```
+
+These authenticated read-only endpoints expose member-safe SkorIQ prediction result records. They return canonical country, league, match, prediction label, actual score, settlement status, and a compact cause-effect explanation. They do not expose raw payloads, provider IDs, conflict internals, DB URLs, API keys, cookies, JWTs, or admin-only metadata.
+
+Supported filters include `countryId`, `competitionId`, `teamId`, `matchId`, `status`, `tier`, `marketType`, `from`, `to`, `limit`, and `offset`.
+
 ## Single Match Analytics
 
 ```http

@@ -40,7 +40,7 @@ describe("football pre-match pipeline runner", () => {
     expect(parseFootballPrematchPipelineArgs(["--country-id=44", "--league-id=152"])).toMatchObject({
       countryId: "44",
       leagueId: "152",
-      windowHours: 24,
+      windowHours: 36,
       minimumLeadMinutes: 30,
       limit: 20,
       execute: false
@@ -71,7 +71,7 @@ describe("football pre-match pipeline runner", () => {
   });
 
   it("selects only matches inside the configured window and respects limit", () => {
-    const selected = selectMatchesInsideWindow(sampleMatches(), { ...baseOptions(), windowHours: 24, minimumLeadMinutes: 30, limit: 1 }, new Date("2026-05-01T12:00:00.000Z"));
+    const selected = selectMatchesInsideWindow(sampleMatches(), { ...baseOptions(), windowHours: 36, minimumLeadMinutes: 30, limit: 1 }, new Date("2026-05-01T12:00:00.000Z"));
     expect(selected.map((match) => match.matchId)).toEqual(["inside-1"]);
   });
 
@@ -174,7 +174,7 @@ function baseOptions() {
   return {
     countryId: "44",
     leagueId: "152",
-    windowHours: 24,
+    windowHours: 36,
     minimumLeadMinutes: 30,
     limit: 20,
     execute: false
@@ -280,7 +280,7 @@ function fakeCandidateRun(status: "warning" | "blocked"): FootballPredictionCand
         evaluatedAt: "2026-05-01T12:00:00.000Z",
         generatedAt: "2026-05-01T12:00:00.000Z",
         leadTimeMinutes: 360,
-        windowHours: 24,
+        windowHours: 36,
         minimumLeadMinutes: 30,
         analysisWindowStatus: "within_window",
         requiresRebuild: false,
