@@ -162,7 +162,7 @@ export function App() {
       {forbidden ? <ForbiddenPage navigate={navigate} /> : null}
       {!forbidden && (
         <>
-      {route.kind === "overview" ? <OverviewPage navigate={navigate} user={currentUser} /> : null}
+      {shouldRenderOverviewPage(route.kind) ? <OverviewPage navigate={navigate} user={currentUser} /> : null}
       {route.kind === "match-list" ? <MatchListPage navigate={navigate} /> : null}
       {route.kind === "match-detail" ? <MatchDetailPage matchId={route.id} navigate={navigate} user={currentUser} /> : null}
       {route.kind === "team-list" ? <TeamListPage navigate={navigate} /> : null}
@@ -183,6 +183,10 @@ export function App() {
       )}
     </Shell>
   );
+}
+
+export function shouldRenderOverviewPage(routeKind: ReturnType<typeof resolveRoute>["kind"]) {
+  return routeKind === "overview" || routeKind === "landing";
 }
 
 function LoginPage({ onLogin, navigate }: { onLogin: (user: AuthUser) => void; navigate: (path: string) => void }) {
