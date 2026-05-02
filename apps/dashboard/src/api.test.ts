@@ -46,6 +46,7 @@ describe("football analytics dashboard API client", () => {
     expect(requestedUrl).toContain("predictionEligible=true");
     expect(requestedUrl).toContain("kuponEligible=false");
     expect(requestedUrl).toContain("limit=20");
+    expect(requestedUrl).toContain("offset=0");
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ credentials: "include" });
   });
 

@@ -165,6 +165,8 @@ export interface FootballAnalyticsMatchFilters {
   predictionEligible?: boolean | "";
   kuponEligible?: boolean | "";
   limit?: number;
+  offset?: number;
+  competitionId?: string;
 }
 
 export interface Pagination {

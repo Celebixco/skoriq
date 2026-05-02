@@ -66,8 +66,217 @@ const initialFilters: FootballAnalyticsMatchFilters = {
   featureStatus: "",
   predictionEligible: "",
   kuponEligible: "",
-  limit: 20
+  limit: 20,
+  offset: 0
 };
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
+export interface FrontendFilters {
+  searchQuery: string;
+  competitionName: string;
+  countryName: string;
+  within24h: boolean;
+  hasH2h: boolean;
+}
+
+const emptyFrontendFilters: FrontendFilters = {
+  searchQuery: "",
+  competitionName: "",
+  countryName: "",
+  within24h: false,
+  hasH2h: false
+};
+
+export type QuickChipId = "all" | "ready" | "predictionEligible" | "within24h" | "hasH2h";
+
+export function SearchBar({ query, onChange, onClear }: {
+  query: string;
+  onChange: (value: string) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="analytics-search-bar">
+      <svg className="analytics-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.3-4.3" />
+      </svg>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        placeholder="Takım, lig veya maç ara…"
+        aria-label="Maç ara"
+      />
+      {query ? (
+        <button type="button" className="analytics-search-clear" onClick={onClear} aria-label="Aramayı temizle">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+          </svg>
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+export function QuickFilterChips({ activeChip, onChipClick, counts }: {
+  activeChip: QuickChipId | null;
+  onChipClick: (chip: QuickChipId) => void;
+  counts: { ready: number; predictionEligible: number; within24h: number; hasH2h: number };
+}) {
+  const chips: { id: QuickChipId; label: string; count?: number }[] = [
+    { id: "all", label: "Tümü" },
+    { id: "ready", label: "Hazır", count: counts.ready },
+    { id: "predictionEligible", label: "Tahmine uygun", count: counts.predictionEligible },
+    { id: "within24h", label: "24 saat içinde", count: counts.within24h },
+    { id: "hasH2h", label: "H2H mevcut", count: counts.hasH2h },
+  ];
+
+  return (
+    <div className="analytics-quick-chips" role="group" aria-label="Hızlı filtreler">
+      {chips.map((chip) => (
+        <button
+          key={chip.id}
+          type="button"
+          className={`analytics-chip${activeChip === chip.id ? " analytics-chip-active" : ""}`}
+          onClick={() => onChipClick(chip.id)}
+          aria-pressed={activeChip === chip.id}
+        >
+          {chip.label}
+          {chip.count !== undefined ? <span className="analytics-chip-count">{chip.count}</span> : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function ActiveFilterPills({ filters, frontendFilters, quickChip, onClearFilter, onClearAll }: {
+  filters: FootballAnalyticsMatchFilters;
+  frontendFilters: FrontendFilters;
+  quickChip: QuickChipId | null;
+  onClearFilter: (key: string) => void;
+  onClearAll: () => void;
+}) {
+  const pills: { key: string; label: string }[] = [];
+
+  if (filters.featureStatus) {
+    const labels: Record<string, string> = { ready: "Hazır", partial: "Kısmi", insufficient_data: "Yetersiz" };
+    pills.push({ key: "featureStatus", label: `Durum: ${labels[filters.featureStatus] ?? filters.featureStatus}` });
+  }
+  if (filters.predictionEligible !== "" && filters.predictionEligible !== undefined) {
+    pills.push({ key: "predictionEligible", label: `Tahmin: ${filters.predictionEligible ? "Uygun" : "Uygun değil"}` });
+  }
+  if (filters.kuponEligible !== "" && filters.kuponEligible !== undefined) {
+    pills.push({ key: "kuponEligible", label: `Sonuç: ${filters.kuponEligible ? "Aktif" : "Pasif"}` });
+  }
+  if (frontendFilters.searchQuery.trim()) {
+    pills.push({ key: "searchQuery", label: `Arama: ${frontendFilters.searchQuery.trim()}` });
+  }
+  if (frontendFilters.competitionName) {
+    pills.push({ key: "competitionName", label: `Lig: ${frontendFilters.competitionName}` });
+  }
+  if (frontendFilters.countryName) {
+    pills.push({ key: "countryName", label: `Ülke: ${frontendFilters.countryName}` });
+  }
+  if (frontendFilters.within24h || quickChip === "within24h") {
+    pills.push({ key: "within24h", label: "24 saat içinde" });
+  }
+  if (frontendFilters.hasH2h || quickChip === "hasH2h") {
+    pills.push({ key: "hasH2h", label: "H2H mevcut" });
+  }
+
+  if (pills.length === 0) return null;
+
+  return (
+    <div className="analytics-active-filters">
+      {pills.map((pill) => (
+        <span key={pill.key} className="analytics-filter-pill">
+          {pill.label}
+          <button type="button" onClick={() => onClearFilter(pill.key)} aria-label={`${pill.label} filtresini kaldır`}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </span>
+      ))}
+      <button type="button" className="analytics-clear-all-btn" onClick={onClearAll}>
+        Tümünü temizle
+      </button>
+    </div>
+  );
+}
+
+export function ResultSummaryBar({ showing, total, loaded, offset, hasPrev, hasNext, onPrev, onNext }: {
+  showing: number;
+  total: number;
+  loaded: number;
+  offset: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const start = total > 0 ? offset + 1 : 0;
+  const end = Math.min(offset + loaded, total);
+
+  return (
+    <div className="analytics-results-bar">
+      <p className="analytics-results-count">
+        {total > 0
+          ? `${start.toLocaleString("tr-TR")}–${end.toLocaleString("tr-TR")} / ${total.toLocaleString("tr-TR")} maç`
+          : `${showing.toLocaleString("tr-TR")} maç gösteriliyor`}
+      </p>
+      <div className="analytics-pagination">
+        <button
+          type="button"
+          className="analytics-page-btn"
+          onClick={onPrev}
+          disabled={!hasPrev}
+          aria-label="Önceki sayfa"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+          Önceki
+        </button>
+        <button
+          type="button"
+          className="analytics-page-btn"
+          onClick={onNext}
+          disabled={!hasNext}
+          aria-label="Sonraki sayfa"
+        >
+          Sonraki
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function EmptySearchState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
+  return (
+    <div className="analytics-empty-state">
+      <p className="analytics-empty-title">Eşleşen maç bulunamadı.</p>
+      <p className="analytics-empty-body">Takım adı, lig adı veya farklı bir arama terimi deneyebilirsin.</p>
+      {hasFilters ? (
+        <button type="button" className="analytics-empty-btn" onClick={onClear}>
+          Filtreleri temizle
+        </button>
+      ) : null}
+    </div>
+  );
+}
 
 type TeamDirectoryFilter = "all" | "logos" | "matches" | "highCoverage";
 
@@ -865,10 +1074,195 @@ function ForbiddenPage({ navigate }: { navigate: (path: string) => void }) {
   );
 }
 
-function MatchListPage({ navigate }: { navigate: (path: string) => void }) {
-  const [filters, setFilters] = useState<FootballAnalyticsMatchFilters>(initialFilters);
-  const { data, loading, error } = useLoad(() => fetchFootballAnalyticsMatches(filters), [filters]);
-  const matchStats = useMemo(() => (data ? getMatchAnalyticsStats(data.items) : null), [data]);
+export function MatchListPage({ navigate }: { navigate: (path: string) => void }) {
+  const [filters, setFilters] = useState<FootballAnalyticsMatchFilters>({
+    ...initialFilters,
+    offset: 0
+  });
+  const [frontendFilters, setFrontendFilters] = useState<FrontendFilters>(emptyFrontendFilters);
+  const [quickChip, setQuickChip] = useState<QuickChipId | null>(null);
+
+  const debouncedSearch = useDebounce(frontendFilters.searchQuery, 300);
+
+  const { data, loading, error } = useLoad(
+    () => fetchFootballAnalyticsMatches(filters),
+    [filters]
+  );
+
+  const availableCompetitions = useMemo(() => {
+    if (!data) return [];
+    const names = new Set<string>();
+    data.items.forEach(item => names.add(item.match.competition.name));
+    return Array.from(names).sort();
+  }, [data]);
+
+  const availableCountries = useMemo(() => {
+    if (!data) return [];
+    const names = new Set<string>();
+    data.items.forEach(item => {
+      if (item.match.competition.country) {
+        names.add(item.match.competition.country);
+      }
+    });
+    return Array.from(names).sort();
+  }, [data]);
+
+  const filteredItems = useMemo(() => {
+    if (!data) return [];
+    let items = [...data.items];
+
+    if (debouncedSearch.trim()) {
+      const query = debouncedSearch.toLowerCase().trim();
+      items = items.filter(item => {
+        const home = item.match.homeTeam.name.toLowerCase();
+        const away = item.match.awayTeam.name.toLowerCase();
+        const competition = item.match.competition.name.toLowerCase();
+        const country = item.match.competition.country?.toLowerCase() ?? "";
+        return home.includes(query) || away.includes(query) || competition.includes(query) || country.includes(query);
+      });
+    }
+
+    if (frontendFilters.competitionName) {
+      items = items.filter(item => item.match.competition.name === frontendFilters.competitionName);
+    }
+
+    if (frontendFilters.countryName) {
+      items = items.filter(item => item.match.competition.country === frontendFilters.countryName);
+    }
+
+    if (frontendFilters.within24h) {
+      const now = new Date();
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      items = items.filter(item => {
+        const kickoff = new Date(item.match.kickoffAt);
+        return kickoff >= now && kickoff <= tomorrow;
+      });
+    }
+
+    if (frontendFilters.hasH2h) {
+      items = items.filter(item => !item.h2h.h2hMissing);
+    }
+
+    return items;
+  }, [data, debouncedSearch, frontendFilters]);
+
+  const matchStats = useMemo(() => {
+    return filteredItems.length > 0 ? getMatchAnalyticsStats(filteredItems) : null;
+  }, [filteredItems]);
+
+  const quickChipCounts = useMemo(() => {
+    if (!data) return { ready: 0, predictionEligible: 0, within24h: 0, hasH2h: 0 };
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    return {
+      ready: data.items.filter(item => item.featureStatus === "ready").length,
+      predictionEligible: data.items.filter(item => item.predictionEligible).length,
+      within24h: data.items.filter(item => {
+        const kickoff = new Date(item.match.kickoffAt);
+        return kickoff >= now && kickoff <= tomorrow;
+      }).length,
+      hasH2h: data.items.filter(item => !item.h2h.h2hMissing).length
+    };
+  }, [data]);
+
+  useEffect(() => {
+    if (quickChip === "ready" && filters.featureStatus !== "ready") {
+      setQuickChip(null);
+    }
+    if (quickChip === "predictionEligible" && filters.predictionEligible !== true) {
+      setQuickChip(null);
+    }
+    if (quickChip === "within24h" && !frontendFilters.within24h) {
+      setQuickChip(null);
+    }
+    if (quickChip === "hasH2h" && !frontendFilters.hasH2h) {
+      setQuickChip(null);
+    }
+  }, [filters, frontendFilters, quickChip]);
+
+  const totalLoaded = data?.items.length ?? 0;
+  const totalFromApi = data?.pagination.total ?? 0;
+  const offset = filters.offset ?? 0;
+  const hasNextPage = offset + totalLoaded < totalFromApi;
+  const hasPrevPage = offset > 0;
+
+  const handlePrevPage = () => {
+    setFilters(prev => ({ ...prev, offset: Math.max(0, (prev.offset ?? 0) - (prev.limit ?? 20)) }));
+  };
+
+  const handleNextPage = () => {
+    setFilters(prev => ({ ...prev, offset: (prev.offset ?? 0) + (prev.limit ?? 20) }));
+  };
+
+  const handleClearAll = () => {
+    setFilters({ ...initialFilters, offset: 0 });
+    setFrontendFilters(emptyFrontendFilters);
+    setQuickChip(null);
+  };
+
+  const handleClearFilter = (key: string) => {
+    switch (key) {
+      case "featureStatus":
+        setFilters(prev => ({ ...prev, featureStatus: "" }));
+        break;
+      case "predictionEligible":
+        setFilters(prev => ({ ...prev, predictionEligible: "" }));
+        break;
+      case "kuponEligible":
+        setFilters(prev => ({ ...prev, kuponEligible: "" }));
+        break;
+      case "searchQuery":
+        setFrontendFilters(prev => ({ ...prev, searchQuery: "" }));
+        break;
+      case "competitionName":
+        setFrontendFilters(prev => ({ ...prev, competitionName: "" }));
+        break;
+      case "countryName":
+        setFrontendFilters(prev => ({ ...prev, countryName: "" }));
+        break;
+      case "within24h":
+        setFrontendFilters(prev => ({ ...prev, within24h: false }));
+        setQuickChip(prev => prev === "within24h" ? null : prev);
+        break;
+      case "hasH2h":
+        setFrontendFilters(prev => ({ ...prev, hasH2h: false }));
+        setQuickChip(prev => prev === "hasH2h" ? null : prev);
+        break;
+    }
+  };
+
+  const handleChipClick = (chip: QuickChipId) => {
+    if (chip === "all") {
+      handleClearAll();
+      return;
+    }
+    if (quickChip === chip) {
+      setQuickChip(null);
+      if (chip === "ready") setFilters(prev => ({ ...prev, featureStatus: "" }));
+      if (chip === "predictionEligible") setFilters(prev => ({ ...prev, predictionEligible: "" }));
+      if (chip === "within24h") setFrontendFilters(prev => ({ ...prev, within24h: false }));
+      if (chip === "hasH2h") setFrontendFilters(prev => ({ ...prev, hasH2h: false }));
+    } else {
+      setQuickChip(chip);
+      if (chip === "ready") setFilters(prev => ({ ...prev, featureStatus: "ready" }));
+      if (chip === "predictionEligible") setFilters(prev => ({ ...prev, predictionEligible: true }));
+      if (chip === "within24h") setFrontendFilters(prev => ({ ...prev, within24h: true }));
+      if (chip === "hasH2h") setFrontendFilters(prev => ({ ...prev, hasH2h: true }));
+    }
+  };
+
+  const hasActiveFilters = Boolean(
+    filters.featureStatus ||
+    filters.predictionEligible !== "" ||
+    filters.kuponEligible !== "" ||
+    debouncedSearch.trim() ||
+    frontendFilters.competitionName ||
+    frontendFilters.countryName ||
+    frontendFilters.within24h ||
+    frontendFilters.hasH2h ||
+    quickChip !== null
+  );
 
   return (
     <>
@@ -888,12 +1282,68 @@ function MatchListPage({ navigate }: { navigate: (path: string) => void }) {
         ) : null}
       </header>
 
-      <FilterBar filters={filters} setFilters={setFilters} />
+      <div className="analytics-controls">
+        <div className="analytics-search-row">
+          <SearchBar
+            query={frontendFilters.searchQuery}
+            onChange={(value) => setFrontendFilters(prev => ({ ...prev, searchQuery: value }))}
+            onClear={() => setFrontendFilters(prev => ({ ...prev, searchQuery: "" }))}
+          />
+          <button
+            type="button"
+            className="analytics-clear-filters-btn"
+            onClick={handleClearAll}
+            disabled={!hasActiveFilters}
+          >
+            Filtreleri temizle
+          </button>
+        </div>
+
+        <QuickFilterChips
+          activeChip={quickChip}
+          onChipClick={handleChipClick}
+          counts={quickChipCounts}
+        />
+
+        <FilterBar
+          filters={filters}
+          setFilters={setFilters}
+          frontendFilters={frontendFilters}
+          setFrontendFilters={setFrontendFilters}
+          competitions={availableCompetitions}
+          countries={availableCountries}
+        />
+
+        <ActiveFilterPills
+          filters={filters}
+          frontendFilters={frontendFilters}
+          quickChip={quickChip}
+          onClearFilter={handleClearFilter}
+          onClearAll={handleClearAll}
+        />
+
+        {!loading && data ? (
+          <ResultSummaryBar
+            showing={filteredItems.length}
+            total={totalFromApi}
+            loaded={totalLoaded}
+            offset={offset}
+            hasPrev={hasPrevPage}
+            hasNext={hasNextPage}
+            onPrev={handlePrevPage}
+            onNext={handleNextPage}
+          />
+        ) : null}
+      </div>
 
       {loading ? <StatePanel title="Maç analizleri yükleniyor..." /> : null}
       {error ? <StatePanel title="Analizler yüklenemedi" body={error} /> : null}
-      {!loading && !error && data?.items.length === 0 ? <StatePanel title="Maç bulunamadı" body="Filtreleri temizle veya daha geniş bir arama deneyin." /> : null}
-      {!loading && !error && data && data.items.length > 0 ? <MatchList data={data} navigate={navigate} /> : null}
+      {!loading && !error && filteredItems.length === 0 ? (
+        <EmptySearchState hasFilters={hasActiveFilters} onClear={handleClearAll} />
+      ) : null}
+      {!loading && !error && filteredItems.length > 0 ? (
+        <MatchList data={{ items: filteredItems, pagination: data!.pagination }} navigate={navigate} />
+      ) : null}
     </>
   );
 }
@@ -909,17 +1359,27 @@ function AnalyticsSummaryStat({ label, value }: { label: string; value: ReactNod
 
 function FilterBar({
   filters,
-  setFilters
+  setFilters,
+  frontendFilters,
+  setFrontendFilters,
+  competitions,
+  countries
 }: {
   filters: FootballAnalyticsMatchFilters;
   setFilters: (filters: FootballAnalyticsMatchFilters) => void;
+  frontendFilters: FrontendFilters;
+  setFrontendFilters: (filters: FrontendFilters) => void;
+  competitions: string[];
+  countries: string[];
 }) {
-  const update = (patch: Partial<FootballAnalyticsMatchFilters>) => setFilters({ ...filters, ...patch });
+  const updateApi = (patch: Partial<FootballAnalyticsMatchFilters>) => setFilters({ ...filters, ...patch });
+  const updateUi = (patch: Partial<FrontendFilters>) => setFrontendFilters({ ...frontendFilters, ...patch });
+
   return (
     <section className="analytics-filters" aria-label="Futbol analiz filtreleri">
       <label>
         Analiz durumu
-        <select value={filters.featureStatus} onChange={(event) => update({ featureStatus: event.target.value as FeatureStatus | "" })}>
+        <select value={filters.featureStatus} onChange={(event) => updateApi({ featureStatus: event.target.value as FeatureStatus | "" })}>
           <option value="">Tümü</option>
           <option value="ready">Hazır</option>
           <option value="partial">Kısmi</option>
@@ -928,7 +1388,7 @@ function FilterBar({
       </label>
       <label>
         Tahmin uygunluğu
-        <select value={String(filters.predictionEligible)} onChange={(event) => update({ predictionEligible: parseBooleanFilter(event.target.value) })}>
+        <select value={String(filters.predictionEligible)} onChange={(event) => updateApi({ predictionEligible: parseBooleanFilter(event.target.value) })}>
           <option value="">Tümü</option>
           <option value="true">Uygun</option>
           <option value="false">Uygun değil</option>
@@ -936,18 +1396,41 @@ function FilterBar({
       </label>
       <label>
         Sonuç durumu
-        <select value={String(filters.kuponEligible)} onChange={(event) => update({ kuponEligible: parseBooleanFilter(event.target.value) })}>
+        <select value={String(filters.kuponEligible)} onChange={(event) => updateApi({ kuponEligible: parseBooleanFilter(event.target.value) })}>
           <option value="">Tümü</option>
           <option value="true">Aktif</option>
           <option value="false">Pasif</option>
         </select>
       </label>
+      {competitions.length > 0 ? (
+        <label>
+          Lig
+          <select value={frontendFilters.competitionName} onChange={(event) => updateUi({ competitionName: event.target.value })}>
+            <option value="">Tümü</option>
+            {competitions.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {countries.length > 0 ? (
+        <label>
+          Ülke
+          <select value={frontendFilters.countryName} onChange={(event) => updateUi({ countryName: event.target.value })}>
+            <option value="">Tümü</option>
+            {countries.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <label>
-        Limit
-        <select value={filters.limit} onChange={(event) => update({ limit: Number(event.target.value) })}>
-          <option value={10}>10</option>
+        Sayfa boyutu
+        <select value={filters.limit ?? 20} onChange={(event) => updateApi({ limit: Number(event.target.value), offset: 0 })}>
           <option value={20}>20</option>
           <option value={50}>50</option>
+          <option value={100}>100</option>
+          <option value={200}>200</option>
         </select>
       </label>
     </section>

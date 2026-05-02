@@ -79,9 +79,11 @@ export async function fetchDashboardOverview(): Promise<DashboardOverviewRespons
 export async function fetchFootballAnalyticsMatches(filters: FootballAnalyticsMatchFilters = {}): Promise<FootballAnalyticsMatchListResponse> {
   const params = new URLSearchParams();
   params.set("limit", String(filters.limit ?? 20));
+  params.set("offset", String(filters.offset ?? 0));
   if (filters.featureStatus) params.set("featureStatus", filters.featureStatus);
   if (filters.predictionEligible !== "" && filters.predictionEligible !== undefined) params.set("predictionEligible", String(filters.predictionEligible));
   if (filters.kuponEligible !== "" && filters.kuponEligible !== undefined) params.set("kuponEligible", String(filters.kuponEligible));
+  if (filters.competitionId) params.set("competitionId", filters.competitionId);
   return requestJson<FootballAnalyticsMatchListResponse>(`/analytics/football/matches?${params.toString()}`);
 }
 
