@@ -55,6 +55,7 @@ export interface FinishedSyncUnresolvedDiagnostic {
   reason:
     | "unsupported_status"
     | "live_numeric_status"
+    | "live_minute_status"
     | "after_pen"
     | "missing_team_mapping"
     | "missing_competition_mapping"
@@ -308,6 +309,9 @@ function classifyUnresolvedReason(
     if (/^\d+$/.test(normalizedStatus) && optionalString(row.match_live) === "1") {
       return "live_numeric_status";
     }
+    if (isLiveMinuteStatus(normalizedStatus)) {
+      return "live_minute_status";
+    }
     if (normalizedStatus === "after pen.") {
       return "after_pen";
     }
@@ -375,7 +379,7 @@ function countUnresolvedReasons(diagnostics: FinishedSyncUnresolvedDiagnostic[])
 }
 
 function isSafeExpectedSkip(diagnostic: FinishedSyncUnresolvedDiagnostic) {
-  return ["live_numeric_status", "after_pen", "match_not_finished"].includes(diagnostic.reason);
+  return ["live_numeric_status", "live_minute_status", "after_pen", "match_not_finished"].includes(diagnostic.reason);
 }
 
 function hasFulltimeScorePair(row: APIFootballComEvent, statusDecision: { status: string; supported: boolean }) {
@@ -390,6 +394,10 @@ function hasFulltimeScorePair(row: APIFootballComEvent, statusDecision: { status
 
 function hasScorePair(home: unknown, away: unknown) {
   return optionalString(home) !== undefined && optionalString(away) !== undefined;
+}
+
+function isLiveMinuteStatus(status: string) {
+  return /^(?:45|90)\+\d*$/.test(status);
 }
 
 function asArray(value: unknown): unknown[] {

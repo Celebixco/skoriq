@@ -37,6 +37,48 @@ describe("football finished-score sync diagnostics", () => {
     });
   });
 
+  it.each(["45+", "90+", "90+3"])("classifies %s as a live minute safe skip", (status) => {
+    expect(
+      classifyUnresolvedEvent("5", "207", "events", {
+        match_id: `live-${status}`,
+        league_id: "207",
+        match_status: status,
+        match_hometeam_id: "1",
+        match_awayteam_id: "2",
+        match_hometeam_score: "1",
+        match_awayteam_score: "0",
+        match_hometeam_halftime_score: "1",
+        match_awayteam_halftime_score: "0"
+      })
+    ).toMatchObject({
+      canonicalStatusDecision: "unsupported",
+      reason: "live_minute_status",
+      scoreFieldPresence: {
+        fulltimePresent: false,
+        halftimePresent: true
+      }
+    });
+  });
+
+  it("keeps truly unknown statuses unsafe", () => {
+    expect(
+      classifyUnresolvedEvent("5", "207", "events", {
+        match_id: "mystery",
+        league_id: "207",
+        match_status: "Mystery Delay",
+        match_hometeam_id: "1",
+        match_awayteam_id: "2"
+      })
+    ).toMatchObject({
+      canonicalStatusDecision: "unsupported",
+      reason: "unsupported_status",
+      scoreFieldPresence: {
+        fulltimePresent: false,
+        halftimePresent: false
+      }
+    });
+  });
+
   it("keeps After Pen. as an unsupported non-standard status", () => {
     expect(
       classifyUnresolvedEvent("82", "244", "scores", {
@@ -103,6 +145,29 @@ describe("football finished-score sync diagnostics", () => {
       scoreFieldPresence: {
         fulltimePresent: false,
         halftimePresent: false
+      }
+    });
+  });
+
+  it("finished textual status remains supported", () => {
+    expect(
+      classifyUnresolvedEvent("44", "152", "scores", {
+        match_id: "finished",
+        league_id: "152",
+        match_status: "Finished",
+        match_hometeam_id: "1",
+        match_awayteam_id: "2",
+        match_hometeam_score: "2",
+        match_awayteam_score: "1",
+        match_hometeam_halftime_score: "1",
+        match_awayteam_halftime_score: "0"
+      })
+    ).toMatchObject({
+      canonicalStatusDecision: "finished",
+      reason: "unknown",
+      scoreFieldPresence: {
+        fulltimePresent: true,
+        halftimePresent: true
       }
     });
   });
