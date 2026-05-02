@@ -1033,7 +1033,7 @@ function OverviewQuickActions({ userRole, navigate }: { userRole: AuthUser["role
     { label: "Maç Analizleri", path: "/football/analytics" },
     { label: "Takımlar", path: "/football/teams" },
     { label: "Ligler", path: "/football/competitions" },
-    { label: "Tahmin Sonuçları", path: "/football/prediction-results" }
+    { label: "Sonuçlar", path: "/football/prediction-results" }
   ];
   const adminActions = [
     { label: "Draft Tahminler", path: "/football/predictions/drafts" },
@@ -3340,56 +3340,246 @@ const initialPredictionResultsFilters: FootballPredictionResultsFilters = {
 
 function PredictionResultsPage({ navigate }: { navigate: (path: string) => void }) {
   const [filters, setFilters] = useState<FootballPredictionResultsFilters>(initialPredictionResultsFilters);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [expandedLeagues, setExpandedLeagues] = useState<Set<string>>(new Set());
+  const [expandedMatches, setExpandedMatches] = useState<Set<string>>(new Set());
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
   const { data, loading, error } = useLoad(() => fetchFootballPredictionResults(filters), [filters]);
   const { data: summary } = useLoad(() => fetchFootballPredictionResultsSummary(filters), [filters]);
+
+  const filteredItems = useMemo(() => {
+    if (!data) return [];
+    if (!debouncedSearch.trim()) return data.items;
+    const query = debouncedSearch.toLowerCase().trim();
+    return data.items.filter(item => {
+      const home = item.match.homeTeam.name.toLowerCase();
+      const away = item.match.awayTeam.name.toLowerCase();
+      const competition = item.competition.name.toLowerCase();
+      const country = item.country.name?.toLowerCase() ?? "";
+      return home.includes(query) || away.includes(query) || competition.includes(query) || country.includes(query);
+    });
+  }, [data, debouncedSearch]);
+
+  const groupedLeagues = useMemo(() => groupResultsByLeague(filteredItems), [filteredItems]);
+
+  useEffect(() => {
+    if (groupedLeagues.length > 0) {
+      setExpandedLeagues(prev => {
+        const next = new Set(prev);
+        groupedLeagues.forEach(l => next.add(leagueKey(l)));
+        return next;
+      });
+    }
+  }, [groupedLeagues.length]);
+
+  const handleClearFilters = () => {
+    setFilters(initialPredictionResultsFilters);
+    setSearchQuery("");
+  };
+
+  const hasActiveFilters = Boolean(
+    filters.status || filters.tier || filters.countryId || filters.competitionId ||
+    filters.marketType || filters.from || filters.to || debouncedSearch.trim()
+  );
+
+  const totalFromApi = data?.total ?? 0;
+  const offset = filters.offset ?? 0;
+  const limit = filters.limit ?? 50;
+  const hasNextPage = offset + (data?.items.length ?? 0) < totalFromApi;
+  const hasPrevPage = offset > 0;
+
+  const handlePrevPage = () => setFilters(prev => ({ ...prev, offset: Math.max(0, (prev.offset ?? 0) - (prev.limit ?? 50)) }));
+  const handleNextPage = () => setFilters(prev => ({ ...prev, offset: (prev.offset ?? 0) + (prev.limit ?? 50) }));
+
+  const toggleLeague = (key: string) => {
+    setExpandedLeagues(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleMatch = (matchId: string) => {
+    setExpandedMatches(prev => {
+      const next = new Set(prev);
+      if (next.has(matchId)) next.delete(matchId);
+      else next.add(matchId);
+      return next;
+    });
+  };
+
+  const successRate = summary && summary.totalSettled > 0
+    ? Math.round((summary.won / summary.totalSettled) * 100)
+    : null;
+
   return (
     <>
-      <header className="hero">
+      <header className="hero results-header">
         <div>
           <p className="eyebrow">SkorIQ Futbol</p>
-          <h1>Tahmin Sonuçları</h1>
-          <p>Ülke, lig ve maç bazında SkorIQ tahminlerinin gerçekleşen sonuçlarla güvenli karşılaştırması.</p>
+          <h1>Sonuçlar</h1>
+          <p>SkorIQ tahminlerinin maç sonuçlarına göre değerlendirmesini incele.</p>
         </div>
       </header>
-      <section className="panel">
-        <div className="panel-header">
-          <h2>Sonuç Özeti</h2>
-          <span className="muted">Otomatik yayın yok, kupon dili yok.</span>
-        </div>
-        <div className="stats-grid">
-          <MetricCard title="Toplam" value={summary?.totalSettled ?? 0} />
-          <MetricCard title="Başarılı" value={summary?.won ?? 0} />
-          <MetricCard title="Başarısız" value={summary?.lost ?? 0} />
-          <MetricCard title="Bekliyor" value={summary?.pending ?? 0} />
+
+      <section className="panel results-summary-panel">
+        <div className="results-summary-grid">
+          <div className="results-summary-card">
+            <span>Toplam değerlendirilen</span>
+            <strong>{summary?.totalSettled ?? "—"}</strong>
+          </div>
+          <div className="results-summary-card results-won">
+            <span>Başarılı</span>
+            <strong>{summary?.won ?? "—"}</strong>
+          </div>
+          <div className="results-summary-card results-lost">
+            <span>Başarısız</span>
+            <strong>{summary?.lost ?? "—"}</strong>
+          </div>
+          <div className="results-summary-card results-pending">
+            <span>Bekleyen</span>
+            <strong>{summary?.pending ?? "—"}</strong>
+          </div>
+          {successRate !== null ? (
+            <div className="results-summary-card results-rate">
+              <span>Başarı oranı</span>
+              <strong>{successRate}%</strong>
+            </div>
+          ) : null}
         </div>
       </section>
-      <PredictionResultsFilterBar filters={filters} setFilters={setFilters} />
-      {loading ? <StatePanel title="Tahmin sonuçları yükleniyor..." /> : null}
-      {error ? <StatePanel title="Tahmin sonuçları yüklenemedi" body={error} /> : null}
-      {!loading && !error && data?.items.length === 0 ? <StatePanel title="Tahmin sonucu bulunamadı" /> : null}
-      {!loading && !error && data ? <PredictionResultsList items={data.items} total={data.total} navigate={navigate} /> : null}
+
+      <div className="results-controls">
+        <div className="results-search-row">
+          <div className="results-search-bar">
+            <svg className="results-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+              placeholder="Takım, lig veya maç ara…"
+              aria-label="Sonuç ara"
+            />
+            {searchQuery ? (
+              <button type="button" className="results-search-clear" onClick={() => setSearchQuery("")} aria-label="Aramayı temizle">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                </svg>
+              </button>
+            ) : null}
+          </div>
+          <button type="button" className="results-clear-btn" onClick={handleClearFilters} disabled={!hasActiveFilters}>
+            Filtreleri temizle
+          </button>
+        </div>
+
+        <ResultsFilterBar
+          filters={filters}
+          setFilters={setFilters}
+          countries={summary?.byCountry ?? []}
+          leagues={summary?.byLeague ?? []}
+        />
+
+        {!loading && data ? (
+          <div className="results-pagination-bar">
+            <p className="results-count">
+              {offset + 1}–{Math.min(offset + data.items.length, totalFromApi)} / {totalFromApi.toLocaleString("tr-TR")} sonuç
+            </p>
+            <div className="results-pagination">
+              <button type="button" className="results-page-btn" onClick={handlePrevPage} disabled={!hasPrevPage} aria-label="Önceki sayfa">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+                Önceki
+              </button>
+              <button type="button" className="results-page-btn" onClick={handleNextPage} disabled={!hasNextPage} aria-label="Sonraki sayfa">
+                Sonraki
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {loading ? <ResultsSkeleton /> : null}
+      {error ? <StatePanel title="Sonuçlar yüklenemedi" body={error} /> : null}
+      {!loading && !error && groupedLeagues.length === 0 ? (
+        <ResultsEmptyState hasFilters={hasActiveFilters} onClear={handleClearFilters} />
+      ) : null}
+      {!loading && !error && groupedLeagues.length > 0 ? (
+        <section className="results-list" aria-label="Maç sonuçları listesi">
+          {groupedLeagues.map((league) => (
+            <LeagueGroup
+              key={leagueKey(league)}
+              league={league}
+              expanded={expandedLeagues.has(leagueKey(league))}
+              onToggle={() => toggleLeague(leagueKey(league))}
+              expandedMatches={expandedMatches}
+              onToggleMatch={toggleMatch}
+              navigate={navigate}
+            />
+          ))}
+        </section>
+      ) : null}
     </>
   );
 }
 
-function PredictionResultsFilterBar({ filters, setFilters }: { filters: FootballPredictionResultsFilters; setFilters: (filters: FootballPredictionResultsFilters) => void }) {
+function ResultsFilterBar({
+  filters,
+  setFilters,
+  countries,
+  leagues
+}: {
+  filters: FootballPredictionResultsFilters;
+  setFilters: (filters: FootballPredictionResultsFilters) => void;
+  countries: Array<{ id: string | null; name: string | null; count: number }>;
+  leagues: Array<{ id: string; name: string; count: number }>;
+}) {
   const update = (patch: Partial<FootballPredictionResultsFilters>) => setFilters({ ...filters, ...patch, offset: 0 });
   return (
-    <section className="filters" aria-label="Tahmin sonuçları filtreleri">
+    <section className="results-filter-bar" aria-label="Sonuç filtreleri">
+      <label>
+        Ülke
+        <select value={filters.countryId ?? ""} onChange={(e) => update({ countryId: e.target.value || undefined })}>
+          <option value="">Tümü</option>
+          {countries.map((c) => (
+            <option key={c.id ?? c.name ?? "unknown"} value={c.id ?? ""}>{c.name ?? "Bilinmiyor"}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Lig
+        <select value={filters.competitionId ?? ""} onChange={(e) => update({ competitionId: e.target.value || undefined })}>
+          <option value="">Tümü</option>
+          {leagues.map((l) => (
+            <option key={l.id} value={l.id}>{l.name}</option>
+          ))}
+        </select>
+      </label>
       <label>
         Durum
-        <select value={filters.status} onChange={(event) => update({ status: event.target.value as FootballPredictionResultsFilters["status"] })}>
+        <select value={filters.status} onChange={(e) => update({ status: e.target.value as FootballPredictionResultsFilters["status"] })}>
           <option value="">Tümü</option>
           <option value="won">Başarılı</option>
           <option value="lost">Başarısız</option>
           <option value="pending">Bekliyor</option>
-          <option value="missing_score">Skor Eksik</option>
           <option value="not_settleable">Değerlendirilemedi</option>
+          <option value="missing_score">Skor bekleniyor</option>
+          <option value="unsupported_market">Desteklenmeyen tahmin tipi</option>
         </select>
       </label>
       <label>
-        Kademe
-        <select value={filters.tier} onChange={(event) => update({ tier: event.target.value as FootballPredictionResultsFilters["tier"] })}>
+        Tahmin tipi
+        <select value={filters.tier} onChange={(e) => update({ tier: e.target.value as FootballPredictionResultsFilters["tier"] })}>
           <option value="">Tümü</option>
           <option value="primary">Tahminim</option>
           <option value="try">Denenir</option>
@@ -3397,60 +3587,371 @@ function PredictionResultsFilterBar({ filters, setFilters }: { filters: Football
         </select>
       </label>
       <label>
-        Market tipi
-        <input value={filters.marketType ?? ""} onChange={(event) => update({ marketType: event.target.value.trim() })} placeholder="over_under_goals" />
+        Başlangıç
+        <input type="date" value={filters.from ?? ""} onChange={(e) => update({ from: e.target.value || undefined })} />
+      </label>
+      <label>
+        Bitiş
+        <input type="date" value={filters.to ?? ""} onChange={(e) => update({ to: e.target.value || undefined })} />
+      </label>
+      <label>
+        Sayfa boyutu
+        <select value={filters.limit ?? 50} onChange={(e) => update({ limit: Number(e.target.value) })}>
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
       </label>
     </section>
   );
 }
 
-function PredictionResultsList({ items, total, navigate }: { items: FootballPredictionResultItem[]; total: number; navigate: (path: string) => void }) {
+function LeagueGroup({
+  league,
+  expanded,
+  onToggle,
+  expandedMatches,
+  onToggleMatch,
+  navigate
+}: {
+  league: GroupedLeague;
+  expanded: boolean;
+  onToggle: () => void;
+  expandedMatches: Set<string>;
+  onToggleMatch: (matchId: string) => void;
+  navigate: (path: string) => void;
+}) {
   return (
-    <section className="panel">
-      <div className="panel-header">
-        <h2>Ülke → Lig → Maç</h2>
-        <span className="muted">{total} sonuçtan {items.length} gösteriliyor</span>
-      </div>
-      <div className="draft-grid">
-        {items.map((item) => (
-          <PredictionResultCard key={`${item.match.id}-${item.prediction.marketType}-${item.prediction.selection}-${item.prediction.tier}`} item={item} navigate={navigate} />
-        ))}
-      </div>
+    <div className="league-group">
+      <button
+        type="button"
+        className="league-group-header"
+        onClick={onToggle}
+        aria-expanded={expanded}
+      >
+        <div className="league-group-identity">
+          {league.competition.logoUrl ? (
+            <img src={league.competition.logoUrl} alt="" className="league-group-logo" loading="lazy" />
+          ) : (
+            <span className="league-group-initials">{league.competition.name.slice(0, 2).toUpperCase()}</span>
+          )}
+          <div className="league-group-names">
+            <span className="league-group-name">{league.competition.name}</span>
+            <span className="league-group-country">{league.country.name ?? ""}</span>
+          </div>
+        </div>
+        <div className="league-group-meta">
+          <span className="league-group-count">{league.matches.length} maç</span>
+          <svg
+            className={`league-group-chevron${expanded ? " expanded" : ""}`}
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </div>
+      </button>
+      {expanded ? (
+        <div className="league-group-body">
+          {league.matches.map((match) => (
+            <MatchResultRow
+              key={match.match.id}
+              match={match}
+              expanded={expandedMatches.has(match.match.id)}
+              onToggle={() => onToggleMatch(match.match.id)}
+              navigate={navigate}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MatchResultRow({
+  match,
+  expanded,
+  onToggle,
+  navigate
+}: {
+  match: GroupedMatch;
+  expanded: boolean;
+  onToggle: () => void;
+  navigate: (path: string) => void;
+}) {
+  const matchStatus = getMatchStatus(match.match);
+  const tierSummaries = getTierSummaries(match.predictions);
+
+  return (
+    <div className="match-result-row">
+      <button
+        type="button"
+        className="match-result-main"
+        onClick={onToggle}
+        aria-expanded={expanded}
+      >
+        <div className="match-result-left">
+          <span className="match-result-date">{formatDate(match.match.kickoffAt)}</span>
+          <span className={`match-result-status status-${matchStatus.toLowerCase().replace(/\s+/g, "-")}`}>{matchStatus}</span>
+        </div>
+        <div className="match-result-teams">
+          <div className="match-result-team match-result-home">
+            <TeamLogo name={match.match.homeTeam.name} logoUrl={match.match.homeTeam.logoUrl} />
+            <span>{match.match.homeTeam.name}</span>
+          </div>
+          <div className="match-result-team match-result-away">
+            <TeamLogo name={match.match.awayTeam.name} logoUrl={match.match.awayTeam.logoUrl} />
+            <span>{match.match.awayTeam.name}</span>
+          </div>
+        </div>
+        <div className="match-result-score">
+          {match.match.finalScore ? (
+            <>
+              <span className="match-result-final">{match.match.finalScore}</span>
+              {match.match.halftimeScore ? (
+                <span className="match-result-halftime">İY {match.match.halftimeScore}</span>
+              ) : null}
+            </>
+          ) : (
+            <span className="match-result-no-score">—</span>
+          )}
+        </div>
+        <div className="match-result-badges">
+          {Object.entries(tierSummaries).map(([tier, summary]) => (
+            <span key={tier} className={`match-result-tier-badge tier-${tier} status-${summary.status}`}>
+              {tierLabel(tier)}: {summary.label}
+            </span>
+          ))}
+        </div>
+        <svg
+          className={`match-result-chevron${expanded ? " expanded" : ""}`}
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {expanded ? (
+        <div className="match-result-detail">
+          {(["primary", "try", "alternative"] as const).map((tier) => {
+            const preds = match.predictions.filter(p => p.prediction.tier === tier);
+            if (preds.length === 0) return null;
+            return (
+              <div key={tier} className="prediction-tier-group">
+                <h4 className="prediction-tier-title">{tierLabel(tier)}</h4>
+                <div className="prediction-tier-list">
+                  {preds.map((p, i) => (
+                    <div key={i} className="prediction-line">
+                      <div className="prediction-line-main">
+                        <span className="prediction-label">{p.prediction.displayLabel}</span>
+                        <SettlementBadge status={p.settlement.status} />
+                      </div>
+                      {p.prediction.confidence !== null ? (
+                        <span className="prediction-confidence">Güven: {p.prediction.confidence}</span>
+                      ) : null}
+                      {p.settlement.explanation ? (
+                        <p className="prediction-explanation">{p.settlement.explanation}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          <button
+            type="button"
+            className="match-detail-link"
+            onClick={() => navigate(`/football/analytics/${match.match.id}`)}
+          >
+            Maç detayını görüntüle
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SettlementBadge({ status }: { status: FootballPredictionResultItem["settlement"]["status"] }) {
+  return <span className={`settlement-badge settlement-${status}`}>{predictionResultStatusLabel(status)}</span>;
+}
+
+function ResultsEmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
+  return (
+    <div className="results-empty-state">
+      <p className="results-empty-title">
+        {hasFilters ? "Filtrelere uygun sonuç bulunamadı." : "Henüz değerlendirilen tahmin yok."}
+      </p>
+      <p className="results-empty-body">
+        {hasFilters
+          ? "Farklı filtreler veya arama terimleri deneyebilirsin."
+          : "Maçlar tamamlandıkça SkorIQ tahminleri burada sonuçlarıyla birlikte listelenecek."}
+      </p>
+      {hasFilters ? (
+        <button type="button" className="results-empty-btn" onClick={onClear}>
+          Filtreleri temizle
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function ResultsSkeleton() {
+  return (
+    <section className="results-list" aria-label="Sonuçlar yükleniyor">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="league-group">
+          <div className="league-group-header skeleton-shimmer">
+            <div className="league-group-identity">
+              <span className="league-group-initials" style={{ background: "rgba(148,163,184,0.12)" }} />
+              <div className="league-group-names">
+                <span className="league-group-name" style={{ width: "8rem", height: "0.9rem", background: "rgba(148,163,184,0.12)", borderRadius: "0.3rem" }} />
+                <span className="league-group-country" style={{ width: "5rem", height: "0.7rem", background: "rgba(148,163,184,0.08)", borderRadius: "0.3rem" }} />
+              </div>
+            </div>
+          </div>
+          <div className="league-group-body">
+            {[1, 2].map((j) => (
+              <div key={j} className="match-result-row skeleton-shimmer">
+                <div className="match-result-main">
+                  <div className="match-result-left">
+                    <span style={{ width: "3rem", height: "0.75rem", background: "rgba(148,163,184,0.1)", borderRadius: "0.2rem" }} />
+                  </div>
+                  <div className="match-result-teams">
+                    <div className="match-result-team">
+                      <span style={{ width: "1.5rem", height: "1.5rem", borderRadius: "0.3rem", background: "rgba(148,163,184,0.1)" }} />
+                      <span style={{ width: "6rem", height: "0.85rem", background: "rgba(148,163,184,0.1)", borderRadius: "0.2rem" }} />
+                    </div>
+                    <div className="match-result-team">
+                      <span style={{ width: "1.5rem", height: "1.5rem", borderRadius: "0.3rem", background: "rgba(148,163,184,0.1)" }} />
+                      <span style={{ width: "6rem", height: "0.85rem", background: "rgba(148,163,184,0.1)", borderRadius: "0.2rem" }} />
+                    </div>
+                  </div>
+                  <div className="match-result-score">
+                    <span style={{ width: "2rem", height: "1.2rem", background: "rgba(148,163,184,0.1)", borderRadius: "0.2rem" }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </section>
   );
 }
 
-function PredictionResultCard({ item, navigate }: { item: FootballPredictionResultItem; navigate: (path: string) => void }) {
-  return (
-    <article className="draft-card">
-      <div className="draft-card-header">
-        <span className="eyebrow">{item.country.name ?? "Ülke"} → {item.competition.name}</span>
-        <span className={`badge settlement-${item.settlement.status}`}>{predictionResultStatusLabel(item.settlement.status)}</span>
-      </div>
-      <h3>{item.match.homeTeam.name} vs {item.match.awayTeam.name}</h3>
-      <p className="muted">{formatDateTime(item.match.kickoffAt)}</p>
-      <div className="draft-card-grid">
-        <span>SkorIQ Tahmini</span>
-        <strong>{tierLabel(item.prediction.tier)} · {item.prediction.displayLabel}</strong>
-        <span>Maç Sonucu</span>
-        <strong>{item.match.finalScore ?? "Bekliyor"}</strong>
-        <span>İlk Yarı</span>
-        <strong>{item.match.halftimeScore ?? "Bekliyor"}</strong>
-      </div>
-      <p>{item.settlement.explanation}</p>
-      <button type="button" onClick={() => navigate(`/football/analytics/${item.match.id}`)}>Maç detayına git</button>
-    </article>
-  );
+// Helper types and functions
+interface GroupedMatch {
+  match: FootballPredictionResultItem["match"];
+  country: FootballPredictionResultItem["country"];
+  competition: FootballPredictionResultItem["competition"];
+  predictions: Array<{
+    prediction: FootballPredictionResultItem["prediction"];
+    settlement: FootballPredictionResultItem["settlement"];
+  }>;
+}
+
+interface GroupedLeague {
+  country: FootballPredictionResultItem["country"];
+  competition: FootballPredictionResultItem["competition"];
+  matches: GroupedMatch[];
+}
+
+function groupResultsByLeague(items: FootballPredictionResultItem[]): GroupedLeague[] {
+  const leagueMap = new Map<string, GroupedLeague>();
+  for (const item of items) {
+    const leagueKey = `${item.country.id ?? item.country.name ?? "unknown"}|${item.competition.id}`;
+    if (!leagueMap.has(leagueKey)) {
+      leagueMap.set(leagueKey, {
+        country: item.country,
+        competition: item.competition,
+        matches: []
+      });
+    }
+    const league = leagueMap.get(leagueKey)!;
+    const matchKey = item.match.id;
+    let match = league.matches.find(m => m.match.id === matchKey);
+    if (!match) {
+      match = {
+        match: item.match,
+        country: item.country,
+        competition: item.competition,
+        predictions: []
+      };
+      league.matches.push(match);
+    }
+    match.predictions.push({
+      prediction: item.prediction,
+      settlement: item.settlement
+    });
+  }
+  return Array.from(leagueMap.values());
+}
+
+function leagueKey(league: GroupedLeague): string {
+  return `${league.country.id ?? league.country.name ?? "unknown"}|${league.competition.id}`;
+}
+
+function getMatchStatus(match: FootballPredictionResultItem["match"]): string {
+  if (match.finalScore) return "FT";
+  const kickoff = new Date(match.kickoffAt);
+  const now = new Date();
+  if (kickoff < now) return "Finished";
+  return "Bekliyor";
+}
+
+function getTierSummaries(predictions: GroupedMatch["predictions"]) {
+  const summaries: Record<string, { label: string; status: string }> = {};
+  const tiers: Array<"primary" | "try" | "alternative"> = ["primary", "try", "alternative"];
+
+  for (const tier of tiers) {
+    const tierPreds = predictions.filter(p => p.prediction.tier === tier);
+    if (tierPreds.length === 0) continue;
+
+    const won = tierPreds.filter(p => p.settlement.status === "won").length;
+    const lost = tierPreds.filter(p => p.settlement.status === "lost").length;
+    const pending = tierPreds.filter(p => p.settlement.status === "pending").length;
+
+    if (tier === "try" && tierPreds.length > 1) {
+      const allWon = won === tierPreds.length;
+      const allLost = lost === tierPreds.length;
+      const allPending = pending === tierPreds.length;
+      const label = allWon ? `${won}/${tierPreds.length} Kazandı` : allLost ? `${lost}/${tierPreds.length} Kaybetti` : allPending ? "Bekliyor" : `${won}/${tierPreds.length} Kazandı`;
+      const status = allWon ? "won" : allLost ? "lost" : allPending ? "pending" : "mixed";
+      summaries[tier] = { label, status };
+    } else {
+      const first = tierPreds[0]!;
+      const status = first.settlement.status;
+      const label = status === "won" ? "Kazandı" : status === "lost" ? "Kaybetti" : status === "pending" ? "Bekliyor" : predictionResultStatusLabel(status);
+      summaries[tier] = { label, status };
+    }
+  }
+
+  return summaries;
 }
 
 function predictionResultStatusLabel(status: FootballPredictionResultItem["settlement"]["status"]) {
   const labels: Record<FootballPredictionResultItem["settlement"]["status"], string> = {
-    won: "Başarılı",
-    lost: "Başarısız",
+    won: "Kazandı",
+    lost: "Kaybetti",
     void: "Geçersiz",
     pending: "Bekliyor",
-    missing_score: "Skor Eksik",
-    unsupported_market: "Desteklenmiyor",
+    missing_score: "Skor bekleniyor",
+    unsupported_market: "Desteklenmeyen tahmin tipi",
     not_settleable: "Değerlendirilemedi"
   };
   return labels[status];
@@ -4072,7 +4573,7 @@ function Shell({
         <NavGroup title="Futbol">
           <NavButton icon="globe" label="Futbol Keşfi" path="/football" currentPath={currentPath} navigate={navigateFromSidebar} />
           <NavButton icon="analytics" label="Maç Analizi" path="/football/analytics" currentPath={currentPath} navigate={navigateFromSidebar} />
-          <NavButton icon="results" label="Tahmin Sonuçları" path="/football/prediction-results" currentPath={currentPath} navigate={navigateFromSidebar} />
+          <NavButton icon="results" label="Sonuçlar" path="/football/prediction-results" currentPath={currentPath} navigate={navigateFromSidebar} />
           {isAdmin ? (
             <>
               <NavButton
