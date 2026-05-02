@@ -74,6 +74,11 @@ const initialFilters: FootballAnalyticsMatchFilters = {
   offset: 0
 };
 
+// BACKEND LIMITATION: The analytics API does not support match status filtering.
+// Finished matches are filtered out frontend-side until the backend adds a
+// status=upcoming (or equivalent) query parameter.
+const EXCLUDED_ANALYTICS_STATUSES = ["finished", "after_extra_time", "after_penalties", "abandoned", "cancelled"] as const;
+
 export const analyticsExpandedPageSize = 200;
 const withinWindowHours = 36;
 
@@ -99,7 +104,8 @@ export function filterFootballAnalyticsItems(
   searchQuery: string,
   now = new Date()
 ) {
-  let filtered = [...items];
+  // Always exclude finished/cancelled matches (backend does not support status filter)
+  let filtered = items.filter(item => !EXCLUDED_ANALYTICS_STATUSES.includes(item.match.status as typeof EXCLUDED_ANALYTICS_STATUSES[number]));
 
   if (searchQuery.trim()) {
     const query = searchQuery.toLowerCase().trim();
@@ -128,6 +134,12 @@ export function filterFootballAnalyticsItems(
     filtered = filtered.filter(item => !item.h2h.h2hMissing);
   }
 
+  if (frontendFilters.hasPrediction) {
+    // BACKEND LIMITATION: analytics list does not expose a "has prediction" field.
+    // Using kuponEligible as a proxy until backend supports prediction existence filtering.
+    filtered = filtered.filter(item => item.kuponEligible);
+  }
+
   return filtered;
 }
 
@@ -146,6 +158,7 @@ export interface FrontendFilters {
   countryName: string;
   within24h: boolean;
   hasH2h: boolean;
+  hasPrediction: boolean;
 }
 
 const emptyFrontendFilters: FrontendFilters = {
@@ -153,10 +166,11 @@ const emptyFrontendFilters: FrontendFilters = {
   competitionName: "",
   countryName: "",
   within24h: false,
-  hasH2h: false
+  hasH2h: false,
+  hasPrediction: false
 };
 
-export type QuickChipId = "all" | "ready" | "predictionEligible" | "within24h" | "hasH2h";
+export type QuickChipId = "all" | "ready" | "predictionEligible" | "within24h" | "hasH2h" | "hasPrediction";
 
 export function SearchBar({ query, onChange, onClear }: {
   query: string;
@@ -191,7 +205,7 @@ export function SearchBar({ query, onChange, onClear }: {
 export function QuickFilterChips({ activeChip, onChipClick, counts }: {
   activeChip: QuickChipId | null;
   onChipClick: (chip: QuickChipId) => void;
-  counts: { ready: number; predictionEligible: number; within24h: number; hasH2h: number };
+  counts: { ready: number; predictionEligible: number; within24h: number; hasH2h: number; hasPrediction: number };
 }) {
   const chips: { id: QuickChipId; label: string; count?: number }[] = [
     { id: "all", label: "Tümü" },
@@ -199,6 +213,7 @@ export function QuickFilterChips({ activeChip, onChipClick, counts }: {
     { id: "predictionEligible", label: "Tahmine uygun", count: counts.predictionEligible },
     { id: "within24h", label: "36 saat içinde", count: counts.within24h },
     { id: "hasH2h", label: "H2H mevcut", count: counts.hasH2h },
+    { id: "hasPrediction", label: "Tahmin var", count: counts.hasPrediction },
   ];
 
   return (
@@ -252,6 +267,9 @@ export function ActiveFilterPills({ filters, frontendFilters, quickChip, onClear
   }
   if (frontendFilters.hasH2h || quickChip === "hasH2h") {
     pills.push({ key: "hasH2h", label: "H2H mevcut" });
+  }
+  if (frontendFilters.hasPrediction || quickChip === "hasPrediction") {
+    pills.push({ key: "hasPrediction", label: "Tahmin var" });
   }
 
   if (pills.length === 0) return null;
@@ -328,14 +346,33 @@ export function ResultSummaryBar({ showing, total, loaded, offset, frontendFilte
   );
 }
 
-export function EmptySearchState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
+export function EmptySearchState({ hasFilters, apiHasData, onClear, navigate }: {
+  hasFilters: boolean;
+  apiHasData: boolean;
+  onClear: () => void;
+  navigate: (path: string) => void;
+}) {
+  const title = apiHasData ? "Eşleşen maç bulunamadı." : "Yaklaşan analiz maçı bulunmuyor.";
+  const body = apiHasData
+    ? "Takım adı, lig adı veya farklı bir arama terimi deneyebilirsin."
+    : "Biten maçlar ve tahmin sonuçları için Sonuçlar sayfasına git.";
+
   return (
     <div className="analytics-empty-state">
-      <p className="analytics-empty-title">Eşleşen maç bulunamadı.</p>
-      <p className="analytics-empty-body">Takım adı, lig adı veya farklı bir arama terimi deneyebilirsin.</p>
+      <p className="analytics-empty-title">{title}</p>
+      <p className="analytics-empty-body">{body}</p>
       {hasFilters ? (
         <button type="button" className="analytics-empty-btn" onClick={onClear}>
           Filtreleri temizle
+        </button>
+      ) : null}
+      {!apiHasData ? (
+        <button
+          type="button"
+          className="analytics-empty-btn"
+          onClick={() => navigate("/football/prediction-results")}
+        >
+          Sonuçlar sayfasına git →
         </button>
       ) : null}
     </div>
@@ -1183,14 +1220,15 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
   }, [filteredItems]);
 
   const quickChipCounts = useMemo(() => {
-    if (!data) return { ready: 0, predictionEligible: 0, within24h: 0, hasH2h: 0 };
+    if (!data) return { ready: 0, predictionEligible: 0, within24h: 0, hasH2h: 0, hasPrediction: 0 };
     const now = new Date();
 
     return {
       ready: data.items.filter(item => item.featureStatus === "ready").length,
       predictionEligible: data.items.filter(item => item.predictionEligible).length,
       within24h: data.items.filter(item => isWithinNextHours(item.match.kickoffAt, now)).length,
-      hasH2h: data.items.filter(item => !item.h2h.h2hMissing).length
+      hasH2h: data.items.filter(item => !item.h2h.h2hMissing).length,
+      hasPrediction: data.items.filter(item => item.kuponEligible).length
     };
   }, [data]);
 
@@ -1205,6 +1243,9 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
       setQuickChip(null);
     }
     if (quickChip === "hasH2h" && !frontendFilters.hasH2h) {
+      setQuickChip(null);
+    }
+    if (quickChip === "hasPrediction" && !frontendFilters.hasPrediction) {
       setQuickChip(null);
     }
   }, [filters, frontendFilters, quickChip]);
@@ -1257,6 +1298,10 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
         setFrontendFilters(prev => ({ ...prev, hasH2h: false }));
         setQuickChip(prev => prev === "hasH2h" ? null : prev);
         break;
+      case "hasPrediction":
+        setFrontendFilters(prev => ({ ...prev, hasPrediction: false }));
+        setQuickChip(prev => prev === "hasPrediction" ? null : prev);
+        break;
     }
   };
 
@@ -1271,6 +1316,7 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
       if (chip === "predictionEligible") setFilters(prev => ({ ...prev, predictionEligible: "" }));
       if (chip === "within24h") setFrontendFilters(prev => ({ ...prev, within24h: false }));
       if (chip === "hasH2h") setFrontendFilters(prev => ({ ...prev, hasH2h: false }));
+      if (chip === "hasPrediction") setFrontendFilters(prev => ({ ...prev, hasPrediction: false }));
     } else {
       setQuickChip(chip);
       if (chip === "ready") setFilters(prev => ({ ...prev, featureStatus: "ready" }));
@@ -1280,6 +1326,7 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
         setFrontendFilters(prev => ({ ...prev, within24h: true }));
       }
       if (chip === "hasH2h") setFrontendFilters(prev => ({ ...prev, hasH2h: true }));
+      if (chip === "hasPrediction") setFrontendFilters(prev => ({ ...prev, hasPrediction: true }));
     }
   };
 
@@ -1292,6 +1339,7 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
     frontendFilters.countryName ||
     frontendFilters.within24h ||
     frontendFilters.hasH2h ||
+    frontendFilters.hasPrediction ||
     quickChip !== null
   );
 
@@ -1300,7 +1348,8 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
     frontendFilters.competitionName ||
     frontendFilters.countryName ||
     frontendFilters.within24h ||
-    frontendFilters.hasH2h
+    frontendFilters.hasH2h ||
+    frontendFilters.hasPrediction
   );
 
   return (
@@ -1379,7 +1428,12 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
       {loading ? <StatePanel title="Maç analizleri yükleniyor..." /> : null}
       {error ? <StatePanel title="Analizler yüklenemedi" body={error} /> : null}
       {!loading && !error && filteredItems.length === 0 ? (
-        <EmptySearchState hasFilters={hasActiveFilters} onClear={handleClearAll} />
+        <EmptySearchState
+          hasFilters={hasActiveFilters}
+          apiHasData={Boolean(data && data.items.length > 0)}
+          onClear={handleClearAll}
+          navigate={navigate}
+        />
       ) : null}
       {!loading && !error && filteredItems.length > 0 ? (
         <MatchList data={{ items: filteredItems, pagination: data!.pagination }} navigate={navigate} />

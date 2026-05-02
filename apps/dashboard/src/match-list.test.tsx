@@ -15,8 +15,9 @@ import {
 import type { FrontendFilters } from "./App";
 import type { FootballAnalyticsMatchFilters, FootballAnalyticsMatchListResponse } from "./types";
 
-// NOTE: Backend does not support text search or competition/country filtering.
-// Search and advanced filters are applied frontend-side over the expanded data window fetched for quick filters.
+// NOTE: Backend does not support text search, competition/country filtering, or match status filtering.
+// These are applied frontend-side over the data window fetched from the backend.
+// Finished matches are filtered out client-side until the backend adds status=upcoming support.
 // Pagination uses offset/limit parameters supported by the backend.
 
 describe("MatchListPage analytics search and filter area", () => {
@@ -41,6 +42,12 @@ describe("MatchListPage analytics search and filter area", () => {
     expect(html).toContain(">Tahmine uygun<span");
     expect(html).toContain(">36 saat içinde<span");
     expect(html).toContain(">H2H mevcut<span");
+    expect(html).toContain(">Tahmin var<span");
+  });
+
+  it("does not show '24 saat içinde' text anywhere", () => {
+    const html = renderToStaticMarkup(<MatchListPage navigate={vi.fn()} />);
+    expect(html).not.toContain("24 saat içinde");
   });
 
   it("does not render pagination controls while loading", () => {
@@ -79,7 +86,7 @@ describe("QuickFilterChips", () => {
       <QuickFilterChips
         activeChip={null}
         onChipClick={vi.fn()}
-        counts={{ ready: 5, predictionEligible: 3, within24h: 2, hasH2h: 4 }}
+        counts={{ ready: 5, predictionEligible: 3, within24h: 2, hasH2h: 4, hasPrediction: 1 }}
       />
     );
     expect(html).toContain(">Tümü</button>");
@@ -87,6 +94,7 @@ describe("QuickFilterChips", () => {
     expect(html).toContain(">Tahmine uygun<span");
     expect(html).toContain(">36 saat içinde<span");
     expect(html).toContain(">H2H mevcut<span");
+    expect(html).toContain(">Tahmin var<span");
     expect(html).toContain(">5</span>");
     expect(html).toContain(">3</span>");
   });
@@ -96,7 +104,7 @@ describe("QuickFilterChips", () => {
       <QuickFilterChips
         activeChip="ready"
         onChipClick={vi.fn()}
-        counts={{ ready: 5, predictionEligible: 3, within24h: 2, hasH2h: 4 }}
+        counts={{ ready: 5, predictionEligible: 3, within24h: 2, hasH2h: 4, hasPrediction: 1 }}
       />
     );
     expect(html).toContain('analytics-chip-active');
@@ -109,7 +117,8 @@ describe("analytics frontend filtering", () => {
     competitionName: "",
     countryName: "",
     within24h: false,
-    hasH2h: false
+    hasH2h: false,
+    hasPrediction: false
   };
 
   it("expands the API request when the 36h quick filter is enabled", () => {
@@ -168,6 +177,58 @@ describe("analytics frontend filtering", () => {
     expect(filterFootballAnalyticsItems(items, { ...baseFrontendFilters, within24h: true }, "", now)).toHaveLength(1);
     expect(filterFootballAnalyticsItems(items, baseFrontendFilters, "", now)).toHaveLength(2);
   });
+
+  it("filters out finished matches regardless of other filters", () => {
+    const items = [
+      matchItem({ id: "match-1", home: "Lille", away: "Le Havre", status: "not_started" }),
+      matchItem({ id: "match-2", home: "Arsenal", away: "Fulham", status: "finished" }),
+      matchItem({ id: "match-3", home: "Como", away: "Napoli", status: "after_extra_time" }),
+      matchItem({ id: "match-4", home: "Milan", away: "Juventus", status: "cancelled" }),
+      matchItem({ id: "match-5", home: "Bayern", away: "Dortmund", status: "scheduled" }),
+    ];
+
+    const filtered = filterFootballAnalyticsItems(items, baseFrontendFilters, "");
+
+    expect(filtered).toHaveLength(2);
+    expect(filtered.map(i => i.match.homeTeam.name)).toEqual(["Lille", "Bayern"]);
+  });
+
+  it("filters out abandoned and after_penalties matches", () => {
+    const items = [
+      matchItem({ id: "match-1", home: "Team A", away: "Team B", status: "abandoned" }),
+      matchItem({ id: "match-2", home: "Team C", away: "Team D", status: "after_penalties" }),
+      matchItem({ id: "match-3", home: "Team E", away: "Team F", status: "not_started" }),
+    ];
+
+    const filtered = filterFootballAnalyticsItems(items, baseFrontendFilters, "");
+
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.match.homeTeam.name).toBe("Team E");
+  });
+
+  it("filters by hasPrediction using kuponEligible proxy", () => {
+    const items = [
+      matchItem({ id: "match-1", home: "A", away: "B", kuponEligible: true }),
+      matchItem({ id: "match-2", home: "C", away: "D", kuponEligible: false }),
+      matchItem({ id: "match-3", home: "E", away: "F", kuponEligible: true }),
+    ];
+
+    const filtered = filterFootballAnalyticsItems(items, { ...baseFrontendFilters, hasPrediction: true }, "");
+
+    expect(filtered).toHaveLength(2);
+    expect(filtered.map(i => i.match.homeTeam.name)).toEqual(["A", "E"]);
+  });
+
+  it("keeps postponed matches since they may be rescheduled", () => {
+    const items = [
+      matchItem({ id: "match-1", home: "Team A", away: "Team B", status: "postponed" }),
+      matchItem({ id: "match-2", home: "Team C", away: "Team D", status: "not_started" }),
+    ];
+
+    const filtered = filterFootballAnalyticsItems(items, baseFrontendFilters, "");
+
+    expect(filtered).toHaveLength(2);
+  });
 });
 
 describe("ActiveFilterPills", () => {
@@ -178,7 +239,8 @@ describe("ActiveFilterPills", () => {
       competitionName: "Premier League",
       countryName: "",
       within24h: false,
-      hasH2h: false
+      hasH2h: false,
+      hasPrediction: false
     };
     const html = renderToStaticMarkup(
       <ActiveFilterPills
@@ -202,7 +264,8 @@ describe("ActiveFilterPills", () => {
       competitionName: "",
       countryName: "",
       within24h: false,
-      hasH2h: false
+      hasH2h: false,
+      hasPrediction: false
     };
     const html = renderToStaticMarkup(
       <ActiveFilterPills
@@ -286,24 +349,46 @@ describe("ResultSummaryBar", () => {
 });
 
 describe("EmptySearchState", () => {
-  it("renders empty state with clear button when filters active", () => {
+  it("renders search-no-result state with clear button when filters active", () => {
     const html = renderToStaticMarkup(
-      <EmptySearchState hasFilters={true} onClear={vi.fn()} />
+      <EmptySearchState hasFilters={true} apiHasData={true} onClear={vi.fn()} navigate={vi.fn()} />
     );
     expect(html).toContain("Eşleşen maç bulunamadı.");
     expect(html).toContain("Filtreleri temizle");
   });
 
-  it("renders empty state without clear button when no filters", () => {
+  it("renders search-no-result state without clear button when no filters", () => {
     const html = renderToStaticMarkup(
-      <EmptySearchState hasFilters={false} onClear={vi.fn()} />
+      <EmptySearchState hasFilters={false} apiHasData={true} onClear={vi.fn()} navigate={vi.fn()} />
     );
     expect(html).toContain("Eşleşen maç bulunamadı.");
     expect(html).not.toContain("Filtreleri temizle");
   });
+
+  it("renders no-upcoming-matches state when API has no data", () => {
+    const html = renderToStaticMarkup(
+      <EmptySearchState hasFilters={false} apiHasData={false} onClear={vi.fn()} navigate={vi.fn()} />
+    );
+    expect(html).toContain("Yaklaşan analiz maçı bulunmuyor.");
+    expect(html).toContain("Sonuçlar sayfasına git");
+  });
+
+  it("renders link to prediction results page when no upcoming matches", () => {
+    const html = renderToStaticMarkup(
+      <EmptySearchState hasFilters={false} apiHasData={false} onClear={vi.fn()} navigate={vi.fn()} />
+    );
+    expect(html).toContain("Sonuçlar sayfasına git");
+  });
 });
 
-function matchItem(input: { id: string; home: string; away: string; kickoffAt: string }): FootballAnalyticsMatchListResponse["items"][number] {
+function matchItem(input: {
+  id: string;
+  home: string;
+  away: string;
+  kickoffAt?: string;
+  status?: string;
+  kuponEligible?: boolean;
+}): FootballAnalyticsMatchListResponse["items"][number] {
   return {
     match: {
       matchId: input.id,
@@ -312,8 +397,8 @@ function matchItem(input: { id: string; home: string; away: string; kickoffAt: s
         name: "Premier League",
         country: "England"
       },
-      kickoffAt: input.kickoffAt,
-      status: "not_started",
+      kickoffAt: input.kickoffAt ?? "2026-05-05T14:00:00.000Z",
+      status: input.status ?? "not_started",
       homeTeam: {
         id: `${input.id}-home`,
         name: input.home,
@@ -327,7 +412,7 @@ function matchItem(input: { id: string; home: string; away: string; kickoffAt: s
     },
     featureStatus: "ready",
     predictionEligible: true,
-    kuponEligible: false,
+    kuponEligible: input.kuponEligible ?? false,
     confidenceCeiling: 80,
     combinedCoverageScore: 76,
     homeForm: { sampleSize: 5, coverageScore: 70, scope: "home", windowSize: 5 },
