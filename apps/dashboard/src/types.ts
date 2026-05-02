@@ -551,6 +551,7 @@ export interface FootballPredictionResultsFilters {
   status?: "won" | "lost" | "void" | "pending" | "not_settleable" | "missing_score" | "unsupported_market" | "";
   tier?: "primary" | "try" | "alternative" | "";
   marketType?: string;
+  search?: string;
   from?: string;
   to?: string;
   limit?: number;
@@ -576,7 +577,7 @@ export interface FootballPredictionResultItem {
     confidence: number | null;
   };
   settlement: {
-    status: "won" | "lost" | "void" | "pending" | "not_settleable" | "missing_score" | "unsupported_market";
+    status: "won" | "lost" | "void" | "push" | "pending" | "not_settleable" | "missing_score" | "unsupported_market";
     settledAt: string | null;
     explanation: string;
   };

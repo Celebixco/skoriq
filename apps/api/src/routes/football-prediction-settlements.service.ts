@@ -23,6 +23,7 @@ export interface FootballPredictionResultsFilters {
   status?: string;
   tier?: string;
   marketType?: string;
+  search?: string;
   from?: string;
   to?: string;
   limit: number;
@@ -360,6 +361,12 @@ export class FootballPredictionSettlementsService {
           ${filters.matchId ? sql`and m.id = ${filters.matchId}` : sql``}
           ${filters.tier ? sql`and p.recommendation_tier = ${filters.tier}` : sql``}
           ${filters.marketType ? sql`and p.prediction_type = ${filters.marketType}` : sql``}
+          ${filters.search ? sql`and (
+            lower(home.name) like ${`%${filters.search.toLowerCase()}%`}
+            or lower(away.name) like ${`%${filters.search.toLowerCase()}%`}
+            or lower(c.name) like ${`%${filters.search.toLowerCase()}%`}
+            or lower(coalesce(co.name, '')) like ${`%${filters.search.toLowerCase()}%`}
+          )` : sql``}
           ${filters.from ? sql`and m.scheduled_start_at >= ${filters.from}` : sql``}
           ${filters.to ? sql`and m.scheduled_start_at <= ${filters.to}` : sql``}
         order by m.scheduled_start_at desc, p.generated_at desc

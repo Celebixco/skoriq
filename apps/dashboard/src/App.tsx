@@ -3427,15 +3427,16 @@ const initialPredictionResultsFilters: FootballPredictionResultsFilters = {
   offset: 0
 };
 
-function PredictionResultsPage({ navigate }: { navigate: (path: string) => void }) {
+export function PredictionResultsPage({ navigate }: { navigate: (path: string) => void }) {
   const [filters, setFilters] = useState<FootballPredictionResultsFilters>(initialPredictionResultsFilters);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedLeagues, setExpandedLeagues] = useState<Set<string>>(new Set());
   const [expandedMatches, setExpandedMatches] = useState<Set<string>>(new Set());
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  const { data, loading, error } = useLoad(() => fetchFootballPredictionResults(filters), [filters]);
-  const { data: summary } = useLoad(() => fetchFootballPredictionResultsSummary(filters), [filters]);
+  const requestFilters = useMemo(() => ({ ...filters, search: debouncedSearch }), [filters, debouncedSearch]);
+  const { data, loading, error } = useLoad(() => fetchFootballPredictionResults(requestFilters), [requestFilters]);
+  const { data: summary } = useLoad(() => fetchFootballPredictionResultsSummary(requestFilters), [requestFilters]);
 
   const filteredItems = useMemo(() => {
     if (!data) return [];
@@ -3451,6 +3452,10 @@ function PredictionResultsPage({ navigate }: { navigate: (path: string) => void 
   }, [data, debouncedSearch]);
 
   const groupedLeagues = useMemo(() => groupResultsByLeague(filteredItems), [filteredItems]);
+  const notSettleableCount = useMemo(
+    () => filteredItems.filter(item => ["not_settleable", "missing_score", "unsupported_market", "void", "push"].includes(item.settlement.status)).length,
+    [filteredItems]
+  );
 
   useEffect(() => {
     if (groupedLeagues.length > 0) {
@@ -3469,7 +3474,7 @@ function PredictionResultsPage({ navigate }: { navigate: (path: string) => void 
 
   const hasActiveFilters = Boolean(
     filters.status || filters.tier || filters.countryId || filters.competitionId ||
-    filters.marketType || filters.from || filters.to || debouncedSearch.trim()
+    filters.marketType || filters.from || filters.to || searchQuery.trim()
   );
 
   const totalFromApi = data?.total ?? 0;
@@ -3509,14 +3514,15 @@ function PredictionResultsPage({ navigate }: { navigate: (path: string) => void 
           <p className="eyebrow">SkorIQ Futbol</p>
           <h1>Sonuçlar</h1>
           <p>SkorIQ tahminlerinin maç sonuçlarına göre değerlendirmesini incele.</p>
+          <p className="results-helper-note">Bu sayfada yalnızca sonuçlanmış veya değerlendirilmeyi bekleyen tahminler gösterilir.</p>
         </div>
       </header>
 
       <section className="panel results-summary-panel">
         <div className="results-summary-grid">
           <div className="results-summary-card">
-            <span>Toplam değerlendirilen</span>
-            <strong>{summary?.totalSettled ?? "—"}</strong>
+            <span>Toplam tahmin</span>
+            <strong>{summary ? data?.total ?? summary.totalSettled : "—"}</strong>
           </div>
           <div className="results-summary-card results-won">
             <span>Başarılı</span>
@@ -3529,6 +3535,10 @@ function PredictionResultsPage({ navigate }: { navigate: (path: string) => void 
           <div className="results-summary-card results-pending">
             <span>Bekleyen</span>
             <strong>{summary?.pending ?? "—"}</strong>
+          </div>
+          <div className="results-summary-card results-unsettleable">
+            <span>Değerlendirilemedi</span>
+            <strong>{summary ? notSettleableCount : "—"}</strong>
           </div>
           {successRate !== null ? (
             <div className="results-summary-card results-rate">
@@ -3549,13 +3559,24 @@ function PredictionResultsPage({ navigate }: { navigate: (path: string) => void 
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setFilters(prev => ({ ...prev, offset: 0 }));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  setFilters(prev => ({ ...prev, search: searchQuery.trim() || undefined, offset: 0 }));
+                  e.currentTarget.blur();
+                }
+              }}
               placeholder="Takım, lig veya maç ara…"
               aria-label="Sonuç ara"
             />
             {searchQuery ? (
-              <button type="button" className="results-search-clear" onClick={() => setSearchQuery("")} aria-label="Aramayı temizle">
+              <button type="button" className="results-search-clear" onClick={() => {
+                setSearchQuery("");
+                setFilters(prev => ({ ...prev, search: undefined, offset: 0 }));
+              }} aria-label="Aramayı temizle">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 6 6 18" /><path d="m6 6 12 12" />
                 </svg>
@@ -3621,7 +3642,7 @@ function PredictionResultsPage({ navigate }: { navigate: (path: string) => void 
   );
 }
 
-function ResultsFilterBar({
+export function ResultsFilterBar({
   filters,
   setFilters,
   countries,
@@ -3666,7 +3687,7 @@ function ResultsFilterBar({
         </select>
       </label>
       <label>
-        Tahmin tipi
+        Kademe
         <select value={filters.tier} onChange={(e) => update({ tier: e.target.value as FootballPredictionResultsFilters["tier"] })}>
           <option value="">Tümü</option>
           <option value="primary">Tahminim</option>
@@ -3694,7 +3715,7 @@ function ResultsFilterBar({
   );
 }
 
-function LeagueGroup({
+export function LeagueGroup({
   league,
   expanded,
   onToggle,
@@ -3762,7 +3783,7 @@ function LeagueGroup({
   );
 }
 
-function MatchResultRow({
+export function MatchResultRow({
   match,
   expanded,
   onToggle,
@@ -3874,7 +3895,7 @@ function MatchResultRow({
   );
 }
 
-function SettlementBadge({ status }: { status: FootballPredictionResultItem["settlement"]["status"] }) {
+export function SettlementBadge({ status }: { status: FootballPredictionResultItem["settlement"]["status"] }) {
   return <span className={`settlement-badge settlement-${status}`}>{predictionResultStatusLabel(status)}</span>;
 }
 
@@ -3959,7 +3980,7 @@ interface GroupedLeague {
   matches: GroupedMatch[];
 }
 
-function groupResultsByLeague(items: FootballPredictionResultItem[]): GroupedLeague[] {
+export function groupResultsByLeague(items: FootballPredictionResultItem[]): GroupedLeague[] {
   const leagueMap = new Map<string, GroupedLeague>();
   for (const item of items) {
     const leagueKey = `${item.country.id ?? item.country.name ?? "unknown"}|${item.competition.id}`;
@@ -4032,11 +4053,12 @@ function getTierSummaries(predictions: GroupedMatch["predictions"]) {
   return summaries;
 }
 
-function predictionResultStatusLabel(status: FootballPredictionResultItem["settlement"]["status"]) {
+export function predictionResultStatusLabel(status: FootballPredictionResultItem["settlement"]["status"]) {
   const labels: Record<FootballPredictionResultItem["settlement"]["status"], string> = {
     won: "Kazandı",
     lost: "Kaybetti",
     void: "Geçersiz",
+    push: "İade",
     pending: "Bekliyor",
     missing_score: "Skor bekleniyor",
     unsupported_market: "Desteklenmeyen tahmin tipi",
@@ -4601,7 +4623,7 @@ function settlementStatusLabel(value: string) {
   return value;
 }
 
-function Shell({
+export function Shell({
   children,
   currentPath,
   navigate,

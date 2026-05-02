@@ -15,6 +15,7 @@ interface PredictionResultsQuery {
   status?: string;
   tier?: string;
   marketType?: string;
+  search?: string;
   from?: string;
   to?: string;
   limit?: string;
@@ -42,6 +43,7 @@ export class FootballPredictionResultsController {
       status: parsed.status,
       tier: parsed.tier,
       marketType: parsed.marketType,
+      search: parsed.search,
       from: parsed.from,
       to: parsed.to
     };
@@ -58,11 +60,19 @@ export function parsePredictionResultsQuery(query: PredictionResultsQuery): Foot
     status: parseOptionalEnum("status", query.status, statuses),
     tier: parseOptionalEnum("tier", query.tier, tiers),
     marketType: query.marketType,
+    search: parseSearch(query.search),
     from: parseOptionalDate("from", query.from),
     to: parseOptionalDate("to", query.to),
     limit: parseLimit(query.limit),
     offset: parseOffset(query.offset)
   };
+}
+
+function parseSearch(value: string | undefined) {
+  if (value === undefined) return undefined;
+  const normalized = value.trim();
+  if (normalized.length > 80) throw new BadRequestException("search must be 80 characters or fewer.");
+  return normalized || undefined;
 }
 
 function parseOptionalEnum<T extends readonly string[]>(name: string, value: string | undefined, allowed: T): T[number] | undefined {

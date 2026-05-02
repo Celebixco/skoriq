@@ -15,11 +15,11 @@ describe("FootballPredictionResultsController", () => {
     };
     const controller = new FootballPredictionResultsController(service as never);
 
-    await controller.listPredictionResults({ competitionId: uuid, status: "won", tier: "primary", limit: "10", offset: "5" });
-    await controller.predictionResultsSummary({ competitionId: uuid, status: "won", tier: "primary" });
+    await controller.listPredictionResults({ competitionId: uuid, status: "won", tier: "primary", search: " Arsenal ", limit: "10", offset: "5" });
+    await controller.predictionResultsSummary({ competitionId: uuid, status: "won", tier: "primary", search: " Arsenal " });
 
-    expect(service.listPredictionResults).toHaveBeenCalledWith(expect.objectContaining({ competitionId: uuid, status: "won", tier: "primary", limit: 10, offset: 5 }));
-    expect(service.getPredictionResultsSummary).toHaveBeenCalledWith(expect.objectContaining({ competitionId: uuid, status: "won", tier: "primary" }));
+    expect(service.listPredictionResults).toHaveBeenCalledWith(expect.objectContaining({ competitionId: uuid, status: "won", tier: "primary", search: "Arsenal", limit: 10, offset: 5 }));
+    expect(service.getPredictionResultsSummary).toHaveBeenCalledWith(expect.objectContaining({ competitionId: uuid, status: "won", tier: "primary", search: "Arsenal" }));
     expect(JSON.stringify(service.listPredictionResults.mock.calls)).not.toContain("provider_entity_id");
   });
 
@@ -27,6 +27,7 @@ describe("FootballPredictionResultsController", () => {
     expect(() => parsePredictionResultsQuery({ competitionId: "not-a-uuid" })).toThrow(BadRequestException);
     expect(() => parsePredictionResultsQuery({ status: "settled_success" })).toThrow(BadRequestException);
     expect(() => parsePredictionResultsQuery({ tier: "avoid" })).toThrow(BadRequestException);
+    expect(() => parsePredictionResultsQuery({ search: "x".repeat(81) })).toThrow(BadRequestException);
     expect(() => parsePredictionResultsQuery({ limit: "1000" })).toThrow(BadRequestException);
     expect(() => parsePredictionResultsQuery({ offset: "-1" })).toThrow(BadRequestException);
   });

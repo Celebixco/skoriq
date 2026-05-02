@@ -13,6 +13,7 @@ import {
   fetchFootballPredictionDraft,
   fetchFootballPredictionDrafts,
   fetchFootballPredictionSettlement,
+  fetchFootballPredictionResults,
   fetchFootballPredictionSettlements,
   fetchFootballPublicEligibility,
   fetchFootballTeam,
@@ -218,6 +219,40 @@ describe("football analytics dashboard API client", () => {
     expect(requestedUrl).toContain("/member/football/matches/match-1/prediction-preview");
     expect(requestedUrl).not.toContain("/prediction-drafts");
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ credentials: "include" });
+  });
+
+  it("fetches football prediction results with safe filters and search", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ items: [], total: 0, limit: 20, offset: 0 }));
+
+    await fetchFootballPredictionResults({
+      countryId: "country-1",
+      competitionId: "competition-1",
+      teamId: "team-1",
+      matchId: "match-1",
+      status: "won",
+      tier: "primary",
+      marketType: "match_result_1x2",
+      search: " Arsenal ",
+      from: "2026-05-01",
+      to: "2026-05-07",
+      limit: 20,
+      offset: 10
+    });
+
+    const requestedUrl = String(fetchMock.mock.calls[0]?.[0]);
+    expect(requestedUrl).toContain("/football/prediction-results?");
+    expect(requestedUrl).toContain("countryId=country-1");
+    expect(requestedUrl).toContain("competitionId=competition-1");
+    expect(requestedUrl).toContain("teamId=team-1");
+    expect(requestedUrl).toContain("matchId=match-1");
+    expect(requestedUrl).toContain("status=won");
+    expect(requestedUrl).toContain("tier=primary");
+    expect(requestedUrl).toContain("marketType=match_result_1x2");
+    expect(requestedUrl).toContain("search=Arsenal");
+    expect(requestedUrl).toContain("from=2026-05-01");
+    expect(requestedUrl).toContain("to=2026-05-07");
+    expect(requestedUrl).toContain("limit=20");
+    expect(requestedUrl).toContain("offset=10");
   });
 
   it("fetches settlement review endpoints with credentials", async () => {

@@ -195,6 +195,7 @@ export async function fetchFootballPredictionResults(filters: FootballPrediction
   if (filters.status) params.set("status", filters.status);
   if (filters.tier) params.set("tier", filters.tier);
   if (filters.marketType) params.set("marketType", filters.marketType);
+  if (filters.search?.trim()) params.set("search", filters.search.trim());
   if (filters.from) params.set("from", filters.from);
   if (filters.to) params.set("to", filters.to);
   return requestJson<FootballPredictionResultsResponse>(`/football/prediction-results?${params.toString()}`);
@@ -209,6 +210,7 @@ export async function fetchFootballPredictionResultsSummary(filters: FootballPre
   if (filters.status) params.set("status", filters.status);
   if (filters.tier) params.set("tier", filters.tier);
   if (filters.marketType) params.set("marketType", filters.marketType);
+  if (filters.search?.trim()) params.set("search", filters.search.trim());
   if (filters.from) params.set("from", filters.from);
   if (filters.to) params.set("to", filters.to);
   return requestJson<FootballPredictionResultsSummary>(`/football/prediction-results/summary?${params.toString()}`);
