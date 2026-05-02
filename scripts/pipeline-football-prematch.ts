@@ -3,9 +3,9 @@ import { pathToFileURL } from "node:url";
 import pg from "pg";
 import { createDatabase } from "@sports-data/database";
 import type { FootballMatchPredictionFeatureInput, FootballPredictionCandidate, FootballPredictionCandidateFeature } from "@sports-data/analysis";
+import { manualLeagueConfigs, providerName, resolveManualLeagueConfig } from "./apifootball-manual-league-config.js";
+import type { ManualLeagueReviewConfig } from "./apifootball-manual-league-config.js";
 import { checkDatabaseReadiness, formatDatabaseReadinessResult } from "./db-readiness.js";
-import { manualLeagueConfigs, resolveManualLeagueConfig } from "./provider-apifootball-manual-ingest.js";
-import type { ManualLeagueReviewConfig } from "./provider-apifootball-manual-ingest.js";
 import { createFootballTeamFormBuilderDependencies, runFootballTeamFormAnalytics } from "./analytics-football-team-form-build.js";
 import { createFootballH2HBuilderDependencies, runFootballH2HAnalytics } from "./analytics-football-h2h-build.js";
 import { createFootballMatchPredictionBuilderDependencies, runFootballMatchPredictionAnalytics } from "./analytics-football-match-prediction-features-build.js";
@@ -17,7 +17,6 @@ import {
 } from "./analytics-football-prediction-candidates-generate.js";
 import type { FootballPredictionCandidateRunResult } from "./analytics-football-prediction-candidates-generate.js";
 
-const providerName = "apifootball-com";
 const defaultWindowHours = 24;
 const defaultMinimumLeadMinutes = 30;
 const defaultLimit = 20;
