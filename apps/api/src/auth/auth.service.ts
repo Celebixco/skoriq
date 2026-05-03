@@ -257,11 +257,7 @@ export class AuthService {
         `
       );
       return rows[0];
-    } catch (error) {
-      if (!isMissingLegacyUsersProfileColumnError(error)) {
-        throw error;
-      }
-
+    } catch {
       const rows = await executeRows<UserRow>(
         this.database,
         sql`
@@ -297,11 +293,7 @@ export class AuthService {
         `
       );
       return rows[0];
-    } catch (error) {
-      if (!isMissingLegacyUsersProfileColumnError(error)) {
-        throw error;
-      }
-
+    } catch {
       const rows = await executeRows<UserRow>(
         this.database,
         sql`
@@ -422,12 +414,4 @@ async function executeRows<T>(database: Database, query: ReturnType<typeof sql>)
     return result.rows as T[];
   }
   return [];
-}
-
-function isMissingLegacyUsersProfileColumnError(error: unknown) {
-  if (!error || typeof error !== "object") return false;
-  const code = "code" in error ? String(error.code ?? "") : "";
-  const message = "message" in error ? String(error.message ?? "") : "";
-  if (code === "42703") return true;
-  return /column .* does not exist/i.test(message);
 }
