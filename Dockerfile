@@ -4,7 +4,7 @@ COPY . .
 RUN npm install --include=dev
 
 FROM deps AS build
-RUN npm run build -w @sports-data/api
+RUN npm run build
 RUN npm prune --omit=dev --workspaces
 
 FROM node:24-alpine AS runtime
