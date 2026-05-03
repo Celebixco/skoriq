@@ -1,9 +1,10 @@
-import { BadRequestException, ForbiddenException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 import type { ExecutionContext } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { AdminGuard } from "./admin.guard.js";
 import { AuthGuard } from "./auth.guard.js";
-import { AuthService, isStrongPassword, normalizeEmail, normalizePhoneNumber } from "./auth.service.js";
+import type { PasswordResetEmailSender } from "./password-reset-email.service.js";
+import { AuthService, hashPasswordResetToken, isStrongPassword, normalizeEmail, normalizePhoneNumber } from "./auth.service.js";
 import { serializeAuthCookie } from "./cookies.js";
 import { hashPassword } from "./password.js";
 import type { CookieResponse } from "./auth.types.js";
@@ -40,6 +41,36 @@ describe("AuthService", () => {
     expect(String(response.setHeader.mock.calls[0]?.[1])).not.toContain(passwordHash);
   });
 
+  it("falls back to legacy users schema when optional profile columns are missing during login", async () => {
+    const passwordHash = await hashPassword("correct-password");
+    const database = {
+      execute: vi
+        .fn()
+        .mockRejectedValueOnce(Object.assign(new Error('column "phone_number" does not exist'), { code: "42703" }))
+        .mockResolvedValueOnce([
+          {
+            id: "user-1",
+            email: "admin@example.test",
+            first_name: null,
+            last_name: null,
+            phone_number: null,
+            password_hash: passwordHash,
+            role: "admin",
+            status: "active",
+            created_at: new Date("2026-04-30T00:00:00.000Z"),
+            last_login_at: null
+          }
+        ])
+        .mockResolvedValueOnce([])
+    } as unknown as Database;
+    const response = mockResponse();
+
+    const user = await new AuthService(database, testConfig()).login("admin@example.test", "correct-password", response);
+
+    expect(user).toMatchObject({ id: "user-1", email: "admin@example.test", role: "admin", status: "active" });
+    expect(database.execute).toHaveBeenCalledTimes(3);
+  });
+
   it("uses generic 401 for invalid credentials and disabled users", async () => {
     const passwordHash = await hashPassword("correct-password");
     const disabledDatabase = mockDatabase([
@@ -56,7 +87,7 @@ describe("AuthService", () => {
       ]
     ]);
     await expect(new AuthService(disabledDatabase, testConfig()).login("admin@example.test", "correct-password", mockResponse())).rejects.toThrow(
-      new UnauthorizedException("Invalid email or password.")
+      new UnauthorizedException("E-posta veya şifre hatalı.")
     );
 
     const wrongPasswordDatabase = mockDatabase([
@@ -73,7 +104,7 @@ describe("AuthService", () => {
       ]
     ]);
     await expect(new AuthService(wrongPasswordDatabase, testConfig()).login("admin@example.test", "wrong-password", mockResponse())).rejects.toThrow(
-      new UnauthorizedException("Invalid email or password.")
+      new UnauthorizedException("E-posta veya şifre hatalı.")
     );
   });
 
@@ -101,6 +132,34 @@ describe("AuthService", () => {
       id: "user-1",
       email: "admin@example.test"
     });
+  });
+
+  it("falls back to legacy users schema when loading the current user", async () => {
+    const serviceToken = await createValidCookieValue();
+    const database = {
+      execute: vi
+        .fn()
+        .mockRejectedValueOnce(Object.assign(new Error('column "first_name" does not exist'), { code: "42703" }))
+        .mockResolvedValueOnce([
+          {
+            id: "user-1",
+            email: "admin@example.test",
+            first_name: null,
+            last_name: null,
+            phone_number: null,
+            password_hash: "redacted",
+            role: "admin",
+            status: "active",
+            created_at: new Date("2026-04-30T00:00:00.000Z"),
+            last_login_at: null
+          }
+        ])
+    } as unknown as Database;
+
+    const user = await new AuthService(database, testConfig()).currentUserFromRequest({ headers: { cookie: `betify_auth=${serviceToken}` } });
+
+    expect(user).toMatchObject({ id: "user-1", email: "admin@example.test", role: "admin", status: "active" });
+    expect(database.execute).toHaveBeenCalledTimes(2);
   });
 
   it("clears auth cookie on logout", () => {
@@ -161,6 +220,87 @@ describe("AuthService", () => {
     expect(response.setHeader).toHaveBeenCalledWith("Set-Cookie", expect.stringContaining("HttpOnly"));
     const serializedCalls = JSON.stringify((database.execute as ReturnType<typeof vi.fn>).mock.calls);
     expect(serializedCalls).not.toContain("StrongPass123");
+  });
+
+  it("creates a password reset token and sends a reset email without exposing membership", async () => {
+    const emailSender = mockPasswordResetEmailSender();
+    const database = mockDatabase([
+      [
+        {
+          id: "user-2",
+          email: "member@example.test",
+          password_hash: "stored-hash",
+          role: "member",
+          status: "active",
+          created_at: new Date("2026-04-30T00:00:00.000Z"),
+          last_login_at: new Date("2026-04-30T00:00:01.000Z")
+        }
+      ],
+      [],
+      []
+    ]);
+
+    const result = await new AuthService(database, testConfig(), emailSender).requestPasswordReset(" Member@Example.TEST ");
+
+    expect(result).toEqual({
+      ok: true,
+      message: "Eger bu e-posta sistemde kayitliysa, sifre sifirlama baglantisi gonderildi."
+    });
+    expect(emailSender.sendPasswordResetEmail).toHaveBeenCalledWith({
+      email: "member@example.test",
+      resetUrl: expect.stringContaining("/reset-password?token=")
+    });
+    const serializedCalls = JSON.stringify((database.execute as ReturnType<typeof vi.fn>).mock.calls);
+    expect(serializedCalls).not.toContain("member@example.test/reset-password?token=");
+  });
+
+  it("returns the same forgot-password response when the user does not exist", async () => {
+    const result = await new AuthService(mockDatabase([[]]), testConfig(), mockPasswordResetEmailSender()).requestPasswordReset("missing@example.test");
+    expect(result).toEqual({
+      ok: true,
+      message: "Eger bu e-posta sistemde kayitliysa, sifre sifirlama baglantisi gonderildi."
+    });
+  });
+
+  it("resets a password only with a valid unused token", async () => {
+    const database = mockDatabase([
+      [
+        {
+          id: "prt-1",
+          user_id: "user-2",
+          token_hash: hashPasswordResetToken("reset-token-value-1234567890"),
+          expires_at: new Date("2026-05-01T13:00:00.000Z"),
+          used_at: null
+        }
+      ],
+      [],
+      [],
+      []
+    ]);
+
+    const result = await new AuthService(database, testConfig(), mockPasswordResetEmailSender()).resetPassword({
+      token: "reset-token-value-1234567890",
+      password: "StrongPass123",
+      confirmPassword: "StrongPass123"
+    });
+
+    expect(result).toEqual({ ok: true, message: "Şifreniz güncellendi. Giriş yapabilirsiniz." });
+    const calls = (database.execute as ReturnType<typeof vi.fn>).mock.calls.map((entry) => JSON.stringify(entry));
+    expect(calls.join(" ")).not.toContain("StrongPass123");
+  });
+
+  it("rejects invalid reset tokens and missing password reset service safely", async () => {
+    await expect(
+      new AuthService(mockDatabase([[]]), testConfig(), mockPasswordResetEmailSender()).resetPassword({
+        token: "reset-token-value-1234567890",
+        password: "StrongPass123",
+        confirmPassword: "StrongPass123"
+      })
+    ).rejects.toThrow(new BadRequestException("Şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş."));
+
+    await expect(new AuthService(mockDatabase([]), { ...testConfig(), FRONTEND_ORIGIN: undefined }, mockPasswordResetEmailSender(false)).requestPasswordReset("member@example.test")).rejects.toThrow(
+      new ServiceUnavailableException("Şifre sıfırlama servisi henüz hazır değil.")
+    );
   });
 
   it("rejects duplicate email, weak password, and confirm password mismatch safely", async () => {
@@ -293,6 +433,13 @@ function mockResponse() {
   } satisfies CookieResponse;
 }
 
+function mockPasswordResetEmailSender(configured = true): PasswordResetEmailSender {
+  return {
+    configured,
+    sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined)
+  };
+}
+
 function mockDatabase(results: unknown[][]): Database {
   return {
     execute: vi.fn().mockImplementation(() => Promise.resolve(results.shift() ?? []))
@@ -329,6 +476,12 @@ function testConfig(): AppConfig {
     AUTH_JWT_SECRET: "test-secret",
     AUTH_COOKIE_NAME: "betify_auth",
     AUTH_TOKEN_TTL_SECONDS: 86400,
+    RESEND_API_KEY: "re_test_123",
+    AUTH_PASSWORD_RESET_FROM_EMAIL: "noreply@example.test",
+    AUTH_PASSWORD_RESET_URL_BASE: "https://skoriq.example.test",
+    AUTH_PASSWORD_RESET_TTL_MINUTES: 60,
+    FRONTEND_ORIGIN: "https://skoriq.example.test",
+    CORS_ORIGIN: "https://skoriq.example.test",
     RAW_PAYLOAD_SUCCESS_RETENTION_DAYS: 7,
     RAW_PAYLOAD_FAILED_RETENTION_DAYS: 30,
     SYNC_LOG_RETENTION_DAYS: 14,

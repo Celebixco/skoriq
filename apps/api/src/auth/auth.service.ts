@@ -1,4 +1,5 @@
-import { BadRequestException, Inject, Injectable, Optional, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Optional, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
+import { createHash, randomBytes } from "node:crypto";
 import type { AppConfig } from "@sports-data/config";
 import { loadConfig } from "@sports-data/config";
 import { createDatabase } from "@sports-data/database";
@@ -6,12 +7,15 @@ import type { Database } from "@sports-data/database";
 import { sql } from "drizzle-orm";
 import { parseCookies, serializeAuthCookie, serializeExpiredCookie } from "./cookies.js";
 import { hashPassword, verifyPassword } from "./password.js";
+import type { PasswordResetEmailSender } from "./password-reset-email.service.js";
 import { signAuthToken, verifyAuthToken } from "./token.js";
 import type { AuthRole, AuthStatus, AuthUser, AuthenticatedRequest, CookieResponse } from "./auth.types.js";
 
-const invalidCredentialsMessage = "Invalid email or password.";
+const invalidCredentialsMessage = "E-posta veya şifre hatalı.";
 const registerFailureMessage = "Kayıt işlemi tamamlanamadı. Bilgileri kontrol edip tekrar deneyin.";
 const weakPasswordMessage = "Şifre en az 12 karakter olmalı; büyük harf, küçük harf ve rakam içermeli.";
+const forgotPasswordSuccessMessage = "Eger bu e-posta sistemde kayitliysa, sifre sifirlama baglantisi gonderildi.";
+const invalidResetTokenMessage = "Şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş.";
 
 interface UserRow {
   id: string;
@@ -26,6 +30,14 @@ interface UserRow {
   last_login_at: Date | string | null;
 }
 
+interface PasswordResetTokenRow {
+  id: string;
+  user_id: string;
+  token_hash: string;
+  expires_at: Date | string;
+  used_at: Date | string | null;
+}
+
 @Injectable()
 export class AuthService {
   private readonly database: Database;
@@ -33,7 +45,8 @@ export class AuthService {
 
   constructor(
     @Optional() @Inject("AUTH_DATABASE") database?: Database,
-    @Optional() @Inject("AUTH_CONFIG") config?: AppConfig
+    @Optional() @Inject("AUTH_CONFIG") config?: AppConfig,
+    @Optional() @Inject("AUTH_PASSWORD_RESET_EMAIL_SENDER") private readonly passwordResetEmailSender?: PasswordResetEmailSender
   ) {
     this.config = config ?? loadConfig();
     this.database = database ?? createDatabase(this.config.DATABASE_URL);
@@ -125,6 +138,69 @@ export class AuthService {
     return user;
   }
 
+  async requestPasswordReset(email: string) {
+    if (!this.passwordResetEmailSender?.configured) {
+      throw new ServiceUnavailableException("Şifre sıfırlama servisi henüz hazır değil.");
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+    if (!isValidEmail(normalizedEmail)) {
+      return { ok: true, message: forgotPasswordSuccessMessage };
+    }
+
+    const user = await this.findUserByEmail(normalizedEmail).catch(() => undefined);
+    if (!user || user.status !== "active") {
+      return { ok: true, message: forgotPasswordSuccessMessage };
+    }
+
+    const rawToken = randomBytes(32).toString("base64url");
+    const tokenHash = hashPasswordResetToken(rawToken);
+    const expiresAt = new Date(Date.now() + this.config.AUTH_PASSWORD_RESET_TTL_MINUTES * 60_000);
+
+    await this.database.execute(sql`update password_reset_tokens set used_at = now(), updated_at = now() where user_id = ${user.id} and used_at is null`);
+    await this.database.execute(
+      sql`
+        insert into password_reset_tokens (user_id, token_hash, expires_at)
+        values (${user.id}, ${tokenHash}, ${expiresAt})
+      `
+    );
+
+    await this.passwordResetEmailSender.sendPasswordResetEmail({
+      email: user.email,
+      resetUrl: buildPasswordResetUrl(this.config, rawToken)
+    });
+
+    return { ok: true, message: forgotPasswordSuccessMessage };
+  }
+
+  async resetPassword(input: { token: string; password: string; confirmPassword?: string }) {
+    if (!isStrongPassword(input.password)) {
+      throw new BadRequestException(weakPasswordMessage);
+    }
+    if (input.confirmPassword !== undefined && input.confirmPassword !== input.password) {
+      throw new BadRequestException("Şifre onayı eşleşmiyor.");
+    }
+
+    const token = input.token.trim();
+    if (!token) {
+      throw new BadRequestException(invalidResetTokenMessage);
+    }
+
+    const tokenRow = await this.findActivePasswordResetToken(token);
+    if (!tokenRow) {
+      throw new BadRequestException(invalidResetTokenMessage);
+    }
+
+    const passwordHash = await hashPassword(input.password);
+    await this.database.execute(sql`update users set password_hash = ${passwordHash}, updated_at = now() where id = ${tokenRow.user_id}`);
+    await this.database.execute(sql`update password_reset_tokens set used_at = now(), updated_at = now() where id = ${tokenRow.id}`);
+    await this.database.execute(
+      sql`update password_reset_tokens set used_at = now(), updated_at = now() where user_id = ${tokenRow.user_id} and id <> ${tokenRow.id} and used_at is null`
+    );
+
+    return { ok: true, message: "Şifreniz güncellendi. Giriş yapabilirsiniz." };
+  }
+
   logout(response: CookieResponse) {
     response.setHeader("Set-Cookie", serializeExpiredCookie(this.config.AUTH_COOKIE_NAME, this.secureCookie));
     return { ok: true };
@@ -170,33 +246,103 @@ export class AuthService {
   }
 
   private async findUserByEmail(email: string): Promise<UserRow | undefined> {
-    const rows = await executeRows<UserRow>(
-      this.database,
-      sql`
-        select id, email, first_name, last_name, phone_number, password_hash, role, status, created_at, last_login_at
-        from users
-        where email = ${email}
-        limit 1
-      `
-    );
-    return rows[0];
+    try {
+      const rows = await executeRows<UserRow>(
+        this.database,
+        sql`
+          select id, email, first_name, last_name, phone_number, password_hash, role, status, created_at, last_login_at
+          from users
+          where email = ${email}
+          limit 1
+        `
+      );
+      return rows[0];
+    } catch (error) {
+      if (!isMissingLegacyUsersProfileColumnError(error)) {
+        throw error;
+      }
+
+      const rows = await executeRows<UserRow>(
+        this.database,
+        sql`
+          select
+            id,
+            email,
+            null::text as first_name,
+            null::text as last_name,
+            null::text as phone_number,
+            password_hash,
+            role,
+            status,
+            created_at,
+            last_login_at
+          from users
+          where email = ${email}
+          limit 1
+        `
+      );
+      return rows[0];
+    }
   }
 
   private async findUserById(id: string): Promise<UserRow | undefined> {
-    const rows = await executeRows<UserRow>(
-      this.database,
-      sql`
-        select id, email, first_name, last_name, phone_number, password_hash, role, status, created_at, last_login_at
-        from users
-        where id = ${id}
-        limit 1
-      `
-    );
-    return rows[0];
+    try {
+      const rows = await executeRows<UserRow>(
+        this.database,
+        sql`
+          select id, email, first_name, last_name, phone_number, password_hash, role, status, created_at, last_login_at
+          from users
+          where id = ${id}
+          limit 1
+        `
+      );
+      return rows[0];
+    } catch (error) {
+      if (!isMissingLegacyUsersProfileColumnError(error)) {
+        throw error;
+      }
+
+      const rows = await executeRows<UserRow>(
+        this.database,
+        sql`
+          select
+            id,
+            email,
+            null::text as first_name,
+            null::text as last_name,
+            null::text as phone_number,
+            password_hash,
+            role,
+            status,
+            created_at,
+            last_login_at
+          from users
+          where id = ${id}
+          limit 1
+        `
+      );
+      return rows[0];
+    }
   }
 
   private async markLastLogin(id: string): Promise<void> {
     await this.database.execute(sql`update users set last_login_at = now(), updated_at = now() where id = ${id}`);
+  }
+
+  private async findActivePasswordResetToken(rawToken: string): Promise<PasswordResetTokenRow | undefined> {
+    const tokenHash = hashPasswordResetToken(rawToken);
+    const rows = await executeRows<PasswordResetTokenRow>(
+      this.database,
+      sql`
+        select id, user_id, token_hash, expires_at, used_at
+        from password_reset_tokens
+        where token_hash = ${tokenHash}
+          and used_at is null
+          and expires_at > now()
+        limit 1
+      `
+    );
+    return rows[0];
   }
 }
 
@@ -220,6 +366,10 @@ export function isStrongPassword(password: string) {
   return password.length >= 12 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password);
 }
 
+export function hashPasswordResetToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -237,6 +387,16 @@ function isValidMathChallenge(left: number, operator: "+" | "-", right: number, 
   if (left < 1 || left > 20 || right < 1 || right > 20) return false;
   const expected = operator === "+" ? left + right : left - right;
   return expected >= 0 && answer === expected;
+}
+
+function buildPasswordResetUrl(config: AppConfig, token: string) {
+  const base = config.AUTH_PASSWORD_RESET_URL_BASE ?? config.FRONTEND_ORIGIN;
+  if (!base) {
+    throw new ServiceUnavailableException("Şifre sıfırlama servisi henüz hazır değil.");
+  }
+  const url = new URL("/reset-password", base);
+  url.searchParams.set("token", token);
+  return url.toString();
 }
 
 export function mapUserRow(row: UserRow): AuthUser {
@@ -262,4 +422,12 @@ async function executeRows<T>(database: Database, query: ReturnType<typeof sql>)
     return result.rows as T[];
   }
   return [];
+}
+
+function isMissingLegacyUsersProfileColumnError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? String(error.code ?? "") : "";
+  const message = "message" in error ? String(error.message ?? "") : "";
+  if (code === "42703") return true;
+  return /column .* does not exist/i.test(message);
 }
