@@ -38,8 +38,10 @@ interface PasswordResetTokenRow {
   used_at: Date | string | null;
 }
 
-interface LegacyUserPayloadRow {
-  payload: Record<string, unknown>;
+interface MinimalUserRow {
+  id: string;
+  email: string;
+  password_hash: string;
 }
 
 @Injectable()
@@ -262,16 +264,7 @@ export class AuthService {
       );
       return rows[0];
     } catch {
-      const rows = await executeRows<LegacyUserPayloadRow>(
-        this.database,
-        sql`
-          select to_jsonb(u) as payload
-          from users u
-          where u.email = ${email}
-          limit 1
-        `
-      );
-      return rows[0] ? mapLegacyUserPayloadRow(rows[0].payload) : undefined;
+      return this.findUserByEmailLegacy(email);
     }
   }
 
@@ -288,21 +281,16 @@ export class AuthService {
       );
       return rows[0];
     } catch {
-      const rows = await executeRows<LegacyUserPayloadRow>(
-        this.database,
-        sql`
-          select to_jsonb(u) as payload
-          from users u
-          where u.id = ${id}
-          limit 1
-        `
-      );
-      return rows[0] ? mapLegacyUserPayloadRow(rows[0].payload) : undefined;
+      return this.findUserByIdLegacy(id);
     }
   }
 
   private async markLastLogin(id: string): Promise<void> {
-    await this.database.execute(sql`update users set last_login_at = now(), updated_at = now() where id = ${id}`);
+    try {
+      await this.database.execute(sql`update users set last_login_at = now(), updated_at = now() where id = ${id}`);
+    } catch {
+      // Older auth schemas may not expose login-tracking columns. A successful login should still complete.
+    }
   }
 
   private async findActivePasswordResetToken(rawToken: string): Promise<PasswordResetTokenRow | undefined> {
@@ -319,6 +307,58 @@ export class AuthService {
       `
     );
     return rows[0];
+  }
+
+  private async findUserByEmailLegacy(email: string): Promise<UserRow | undefined> {
+    try {
+      const rows = await executeRows<UserRow>(
+        this.database,
+        sql`
+          select id, email, null::text as first_name, null::text as last_name, null::text as phone_number, password_hash, role, status, created_at, last_login_at
+          from users
+          where email = ${email}
+          limit 1
+        `
+      );
+      return rows[0];
+    } catch {
+      const rows = await executeRows<MinimalUserRow>(
+        this.database,
+        sql`
+          select id::text as id, email::text as email, password_hash::text as password_hash
+          from users
+          where email = ${email}
+          limit 1
+        `
+      );
+      return rows[0] ? mapMinimalUserRow(rows[0]) : undefined;
+    }
+  }
+
+  private async findUserByIdLegacy(id: string): Promise<UserRow | undefined> {
+    try {
+      const rows = await executeRows<UserRow>(
+        this.database,
+        sql`
+          select id, email, null::text as first_name, null::text as last_name, null::text as phone_number, password_hash, role, status, created_at, last_login_at
+          from users
+          where id = ${id}
+          limit 1
+        `
+      );
+      return rows[0];
+    } catch {
+      const rows = await executeRows<MinimalUserRow>(
+        this.database,
+        sql`
+          select id::text as id, email::text as email, password_hash::text as password_hash
+          from users
+          where id = ${id}
+          limit 1
+        `
+      );
+      return rows[0] ? mapMinimalUserRow(rows[0]) : undefined;
+    }
   }
 }
 
@@ -389,22 +429,18 @@ export function mapUserRow(row: UserRow): AuthUser {
   };
 }
 
-function mapLegacyUserPayloadRow(payload: Record<string, unknown>): UserRow {
-  const createdAt = payload.created_at instanceof Date || typeof payload.created_at === "string" ? payload.created_at : new Date();
-  const lastLoginAt =
-    payload.last_login_at instanceof Date || typeof payload.last_login_at === "string" ? payload.last_login_at : null;
-
+function mapMinimalUserRow(row: MinimalUserRow): UserRow {
   return {
-    id: String(payload.id ?? ""),
-    email: String(payload.email ?? ""),
-    first_name: typeof payload.first_name === "string" ? payload.first_name : null,
-    last_name: typeof payload.last_name === "string" ? payload.last_name : null,
-    phone_number: typeof payload.phone_number === "string" ? payload.phone_number : null,
-    password_hash: String(payload.password_hash ?? ""),
-    role: (typeof payload.role === "string" && payload.role ? payload.role : "member") as AuthRole,
-    status: (typeof payload.status === "string" && payload.status ? payload.status : "active") as AuthStatus,
-    created_at: createdAt,
-    last_login_at: lastLoginAt
+    id: row.id,
+    email: row.email,
+    first_name: null,
+    last_name: null,
+    phone_number: null,
+    password_hash: row.password_hash,
+    role: "member",
+    status: "active",
+    created_at: new Date(),
+    last_login_at: null
   };
 }
 

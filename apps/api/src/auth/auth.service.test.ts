@@ -41,33 +41,28 @@ describe("AuthService", () => {
     expect(String(response.setHeader.mock.calls[0]?.[1])).not.toContain(passwordHash);
   });
 
-  it("falls back to legacy users schema when optional profile columns are missing during login", async () => {
+  it("falls back to the minimal legacy auth schema when broader user lookups fail during login", async () => {
     const passwordHash = await hashPassword("correct-password");
     const database = {
       execute: vi
         .fn()
         .mockRejectedValueOnce(Object.assign(new Error('column "phone_number" does not exist'), { code: "42703" }))
+        .mockRejectedValueOnce(Object.assign(new Error('column "status" does not exist'), { code: "42703" }))
         .mockResolvedValueOnce([
           {
-            payload: {
-              id: "user-1",
-              email: "admin@example.test",
-              password_hash: passwordHash,
-              role: "admin",
-              status: "active",
-              created_at: new Date("2026-04-30T00:00:00.000Z"),
-              last_login_at: null
-            }
+            id: "user-1",
+            email: "admin@example.test",
+            password_hash: passwordHash
           }
         ])
-        .mockResolvedValueOnce([])
+        .mockRejectedValueOnce(Object.assign(new Error('column "updated_at" does not exist'), { code: "42703" }))
     } as unknown as Database;
     const response = mockResponse();
 
     const user = await new AuthService(database, testConfig()).login("admin@example.test", "correct-password", response);
 
-    expect(user).toMatchObject({ id: "user-1", email: "admin@example.test", role: "admin", status: "active" });
-    expect(database.execute).toHaveBeenCalledTimes(3);
+    expect(user).toMatchObject({ id: "user-1", email: "admin@example.test", role: "member", status: "active" });
+    expect(database.execute).toHaveBeenCalledTimes(4);
   });
 
   it("uses generic 401 for invalid credentials and disabled users", async () => {
@@ -133,31 +128,26 @@ describe("AuthService", () => {
     });
   });
 
-  it("falls back to legacy users schema when loading the current user", async () => {
+  it("falls back to the minimal legacy auth schema when loading the current user", async () => {
     const serviceToken = await createValidCookieValue();
     const database = {
       execute: vi
         .fn()
         .mockRejectedValueOnce(Object.assign(new Error('column "first_name" does not exist'), { code: "42703" }))
+        .mockRejectedValueOnce(Object.assign(new Error('column "status" does not exist'), { code: "42703" }))
         .mockResolvedValueOnce([
           {
-            payload: {
-              id: "user-1",
-              email: "admin@example.test",
-              password_hash: "redacted",
-              role: "admin",
-              status: "active",
-              created_at: new Date("2026-04-30T00:00:00.000Z"),
-              last_login_at: null
-            }
+            id: "user-1",
+            email: "admin@example.test",
+            password_hash: "redacted"
           }
         ])
     } as unknown as Database;
 
     const user = await new AuthService(database, testConfig()).currentUserFromRequest({ headers: { cookie: `betify_auth=${serviceToken}` } });
 
-    expect(user).toMatchObject({ id: "user-1", email: "admin@example.test", role: "admin", status: "active" });
-    expect(database.execute).toHaveBeenCalledTimes(2);
+    expect(user).toMatchObject({ id: "user-1", email: "admin@example.test", role: "member", status: "active" });
+    expect(database.execute).toHaveBeenCalledTimes(3);
   });
 
   it("clears auth cookie on logout", () => {
