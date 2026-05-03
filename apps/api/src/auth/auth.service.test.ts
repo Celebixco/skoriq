@@ -49,16 +49,15 @@ describe("AuthService", () => {
         .mockRejectedValueOnce(Object.assign(new Error('column "phone_number" does not exist'), { code: "42703" }))
         .mockResolvedValueOnce([
           {
-            id: "user-1",
-            email: "admin@example.test",
-            first_name: null,
-            last_name: null,
-            phone_number: null,
-            password_hash: passwordHash,
-            role: "admin",
-            status: "active",
-            created_at: new Date("2026-04-30T00:00:00.000Z"),
-            last_login_at: null
+            payload: {
+              id: "user-1",
+              email: "admin@example.test",
+              password_hash: passwordHash,
+              role: "admin",
+              status: "active",
+              created_at: new Date("2026-04-30T00:00:00.000Z"),
+              last_login_at: null
+            }
           }
         ])
         .mockResolvedValueOnce([])
@@ -142,16 +141,15 @@ describe("AuthService", () => {
         .mockRejectedValueOnce(Object.assign(new Error('column "first_name" does not exist'), { code: "42703" }))
         .mockResolvedValueOnce([
           {
-            id: "user-1",
-            email: "admin@example.test",
-            first_name: null,
-            last_name: null,
-            phone_number: null,
-            password_hash: "redacted",
-            role: "admin",
-            status: "active",
-            created_at: new Date("2026-04-30T00:00:00.000Z"),
-            last_login_at: null
+            payload: {
+              id: "user-1",
+              email: "admin@example.test",
+              password_hash: "redacted",
+              role: "admin",
+              status: "active",
+              created_at: new Date("2026-04-30T00:00:00.000Z"),
+              last_login_at: null
+            }
           }
         ])
     } as unknown as Database;

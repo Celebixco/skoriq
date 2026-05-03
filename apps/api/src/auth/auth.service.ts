@@ -38,6 +38,10 @@ interface PasswordResetTokenRow {
   used_at: Date | string | null;
 }
 
+interface LegacyUserPayloadRow {
+  payload: Record<string, unknown>;
+}
+
 @Injectable()
 export class AuthService {
   private readonly database: Database;
@@ -258,26 +262,16 @@ export class AuthService {
       );
       return rows[0];
     } catch {
-      const rows = await executeRows<UserRow>(
+      const rows = await executeRows<LegacyUserPayloadRow>(
         this.database,
         sql`
-          select
-            id,
-            email,
-            null::text as first_name,
-            null::text as last_name,
-            null::text as phone_number,
-            password_hash,
-            role,
-            status,
-            created_at,
-            last_login_at
-          from users
-          where email = ${email}
+          select to_jsonb(u) as payload
+          from users u
+          where u.email = ${email}
           limit 1
         `
       );
-      return rows[0];
+      return rows[0] ? mapLegacyUserPayloadRow(rows[0].payload) : undefined;
     }
   }
 
@@ -294,26 +288,16 @@ export class AuthService {
       );
       return rows[0];
     } catch {
-      const rows = await executeRows<UserRow>(
+      const rows = await executeRows<LegacyUserPayloadRow>(
         this.database,
         sql`
-          select
-            id,
-            email,
-            null::text as first_name,
-            null::text as last_name,
-            null::text as phone_number,
-            password_hash,
-            role,
-            status,
-            created_at,
-            last_login_at
-          from users
-          where id = ${id}
+          select to_jsonb(u) as payload
+          from users u
+          where u.id = ${id}
           limit 1
         `
       );
-      return rows[0];
+      return rows[0] ? mapLegacyUserPayloadRow(rows[0].payload) : undefined;
     }
   }
 
@@ -402,6 +386,25 @@ export function mapUserRow(row: UserRow): AuthUser {
     status: row.status,
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : new Date(row.created_at).toISOString(),
     lastLoginAt: row.last_login_at ? (row.last_login_at instanceof Date ? row.last_login_at.toISOString() : new Date(row.last_login_at).toISOString()) : null
+  };
+}
+
+function mapLegacyUserPayloadRow(payload: Record<string, unknown>): UserRow {
+  const createdAt = payload.created_at instanceof Date || typeof payload.created_at === "string" ? payload.created_at : new Date();
+  const lastLoginAt =
+    payload.last_login_at instanceof Date || typeof payload.last_login_at === "string" ? payload.last_login_at : null;
+
+  return {
+    id: String(payload.id ?? ""),
+    email: String(payload.email ?? ""),
+    first_name: typeof payload.first_name === "string" ? payload.first_name : null,
+    last_name: typeof payload.last_name === "string" ? payload.last_name : null,
+    phone_number: typeof payload.phone_number === "string" ? payload.phone_number : null,
+    password_hash: String(payload.password_hash ?? ""),
+    role: (typeof payload.role === "string" && payload.role ? payload.role : "member") as AuthRole,
+    status: (typeof payload.status === "string" && payload.status ? payload.status : "active") as AuthStatus,
+    created_at: createdAt,
+    last_login_at: lastLoginAt
   };
 }
 
