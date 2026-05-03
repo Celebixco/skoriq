@@ -67,15 +67,6 @@ export async function checkDatabaseReadiness(options: CheckDatabaseReadinessOpti
   }
 
   const target = parseSafeDatabaseTarget(databaseUrl, { dbExecutionTarget, allowRemoteTestDb, neonBranchName });
-  if (nodeEnv === "production") {
-    return {
-      status: "not_ready",
-      target,
-      reason: "unsafe_target",
-      message: "Database readiness checks refuse NODE_ENV=production."
-    };
-  }
-
   const targetSafetyError = validateTargetSafety(target, { dbExecutionTarget, allowRemoteTestDb, neonBranchName, databaseUrl });
   if (targetSafetyError) {
     return {
@@ -83,6 +74,15 @@ export async function checkDatabaseReadiness(options: CheckDatabaseReadinessOpti
       target,
       reason: "unsafe_target",
       message: targetSafetyError
+    };
+  }
+
+  if (nodeEnv === "production" && target.classification !== "neon-test") {
+    return {
+      status: "not_ready",
+      target,
+      reason: "unsafe_target",
+      message: "Database readiness checks refuse NODE_ENV=production unless the target is an explicitly approved Neon test branch."
     };
   }
 

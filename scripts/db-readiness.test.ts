@@ -73,6 +73,42 @@ describe("database readiness checks", () => {
     expect(JSON.stringify(result)).not.toContain("secret");
   });
 
+  it("allows production runtime checks only for explicitly approved Neon test targets", async () => {
+    const result = await checkDatabaseReadiness({
+      databaseUrl: "postgres://user:secret@ep-review-123.neon.tech/sports_data_test?sslmode=require",
+      nodeEnv: "production",
+      dbExecutionTarget: "neon-test",
+      allowRemoteTestDb: "true",
+      neonBranchName: "skoriq-ingestion-test",
+      connect: async () => ({ tableNames: expectedTables })
+    });
+
+    expect(result).toMatchObject({
+      status: "ready",
+      target: {
+        classification: "neon-test",
+        neonBranchName: "skoriq-ingestion-test"
+      }
+    });
+    expect(JSON.stringify(result)).not.toContain("secret");
+  });
+
+  it("still blocks production runtime checks for local targets", async () => {
+    const result = await checkDatabaseReadiness({
+      databaseUrl: "postgres://postgres:postgres@localhost:5432/sports_data",
+      nodeEnv: "production",
+      connect: async () => ({ tableNames: expectedTables })
+    });
+
+    expect(result).toMatchObject({
+      status: "not_ready",
+      reason: "unsafe_target",
+      target: {
+        classification: "local"
+      }
+    });
+  });
+
   it("blocks production or main-looking Neon targets even with explicit flags", async () => {
     const result = await checkDatabaseReadiness({
       databaseUrl: "postgres://user:secret@ep-main.neon.tech/production?sslmode=require",
