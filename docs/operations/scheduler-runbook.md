@@ -2,6 +2,32 @@
 
 This runbook documents controlled soft-launch jobs. Do not enable unattended jobs until the deployment target, database branch, and secrets are explicitly approved.
 
+## Daily 08:30 Upcoming Fixture Sync
+
+Purpose: refresh scheduled/not-started fixtures for reviewed/enabled football leagues before the daily pre-match analysis scan. This keeps future matches visible without running historical backfills or prediction builders.
+
+Recommended Coolify scheduled task when UTC cron is used:
+
+```text
+30 5 * * *
+```
+
+Command:
+
+```bash
+npm run provider:football:upcoming-sync -- --all-reviewed-enabled --window-days=5 --limit=200 --execute
+```
+
+`05:30 UTC` equals `08:30 Europe/Istanbul`. This task must run before the 09:00 pre-match jobs.
+
+Safety:
+- Processes reviewed/enabled leagues only.
+- Fetches only a narrow upcoming window, defaulting to today through today + 5 days.
+- Normalizes scheduled/not-started matches and safe non-final score placeholders only through existing ingestion safeguards.
+- Skips live numeric statuses, live minute statuses such as `90+`, and non-standard statuses such as `After Pen.`.
+- Does not run feature builders, candidates, drafts, settlement, public publishing, member-visible mutation, or tahmin kombini.
+- Never creates fake countries, competitions, teams, matches, scores, or provider IDs.
+
 ## Daily 09:00 Pre-Match Scan
 
 Purpose: generate draft-only SkorIQ pre-match analysis for reviewed/enabled football leagues when kickoff is inside the 36-hour window and outside the 30-minute minimum lead cutoff.

@@ -26,6 +26,7 @@ Member-safe prediction preview:
 
 - `GET /api/member/football/matches/:matchId/prediction-preview` returns a protected, sanitized match-level prediction preview for authenticated members and admins.
 - Pre-match draft generation now uses a configurable 36-hour window by default: `FOOTBALL_PREMATCH_WINDOW_HOURS=36` and `FOOTBALL_PREMATCH_MINIMUM_LEAD_MINUTES=30`.
+- `npm run provider:football:upcoming-sync -- --all-reviewed-enabled --window-days=5 --limit=200 --execute` refreshes upcoming fixtures for reviewed/enabled leagues only. It should run before daily pre-match analysis, defaults to dry-run, skips live/non-standard statuses safely, and never runs feature builders, candidates, settlement, publishing, member-visible mutation, or tahmin kombini.
 - `npm run pipeline:football:daily-prematch -- --all-reviewed-enabled --execute` is the documented daily 09:00 Europe/Istanbul scan command. It uses normalized DB data only and keeps outputs draft-only.
 - `npm run provider:football:finished-sync -- --all-reviewed-enabled --lookback-hours=72 --execute` refreshes recent final scores for reviewed/enabled leagues only.
 - `npm run analytics:football:settle-predictions -- --all-reviewed-enabled --lookback-hours=96 --execute` stores internal settlement results without publishing or changing member visibility.

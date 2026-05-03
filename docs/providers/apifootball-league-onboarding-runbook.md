@@ -91,16 +91,27 @@ H2H payloads should capture, when the provider supplies them:
 11. Standings Execute.
 12. Historical Events/Scores Backfill.
 13. Upcoming Events Execute.
-14. H2H Dry-Run for upcoming matches.
-15. H2H Execute for clean upcoming matches.
-16. Feature Build.
-17. Pre-Match Candidate Flow.
+14. Ongoing Upcoming Fixture Sync.
+15. H2H Dry-Run for upcoming matches.
+16. H2H Execute for clean upcoming matches.
+17. Feature Build.
+18. Pre-Match Candidate Flow.
 
 Review-candidate leagues remain evidence-only: dry-run first, no execute until reviewed and enabled. Reviewed/enabled leagues may use the controlled historical backfill runner, but H2H should still be scoped to upcoming/analyzable matches rather than broad pair expansion.
 
 Live numeric APIFootball statuses are a non-fatal review caveat when finished-score evidence is otherwise clean. APIFootball can return minute-like numeric `match_status` values for live rows during an upcoming/current fixture slice. These values must not be mapped to `finished`, and score rows must not be created from them. The safe path is to report and skip the live row, approve the league only if teams, standings, and recent finished events/scores are clean, then refresh the same match later after the provider returns a supported final or scheduled status.
 
 Non-standard knockout-style statuses such as `After Pen.` are also non-fatal only when normal recent finished FT/HT evidence is clean. They must remain skipped unless an explicit competition/status policy is added, and score rows must not be created from them as normal league results.
+
+## Upcoming Fixture Sync Policy
+
+Reviewed/enabled leagues may use the controlled fixture sync command to keep near-term schedules fresh:
+
+```bash
+npm run provider:football:upcoming-sync -- --country-id=<country-id> --league-id=<league-id> --window-days=5
+```
+
+Dry-run is the default and writes zero rows. Execute is allowed only after countries, leagues, and teams are already mapped on an approved local or Neon test target. The command fetches a narrow upcoming window, normalizes only `scheduled` / `not_started` matches and safe non-final score placeholder rows, and reports skipped rows by reason. Finished rows are left for finished-score sync. Live numeric statuses, live minute statuses such as `90+`, and `After Pen.` stay skipped; they must not become `finished` and must not create fake final scores. This command does not run H2H, feature builders, candidates, drafts, settlement, publishing, member-visible mutation, tahmin kombini, broad historical backfills, or dependency fabrication.
 
 ## H2H Pass Criteria
 

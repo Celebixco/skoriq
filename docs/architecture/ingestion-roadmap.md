@@ -8,7 +8,7 @@ No real provider adapter is implemented yet.
 
 ## Timing Strategy
 
-Fixture sync and prediction analysis have different timing rules. Fixture sync may look beyond the next 24 hours for schedule visibility, mapping checks, and dashboard planning. Pre-match analytics and prediction candidate generation should default to the near-term window defined in [Pre-Match Analysis Window Policy](../product/pre-match-analysis-window-policy.md): `now` through `now + 24 hours`, with a suggested 30-minute minimum lead time before kickoff.
+Fixture sync and prediction analysis have different timing rules. Fixture sync may look beyond the next 36 hours for schedule visibility, mapping checks, and dashboard planning. Pre-match analytics and prediction candidate generation should default to the near-term window defined in [Pre-Match Analysis Window Policy](../product/pre-match-analysis-window-policy.md): `now` through `now + 36 hours`, with a 30-minute minimum lead time before kickoff.
 
 ### Football
 
@@ -24,7 +24,7 @@ Fixture sync and prediction analysis have different timing rules. Fixture sync m
 | Lineups | Only when pre-match availability is verified | Future work; do not build until provider fields and schema are approved. |
 | Post-match events/player stats/shot maps | After finalization | Future work; high variance by provider and league. |
 
-Analysis selection rule: future football automation should select `scheduled` / `not_started` matches in the next 24 hours by default, require mapped teams and sufficient historical feature data, and skip matches inside the minimum lead-time cutoff unless an admin override is explicitly logged.
+Analysis selection rule: football automation should select `scheduled` / `not_started` matches in the next 36 hours by default, require mapped teams and sufficient historical feature data, and skip matches inside the minimum lead-time cutoff unless an admin override is explicitly logged.
 
 Stale draft rebuilds are analytics work, not fixture-ingestion work. Fixture sync may discover or refresh future matches, but it should only trigger future rebuild consideration after the match enters the valid analysis window described in [Stale Draft Rebuild Workflow](../product/stale-draft-rebuild-workflow.md). Rebuild metadata fields now exist on `football_prediction_outputs`; ingestion must not mutate them directly.
 
@@ -95,7 +95,15 @@ apifootball.com is now the controlled low/no-cost football POC candidate. It is 
 
 APIFootball.com now supports endpoint-based multi-credential routing. Provider code chooses keys by safe operation label: countries, leagues, teams, standings, fixtures, events, results, players, statistics, lineups, injuries, then falls back to default and legacy labels. Real keys live only in `.env` or deployment secrets; ingestion reports may show only the safe label used and must never expose raw key values, partial keys, request URLs with keys, or frontend-visible credentials.
 
-The apifootball.com POC supports manual fetching/mapping for countries, leagues, teams, events/scores, and standings. Country data is a required onboarding dependency: every league must confirm `country_id` and `country_name`, then execute countries/leagues before teams, standings, events, scores, or future H2H execute. This keeps the canonical relation chain stable: `country -> competition -> team -> match`, and it powers the future Football Explorer path from Country to Leagues to League detail to Standings to Teams to Team detail. The reviewed football slice now has guarded local/manual database writes through `--execute`; it does not implement livescore polling, odds, predictions, H2H ingestion, lineups, injuries, players, scheduled sync, production ingestion, or frontend behavior.
+The apifootball.com POC supports manual fetching/mapping for countries, leagues, teams, events/scores, and standings. Country data is a required onboarding dependency: every league must confirm `country_id` and `country_name`, then execute countries/leagues before teams, standings, events, scores, or future H2H execute. This keeps the canonical relation chain stable: `country -> competition -> team -> match`, and it powers the future Football Explorer path from Country to Leagues to League detail to Standings to Teams to Team detail. The reviewed football slice now has guarded local/manual database writes through `--execute`; it does not implement livescore polling, odds, predictions, lineups, injuries, players, production ingestion, or frontend behavior.
+
+Reviewed/enabled APIFootball leagues now have a controlled upcoming fixture sync command:
+
+```bash
+npm run provider:football:upcoming-sync -- --all-reviewed-enabled --window-days=5 --limit=200
+```
+
+Dry-run is the default. Execute is allowed only on approved local or explicit Neon test targets after DB readiness passes. The command processes reviewed/enabled leagues only, defaults to today through today + 5 days, fetches APIFootball event/score rows, and normalizes only scheduled/not-started upcoming matches plus safe non-final score placeholders already supported by the normalizer path. Finished rows are ignored/reported for this command because `provider:football:finished-sync` owns final scores. Live numeric statuses, live minute statuses such as `45+`/`90+`, and non-standard `After Pen.` rows are safe skips and must not be mapped to `finished` or create fake final score rows. The command does not run feature builders, candidates, drafts, settlement, public/member-visible flows, tahmin kombini, broad backfills, or fake-ID creation.
 
 H2H is now part of the league onboarding standard as a dedicated post-mapping stage. It should be fetched for upcoming or analyzable matches after teams and events are mapped, not for every possible team pair in a league. H2H dry-run must happen before execute. Passing evidence means the provider responds successfully or cleanly reports no H2H, stable team IDs exist, stable match IDs exist when supplied, fulltime and halftime scores are parseable when present, unresolved rows are reported, no fake IDs are created, and dry-run writes zero rows. Missing H2H should not block MVP readiness when team-form coverage is strong enough; it should cap confidence and add a risk warning. Old or low-sample H2H must be downweighted.
 
