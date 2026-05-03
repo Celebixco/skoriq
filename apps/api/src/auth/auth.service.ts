@@ -322,16 +322,21 @@ export class AuthService {
       );
       return rows[0];
     } catch {
-      const rows = await executeRows<MinimalUserRow>(
-        this.database,
-        sql`
-          select id::text as id, email::text as email, password_hash::text as password_hash
-          from users
-          where email = ${email}
-          limit 1
-        `
-      );
-      return rows[0] ? mapMinimalUserRow(rows[0]) : undefined;
+      try {
+        const rows = await executeRows<MinimalUserRow>(
+          this.database,
+          sql`
+            select id::text as id, email::text as email, password_hash::text as password_hash
+            from users
+            where email = ${email}
+            limit 1
+          `
+        );
+        return rows[0] ? mapMinimalUserRow(rows[0]) : undefined;
+      } catch (error) {
+        logAuthLookupFailure("findUserByEmailLegacyMinimal", error);
+        throw error;
+      }
     }
   }
 
@@ -348,16 +353,21 @@ export class AuthService {
       );
       return rows[0];
     } catch {
-      const rows = await executeRows<MinimalUserRow>(
-        this.database,
-        sql`
-          select id::text as id, email::text as email, password_hash::text as password_hash
-          from users
-          where id = ${id}
-          limit 1
-        `
-      );
-      return rows[0] ? mapMinimalUserRow(rows[0]) : undefined;
+      try {
+        const rows = await executeRows<MinimalUserRow>(
+          this.database,
+          sql`
+            select id::text as id, email::text as email, password_hash::text as password_hash
+            from users
+            where id = ${id}
+            limit 1
+          `
+        );
+        return rows[0] ? mapMinimalUserRow(rows[0]) : undefined;
+      } catch (error) {
+        logAuthLookupFailure("findUserByIdLegacyMinimal", error);
+        throw error;
+      }
     }
   }
 }
@@ -442,6 +452,34 @@ function mapMinimalUserRow(row: MinimalUserRow): UserRow {
     created_at: new Date(),
     last_login_at: null
   };
+}
+
+function logAuthLookupFailure(step: string, error: unknown) {
+  if (!(error instanceof Error)) return;
+
+  const metadata = error as Error & {
+    code?: string;
+    detail?: string;
+    hint?: string;
+    table?: string;
+    column?: string;
+    constraint?: string;
+  };
+
+  console.error(
+    JSON.stringify({
+      level: "error",
+      message: "Auth user lookup failed",
+      step,
+      code: metadata.code ?? null,
+      detail: metadata.detail ?? null,
+      hint: metadata.hint ?? null,
+      table: metadata.table ?? null,
+      column: metadata.column ?? null,
+      constraint: metadata.constraint ?? null,
+      errorMessage: error.message
+    })
+  );
 }
 
 async function executeRows<T>(database: Database, query: ReturnType<typeof sql>): Promise<T[]> {
