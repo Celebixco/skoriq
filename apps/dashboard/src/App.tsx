@@ -1403,23 +1403,28 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
     [filters, debouncedSearch]
   );
 
-  const availableCompetitions = useMemo(() => {
+  const visibleBaseItems = useMemo(() => {
     if (!data) return [];
-    const names = new Set<string>();
-    data.items.forEach(item => names.add(item.match.competition.name));
-    return Array.from(names).sort();
+    return filterFootballAnalyticsItems(data.items, emptyFrontendFilters, "");
   }, [data]);
 
-  const availableCountries = useMemo(() => {
-    if (!data) return [];
+  const availableCompetitions = useMemo(() => {
+    if (!visibleBaseItems.length) return [];
     const names = new Set<string>();
-    data.items.forEach(item => {
+    visibleBaseItems.forEach(item => names.add(item.match.competition.name));
+    return Array.from(names).sort();
+  }, [visibleBaseItems]);
+
+  const availableCountries = useMemo(() => {
+    if (!visibleBaseItems.length) return [];
+    const names = new Set<string>();
+    visibleBaseItems.forEach(item => {
       if (item.match.competition.country) {
         names.add(item.match.competition.country);
       }
     });
     return Array.from(names).sort();
-  }, [data]);
+  }, [visibleBaseItems]);
 
   const filteredItems = useMemo(() => {
     if (!data) return [];
@@ -1431,17 +1436,17 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
   }, [filteredItems]);
 
   const quickChipCounts = useMemo(() => {
-    if (!data) return { ready: 0, predictionEligible: 0, within24h: 0, hasH2h: 0, hasPrediction: 0 };
+    if (!visibleBaseItems.length) return { ready: 0, predictionEligible: 0, within24h: 0, hasH2h: 0, hasPrediction: 0 };
     const now = new Date();
 
     return {
-      ready: data.items.filter(item => item.featureStatus === "ready").length,
-      predictionEligible: data.items.filter(item => item.predictionEligible).length,
-      within24h: data.items.filter(item => isWithinNextHours(item.match.kickoffAt, now)).length,
-      hasH2h: data.items.filter(item => !item.h2h.h2hMissing).length,
-      hasPrediction: data.items.filter(item => item.hasPredictionPreview).length
+      ready: visibleBaseItems.filter(item => item.featureStatus === "ready").length,
+      predictionEligible: visibleBaseItems.filter(item => item.predictionEligible).length,
+      within24h: visibleBaseItems.filter(item => isWithinNextHours(item.match.kickoffAt, now)).length,
+      hasH2h: visibleBaseItems.filter(item => !item.h2h.h2hMissing).length,
+      hasPrediction: visibleBaseItems.filter(item => item.hasPredictionPreview).length
     };
-  }, [data]);
+  }, [visibleBaseItems]);
 
   useEffect(() => {
     if (quickChip === "ready" && filters.featureStatus !== "ready") {
@@ -1461,10 +1466,11 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
     }
   }, [filters, frontendFilters, quickChip]);
 
-  const totalLoaded = data?.items.length ?? 0;
+  const totalLoaded = visibleBaseItems.length;
   const totalFromApi = data?.pagination.total ?? 0;
+  const effectiveTotal = totalLoaded === 0 ? 0 : totalFromApi;
   const offset = filters.offset ?? 0;
-  const hasNextPage = offset + totalLoaded < totalFromApi;
+  const hasNextPage = offset + totalLoaded < effectiveTotal;
   const hasPrevPage = offset > 0;
 
   const handlePrevPage = () => {
@@ -1655,7 +1661,7 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
         {!loading && data ? (
           <ResultSummaryBar
             showing={filteredItems.length}
-            total={totalFromApi}
+            total={effectiveTotal}
             loaded={totalLoaded}
             limit={filters.limit ?? initialFilters.limit ?? 20}
             offset={offset}
@@ -1673,7 +1679,7 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
       {!loading && !error && filteredItems.length === 0 ? (
         <EmptySearchState
           hasFilters={hasActiveFilters}
-          apiHasData={Boolean(data && data.items.length > 0)}
+          apiHasData={visibleBaseItems.length > 0}
           onClear={handleClearAll}
           navigate={navigate}
         />
