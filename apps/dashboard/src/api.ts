@@ -1,5 +1,6 @@
 import type {
   AuthUser,
+  AuthPasswordActionResponse,
   DashboardOverviewResponse,
   FootballAnalyticsMatchFilters,
   FootballAnalyticsMatchListResponse,
@@ -60,6 +61,24 @@ export async function register(input: {
   mathAnswer: number;
 }): Promise<{ user: AuthUser }> {
   return requestJson<{ user: AuthUser }>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function requestPasswordReset(email: string): Promise<AuthPasswordActionResponse> {
+  return requestJson<AuthPasswordActionResponse>("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email })
+  });
+}
+
+export async function resetPassword(input: {
+  token: string;
+  password: string;
+  confirmPassword: string;
+}): Promise<AuthPasswordActionResponse> {
+  return requestJson<AuthPasswordActionResponse>("/auth/reset-password", {
     method: "POST",
     body: JSON.stringify(input)
   });
