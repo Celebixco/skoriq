@@ -12,6 +12,11 @@ export interface AuthUser {
   lastLoginAt?: string | null;
 }
 
+export interface AuthPasswordActionResponse {
+  ok: boolean;
+  message: string;
+}
+
 export type AnalysisWindowStatus = "within_window" | "too_early" | "too_late" | "stale" | "unknown";
 
 export interface DashboardOverviewResponse {
@@ -120,6 +125,7 @@ export interface FootballAnalyticsMatchReport {
   featureStatus: FeatureStatus;
   predictionEligible: boolean;
   kuponEligible: boolean;
+  hasPredictionPreview: boolean;
   confidenceCeiling: number;
   combinedCoverageScore: number;
   homeForm: CoverageBlock;

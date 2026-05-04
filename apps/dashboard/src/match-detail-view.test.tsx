@@ -34,6 +34,7 @@ function mockReport(patch: Partial<FootballAnalyticsMatchReport> = {}): Football
     featureStatus: "ready",
     predictionEligible: true,
     kuponEligible: false,
+    hasPredictionPreview: false,
     confidenceCeiling: 63,
     combinedCoverageScore: 72,
     homeForm: {

@@ -31,6 +31,7 @@ describe("FootballMatchAnalyticsController", () => {
     });
     expect(response.items).toHaveLength(1);
     expect(response.items[0]).toMatchObject({ featureStatus: "ready", predictionEligible: true, kuponEligible: false });
+    expect(response.items[0]?.hasPredictionPreview).toBe(true);
   });
 
   it("parses list filters for readiness, eligibility, search, competition, team, pagination, and debug", async () => {
@@ -239,6 +240,7 @@ const baseResponse: FootballMatchAnalyticsResponse = {
   featureStatus: "ready",
   predictionEligible: true,
   kuponEligible: false,
+  hasPredictionPreview: true,
   confidenceCeiling: 65,
   combinedCoverageScore: 64,
   homeForm: {
@@ -298,6 +300,7 @@ function baseRow() {
     home_form_scope: "home",
     home_form_window_size: 5,
     away_form_scope: "away",
-    away_form_window_size: 5
+    away_form_window_size: 5,
+    has_prediction_preview: true
   };
 }

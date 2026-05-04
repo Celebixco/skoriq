@@ -24,7 +24,9 @@ import {
   fetchCurrentUser,
   ApiError,
   login as loginRequest,
+  requestPasswordReset as requestPasswordResetRequest,
   register as registerRequest,
+  resetPassword as resetPasswordRequest,
   logout as logoutRequest
 } from "./api";
 import { MetricCard, ProgressBar, StatusBadge, TeamLogo } from "./components";
@@ -135,9 +137,7 @@ export function filterFootballAnalyticsItems(
   }
 
   if (frontendFilters.hasPrediction) {
-    // BACKEND LIMITATION: analytics list does not expose a "has prediction" field.
-    // Using kuponEligible as a proxy until backend supports prediction existence filtering.
-    filtered = filtered.filter(item => item.kuponEligible);
+    filtered = filtered.filter(item => item.hasPredictionPreview);
   }
 
   return filtered;
@@ -407,7 +407,7 @@ export function App() {
   };
 
   const route = resolveRoute(path);
-  const isAuthRoute = route.kind === "login" || route.kind === "register";
+  const isAuthRoute = route.kind === "login" || route.kind === "register" || route.kind === "forgot-password" || route.kind === "reset-password";
   const isPublicRoute = route.kind === "landing";
 
   useEffect(() => {
@@ -458,6 +458,14 @@ export function App() {
 
   if (route.kind === "register" && !currentUser) {
     return <RegisterPage onRegister={(user) => setCurrentUser(user)} navigate={navigate} />;
+  }
+
+  if (route.kind === "forgot-password" && !currentUser) {
+    return <ForgotPasswordPage navigate={navigate} />;
+  }
+
+  if (route.kind === "reset-password" && !currentUser) {
+    return <ResetPasswordPage navigate={navigate} />;
   }
 
   if (!currentUser && route.kind === "landing") {
@@ -517,8 +525,8 @@ function LoginPage({ onLogin, navigate }: { onLogin: (user: AuthUser) => void; n
       const response = await loginRequest(email, password);
       onLogin(response.user);
       navigate("/football/analytics");
-    } catch {
-      setError("E-posta veya şifre hatalı.");
+    } catch (error) {
+      setError(error instanceof ApiError && error.status < 500 ? error.message : "Giriş servisine şu an ulaşılamıyor. Lütfen birazdan tekrar deneyin.");
     } finally {
       setLoading(false);
     }
@@ -563,10 +571,197 @@ function LoginPage({ onLogin, navigate }: { onLogin: (user: AuthUser) => void; n
               {loading ? "Giriş yapılıyor..." : "Giriş yap"}
             </button>
           </form>
+          <p className="auth-link-row">
+            <button type="button" className="text-link" onClick={() => navigate("/forgot-password")}>
+              Şifremi unuttum
+            </button>
+          </p>
           <p className="auth-switch">
             Hesabın yok mu?{" "}
             <button type="button" className="text-link" onClick={() => navigate("/register")}>
               Kayıt ol
+            </button>
+          </p>
+        </section>
+      </section>
+    </main>
+  );
+}
+
+function ForgotPasswordPage({ navigate }: { navigate: (path: string) => void }) {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await requestPasswordResetRequest(email);
+      setSuccess(response.message);
+    } catch (error) {
+      setError(error instanceof ApiError && error.status < 500 ? error.message : "Şifre sıfırlama servisine şu an ulaşılamıyor. Lütfen birazdan tekrar deneyin.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className="login-shell">
+      <section className="login-experience" aria-label="SkorIQ şifre sıfırlama ekranı">
+        <div className="login-intelligence" aria-hidden="true">
+          <div className="brain-stage">
+            <div className="brain-orbit brain-orbit-one" />
+            <div className="brain-orbit brain-orbit-two" />
+            <div className="brain-core">
+              <span className="brain-node node-a" />
+              <span className="brain-node node-b" />
+              <span className="brain-node node-c" />
+              <span className="brain-node node-d" />
+              <span className="brain-node node-e" />
+              <span className="brain-path path-a" />
+              <span className="brain-path path-b" />
+              <span className="brain-path path-c" />
+              <span className="brain-bar bar-a" />
+              <span className="brain-bar bar-b" />
+              <span className="brain-bar bar-c" />
+              <span className="brain-bar bar-d" />
+            </div>
+            <span className="data-chip chip-a">Guvenli baglanti hazirlaniyor</span>
+            <span className="data-chip chip-b">Hesap erisimi geri aliniyor</span>
+            <span className="data-chip chip-c">Mail teslimi kontrol ediliyor</span>
+            <span className="data-chip chip-d">Tek kullanimlik baglanti olusturuluyor</span>
+          </div>
+        </div>
+        <section className="login-card">
+          <div className="login-brand">
+            <img src={skoriqLogo} alt="SkorIQ" />
+          </div>
+          <div className="auth-copy">
+            <h1>Şifreni yenile</h1>
+            <p>E-posta adresini gir. Hesabın varsa sana güvenli bir yenileme bağlantısı gönderelim.</p>
+          </div>
+          <form className="login-form" onSubmit={submit}>
+            <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="E-posta" aria-label="E-posta" required />
+            {error ? <p className="error-text">{error}</p> : null}
+            {success ? <p className="success-text">{success}</p> : null}
+            <button type="submit" disabled={loading}>
+              {loading ? "Baglanti hazirlaniyor..." : "Sıfırlama bağlantısı gönder"}
+            </button>
+          </form>
+          <p className="auth-switch">
+            <button type="button" className="text-link" onClick={() => navigate("/login")}>
+              Giriş ekranına dön
+            </button>
+          </p>
+        </section>
+      </section>
+    </main>
+  );
+}
+
+function ResetPasswordPage({ navigate }: { navigate: (path: string) => void }) {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const token = new URLSearchParams(window.location.search).get("token")?.trim() ?? "";
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!token) {
+      setError("Şifre sıfırlama bağlantısı eksik veya geçersiz.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Şifre onayı eşleşmiyor.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await resetPasswordRequest({ token, password, confirmPassword });
+      setSuccess(response.message);
+      window.setTimeout(() => navigate("/login"), 1200);
+    } catch (error) {
+      setError(error instanceof ApiError && error.status < 500 ? error.message : "Şifre yenileme işlemi şu an tamamlanamıyor. Lütfen birazdan tekrar deneyin.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className="login-shell">
+      <section className="login-experience" aria-label="SkorIQ yeni şifre ekranı">
+        <div className="login-intelligence" aria-hidden="true">
+          <div className="brain-stage">
+            <div className="brain-orbit brain-orbit-one" />
+            <div className="brain-orbit brain-orbit-two" />
+            <div className="brain-core">
+              <span className="brain-node node-a" />
+              <span className="brain-node node-b" />
+              <span className="brain-node node-c" />
+              <span className="brain-node node-d" />
+              <span className="brain-node node-e" />
+              <span className="brain-path path-a" />
+              <span className="brain-path path-b" />
+              <span className="brain-path path-c" />
+              <span className="brain-bar bar-a" />
+              <span className="brain-bar bar-b" />
+              <span className="brain-bar bar-c" />
+              <span className="brain-bar bar-d" />
+            </div>
+            <span className="data-chip chip-a">Yeni sifre güvenliği ölçülüyor</span>
+            <span className="data-chip chip-b">Erisim anahtari dogrulaniyor</span>
+            <span className="data-chip chip-c">Hesap kalkanlari yenileniyor</span>
+            <span className="data-chip chip-d">Oturum yeniden hazirlaniyor</span>
+          </div>
+        </div>
+        <section className="login-card">
+          <div className="login-brand">
+            <img src={skoriqLogo} alt="SkorIQ" />
+          </div>
+          <div className="auth-copy">
+            <h1>Yeni şifreni belirle</h1>
+            <p>En az 12 karakter; büyük harf, küçük harf ve rakam içeren güçlü bir şifre kullan.</p>
+          </div>
+          {!token ? <p className="error-text">Şifre sıfırlama bağlantısı eksik veya geçersiz.</p> : null}
+          <form className="login-form" onSubmit={submit}>
+            <input
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              type="password"
+              autoComplete="new-password"
+              placeholder="Yeni şifre"
+              aria-label="Yeni şifre"
+              minLength={12}
+              required
+            />
+            <input
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              type="password"
+              autoComplete="new-password"
+              placeholder="Yeni şifre tekrar"
+              aria-label="Yeni şifre tekrar"
+              minLength={12}
+              required
+            />
+            {error ? <p className="error-text">{error}</p> : null}
+            {success ? <p className="success-text">{success}</p> : null}
+            <button type="submit" disabled={loading || !token}>
+              {loading ? "Şifre güncelleniyor..." : "Şifreyi güncelle"}
+            </button>
+          </form>
+          <p className="auth-switch">
+            <button type="button" className="text-link" onClick={() => navigate("/login")}>
+              Giriş ekranına dön
             </button>
           </p>
         </section>
@@ -1231,7 +1426,7 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
       predictionEligible: data.items.filter(item => item.predictionEligible).length,
       within24h: data.items.filter(item => isWithinNextHours(item.match.kickoffAt, now)).length,
       hasH2h: data.items.filter(item => !item.h2h.h2hMissing).length,
-      hasPrediction: data.items.filter(item => item.kuponEligible).length
+      hasPrediction: data.items.filter(item => item.hasPredictionPreview).length
     };
   }, [data]);
 
@@ -1614,6 +1809,10 @@ function MatchList({ data, navigate }: { data: FootballAnalyticsMatchListRespons
                   <span>Kapsam: {formatPercent(item.combinedCoverageScore)}</span>
                 </div>
                 <span className="analytics-match-league">{item.match.competition.name}</span>
+                <div className="analytics-match-badges">
+                  {item.predictionEligible ? <span className="badge badge-good">Tahmine uygun</span> : null}
+                  {item.hasPredictionPreview ? <span className="badge badge-info">Ön tahmin var</span> : null}
+                </div>
               </div>
             </article>
           );
@@ -4996,6 +5195,8 @@ function resolveRoute(path: string):
   | { kind: "overview" }
   | { kind: "login" }
   | { kind: "register" }
+  | { kind: "forgot-password" }
+  | { kind: "reset-password" }
   | { kind: "match-list" }
   | { kind: "match-detail"; id: string }
   | { kind: "team-list" }
@@ -5017,6 +5218,8 @@ function resolveRoute(path: string):
   const matchDetail = path.match(/^\/football\/analytics\/([^/]+)$/);
   if (path === "/login") return { kind: "login" };
   if (path === "/register") return { kind: "register" };
+  if (path === "/forgot-password") return { kind: "forgot-password" };
+  if (path === "/reset-password") return { kind: "reset-password" };
   if (matchDetail?.[1]) return { kind: "match-detail", id: matchDetail[1] };
   const draftDetail = path.match(/^\/football\/predictions\/drafts\/([^/]+)$/);
   if (draftDetail?.[1]) return { kind: "draft-detail", id: draftDetail[1] };

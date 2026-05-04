@@ -30,6 +30,7 @@ export interface FootballMatchAnalyticsResponse {
   featureStatus: string;
   predictionEligible: boolean;
   kuponEligible: boolean;
+  hasPredictionPreview: boolean;
   confidenceCeiling: number;
   combinedCoverageScore: number;
   homeForm: {
@@ -115,6 +116,7 @@ export interface FootballMatchAnalyticsRow {
   home_form_window_size: number | null;
   away_form_scope: string | null;
   away_form_window_size: number | null;
+  has_prediction_preview: boolean | string | number | null;
 }
 
 @Injectable()
@@ -195,7 +197,8 @@ export class FootballMatchAnalyticsService {
           home_form.scope as home_form_scope,
           home_form.window_size as home_form_window_size,
           away_form.scope as away_form_scope,
-          away_form.window_size as away_form_window_size
+          away_form.window_size as away_form_window_size,
+          exists (${safePredictionExistsSql()}) as has_prediction_preview
         from matches m
         inner join sports s on s.id = m.sport_id and s.slug = 'football'
         inner join competitions c on c.id = m.competition_id
@@ -244,7 +247,8 @@ export class FootballMatchAnalyticsService {
           home_form.scope as home_form_scope,
           home_form.window_size as home_form_window_size,
           away_form.scope as away_form_scope,
-          away_form.window_size as away_form_window_size
+          away_form.window_size as away_form_window_size,
+          exists (${safePredictionExistsSql()}) as has_prediction_preview
         from football_match_prediction_features f
         inner join matches m on m.id = f.match_id
         inner join sports s on s.id = m.sport_id and s.slug = 'football'
@@ -323,6 +327,7 @@ export function mapAnalyticsRow(row: FootballMatchAnalyticsRow, debug: boolean):
     featureStatus: reasoning.feature_status,
     predictionEligible: reasoning.prediction_eligible,
     kuponEligible: reasoning.kupon_eligible,
+    hasPredictionPreview: booleanFromDb(row.has_prediction_preview),
     confidenceCeiling: reasoning.confidence_ceiling,
     combinedCoverageScore: reasoning.metadata.coverage.combined,
     homeForm: {
@@ -380,6 +385,13 @@ function numberOrNull(value: string | number | null): number | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function booleanFromDb(value: boolean | string | number | null): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value > 0;
+  if (typeof value === "string") return ["true", "t", "1", "yes"].includes(value.toLowerCase());
+  return false;
 }
 
 function buildAnalyticsWhere(filters: FootballMatchAnalyticsListFilters) {

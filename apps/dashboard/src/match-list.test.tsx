@@ -212,11 +212,11 @@ describe("analytics frontend filtering", () => {
     expect(filtered[0]?.match.homeTeam.name).toBe("Team E");
   });
 
-  it("filters by hasPrediction using kuponEligible proxy", () => {
+  it("filters by hasPrediction using real preview availability", () => {
     const items = [
-      matchItem({ id: "match-1", home: "A", away: "B", kuponEligible: true }),
-      matchItem({ id: "match-2", home: "C", away: "D", kuponEligible: false }),
-      matchItem({ id: "match-3", home: "E", away: "F", kuponEligible: true }),
+      matchItem({ id: "match-1", home: "A", away: "B", kuponEligible: false, hasPredictionPreview: true }),
+      matchItem({ id: "match-2", home: "C", away: "D", kuponEligible: true, hasPredictionPreview: false }),
+      matchItem({ id: "match-3", home: "E", away: "F", kuponEligible: false, hasPredictionPreview: true }),
     ];
 
     const filtered = filterFootballAnalyticsItems(items, { ...baseFrontendFilters, hasPrediction: true }, "");
@@ -408,6 +408,7 @@ function matchItem(input: {
   kickoffAt?: string;
   status?: string;
   kuponEligible?: boolean;
+  hasPredictionPreview?: boolean;
 }): FootballAnalyticsMatchListResponse["items"][number] {
   return {
     match: {
@@ -433,6 +434,7 @@ function matchItem(input: {
     featureStatus: "ready",
     predictionEligible: true,
     kuponEligible: input.kuponEligible ?? false,
+    hasPredictionPreview: input.hasPredictionPreview ?? false,
     confidenceCeiling: 80,
     combinedCoverageScore: 76,
     homeForm: { sampleSize: 5, coverageScore: 70, scope: "home", windowSize: 5 },
