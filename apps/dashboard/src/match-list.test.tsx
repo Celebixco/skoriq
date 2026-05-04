@@ -235,6 +235,19 @@ describe("analytics frontend filtering", () => {
 
     expect(filtered).toHaveLength(2);
   });
+
+  it("filters out already-started matches even if stale status still says upcoming", () => {
+    const now = new Date("2026-05-05T00:30:00.000Z");
+    const items = [
+      matchItem({ id: "match-1", home: "Roma", away: "Fiorentina", status: "scheduled", kickoffAt: "2026-05-04T23:45:00.000Z" }),
+      matchItem({ id: "match-2", home: "Arsenal", away: "Fulham", status: "not_started", kickoffAt: "2026-05-05T18:00:00.000Z" }),
+    ];
+
+    const filtered = filterFootballAnalyticsItems(items, baseFrontendFilters, "", now);
+
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.match.homeTeam.name).toBe("Arsenal");
+  });
 });
 
 describe("ActiveFilterPills", () => {

@@ -107,7 +107,20 @@ export function filterFootballAnalyticsItems(
 ) {
   // Defense-in-depth: the API defaults this page to upcoming matches, but the
   // UI still refuses finished/result statuses if stale cached data arrives.
-  let filtered = items.filter(item => !EXCLUDED_ANALYTICS_STATUSES.includes(item.match.status as typeof EXCLUDED_ANALYTICS_STATUSES[number]));
+  // Some provider sync paths can briefly leave a match as scheduled even after
+  // kickoff, so we also drop already-started rows on the client.
+  let filtered = items.filter(item => {
+    if (EXCLUDED_ANALYTICS_STATUSES.includes(item.match.status as typeof EXCLUDED_ANALYTICS_STATUSES[number])) {
+      return false;
+    }
+
+    const kickoffTime = Date.parse(item.match.kickoffAt);
+    if (Number.isFinite(kickoffTime) && kickoffTime <= now.getTime()) {
+      return false;
+    }
+
+    return true;
+  });
 
   if (searchQuery.trim()) {
     const query = searchQuery.toLowerCase().trim();
