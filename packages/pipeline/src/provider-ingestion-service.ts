@@ -48,7 +48,7 @@ export class ProviderIngestionService {
       });
     }
 
-    const rawPayload = await this.rawPayloads.insertRawPayload({
+    let rawPayload = await this.rawPayloads.insertRawPayload({
       provider: request.result.metadata.provider,
       entityType: request.entityType,
       providerEntityId: request.result.metadata.providerEntityId,
@@ -63,6 +63,10 @@ export class ProviderIngestionService {
 
     if (!rawPayload) {
       throw new Error("Failed to insert or find raw provider payload.");
+    }
+
+    if (rawPayload.status === "failed") {
+      rawPayload = (await this.rawPayloads.markRawPayloadReceivedForRetry(rawPayload.id)) ?? rawPayload;
     }
 
     const jobPayload: RawPayloadProcessingJobPayload = {

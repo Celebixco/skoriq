@@ -999,7 +999,7 @@ async function main() {
     },
     baseUrl: config.APIFOOTBALL_COM_BASE_URL,
     timeoutMs: config.APIFOOTBALL_COM_TIMEOUT_MS,
-    environment: { nodeEnv: config.NODE_ENV }
+    environment: { nodeEnv: config.NODE_ENV, allowProductionAccess: config.APIFOOTBALL_COM_ALLOW_PRODUCTION }
   });
 
   const dependencies = options.execute

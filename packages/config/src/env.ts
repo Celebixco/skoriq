@@ -32,6 +32,11 @@ const envSchema = z.object({
     .optional()
     .transform((value) => value === "true")
     .default(false),
+  APIFOOTBALL_COM_ALLOW_PRODUCTION: z
+    .string()
+    .optional()
+    .transform((value) => value === "true")
+    .default(false),
   APIFOOTBALL_COM_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
   DATABASE_URL: z.string().url(),
   DB_EXECUTION_TARGET: z.enum(["local", "neon-test"]).default("local"),
@@ -75,8 +80,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error("At least one APIFOOTBALL_COM_API_KEY* value is required when APIFOOTBALL_COM_ENABLED=true.");
   }
 
-  if (config.NODE_ENV === "production" && config.APIFOOTBALL_COM_ENABLED) {
-    throw new Error("APIFOOTBALL_COM_ENABLED cannot be true in production until explicit production provider approval exists.");
+  if (config.NODE_ENV === "production" && config.APIFOOTBALL_COM_ENABLED && !config.APIFOOTBALL_COM_ALLOW_PRODUCTION) {
+    throw new Error("APIFOOTBALL_COM_ENABLED cannot be true in production unless APIFOOTBALL_COM_ALLOW_PRODUCTION=true.");
   }
 
   if (config.NODE_ENV === "production" && !config.FRONTEND_ORIGIN && !config.CORS_ORIGIN) {

@@ -454,6 +454,7 @@ function testConfig(): AppConfig {
     APIFOOTBALL_COM_API_KEY: undefined,
     APIFOOTBALL_COM_BASE_URL: "https://apiv3.apifootball.com/",
     APIFOOTBALL_COM_ENABLED: false,
+    APIFOOTBALL_COM_ALLOW_PRODUCTION: false,
     APIFOOTBALL_COM_TIMEOUT_MS: 15000,
     DATABASE_URL: "postgres://postgres:postgres@localhost:5432/sports_data",
     DB_EXECUTION_TARGET: "local",

@@ -28,6 +28,7 @@ export const APIFOOTBALL_COM_ADAPTER_NAME = "apifootball-com";
 
 export interface APIFootballComAdapterEnvironment {
   nodeEnv: "development" | "test" | "production";
+  allowProductionAccess?: boolean;
 }
 
 export interface APIFootballComAdapterOptions {
@@ -144,8 +145,8 @@ export class APIFootballComAdapter implements ProviderAdapter {
         ...options.apiKeys
       });
 
-    if (options.environment.nodeEnv === "production" && options.enabled) {
-      throw new Error("APIFootball.com adapter is blocked in production until explicit production provider approval exists.");
+    if (options.environment.nodeEnv === "production" && options.enabled && !options.environment.allowProductionAccess) {
+      throw new Error("APIFootball.com adapter is blocked in production unless APIFOOTBALL_COM_ALLOW_PRODUCTION=true.");
     }
 
     if (options.enabled && !this.credentialResolver.hasAnyCredential()) {

@@ -192,7 +192,7 @@ export async function runUpcomingSync(
     },
     baseUrl: config.APIFOOTBALL_COM_BASE_URL,
     timeoutMs: config.APIFOOTBALL_COM_TIMEOUT_MS,
-    environment: { nodeEnv: config.NODE_ENV }
+    environment: { nodeEnv: config.NODE_ENV, allowProductionAccess: config.APIFOOTBALL_COM_ALLOW_PRODUCTION }
   });
   const manualDependencies = dependencies.createManualDependencies(config, adapter, options.execute);
   const reports: UpcomingSyncLeagueReport[] = [];

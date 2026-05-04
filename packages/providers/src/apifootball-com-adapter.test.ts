@@ -32,7 +32,7 @@ describe("APIFootball.com adapter POC", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("requires a key when enabled and blocks production usage", () => {
+  it("requires a key when enabled and blocks production usage without explicit approval", () => {
     expect(
       () =>
         new APIFootballComAdapter({
@@ -52,7 +52,20 @@ describe("APIFootball.com adapter POC", () => {
           timeoutMs: 15000,
           environment: { nodeEnv: "production" }
         })
-    ).toThrow("APIFootball.com adapter is blocked in production until explicit production provider approval exists.");
+    ).toThrow("APIFootball.com adapter is blocked in production unless APIFOOTBALL_COM_ALLOW_PRODUCTION=true.");
+  });
+
+  it("allows production usage when explicitly approved", () => {
+    expect(
+      () =>
+        new APIFootballComAdapter({
+          enabled: true,
+          apiKey,
+          baseUrl: "https://apiv3.apifootball.com/",
+          timeoutMs: 15000,
+          environment: { nodeEnv: "production", allowProductionAccess: true }
+        })
+    ).not.toThrow();
   });
 
   it("can register the enabled adapter in non-production", () => {

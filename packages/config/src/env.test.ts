@@ -75,7 +75,22 @@ describe("loadConfig", () => {
         APIFOOTBALL_COM_ENABLED: "true",
         APIFOOTBALL_COM_API_KEY: "placeholder"
       })
-    ).toThrow("APIFOOTBALL_COM_ENABLED cannot be true in production until explicit production provider approval exists.");
+    ).toThrow("APIFOOTBALL_COM_ENABLED cannot be true in production unless APIFOOTBALL_COM_ALLOW_PRODUCTION=true.");
+  });
+
+  it("allows APIFootball.com provider usage in production when explicitly approved", () => {
+    const config = loadConfig({
+      NODE_ENV: "production",
+      DATABASE_URL: "postgres://postgres:postgres@localhost:5432/sports_data",
+      REDIS_URL: "redis://localhost:6379",
+      FRONTEND_ORIGIN: "https://skoriq.com",
+      APIFOOTBALL_COM_ENABLED: "true",
+      APIFOOTBALL_COM_ALLOW_PRODUCTION: "true",
+      APIFOOTBALL_COM_API_KEY: "placeholder"
+    });
+
+    expect(config.APIFOOTBALL_COM_ENABLED).toBe(true);
+    expect(config.APIFOOTBALL_COM_ALLOW_PRODUCTION).toBe(true);
   });
 
   it("requires an explicit frontend or CORS origin in production", () => {
