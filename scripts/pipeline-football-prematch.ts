@@ -187,13 +187,12 @@ export function validateFootballPrematchPipelineOptions(
 
 export function selectMatchesInsideWindow(matches: FootballPrematchPipelineMatchTarget[], options: FootballPrematchPipelineOptions, now: Date) {
   const minimumLeadMs = options.minimumLeadMinutes * 60 * 1000;
-  const windowMs = options.windowHours * 60 * 60 * 1000;
   return matches
     .filter((match) => ["not_started", "scheduled"].includes(match.status))
     .filter((match) => {
       const kickoff = new Date(match.kickoffAt);
       if (Number.isNaN(kickoff.getTime())) return false;
-      return kickoff.getTime() > now.getTime() + minimumLeadMs && kickoff.getTime() <= now.getTime() + windowMs;
+      return kickoff.getTime() > now.getTime() + minimumLeadMs;
     })
     .sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime())
     .slice(0, options.limit);

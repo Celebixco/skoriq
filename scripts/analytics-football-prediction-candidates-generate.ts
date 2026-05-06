@@ -257,29 +257,18 @@ export function evaluatePreMatchAnalysisWindow(input: {
     };
   }
 
-  const windowMs = input.windowHours * 60 * 60 * 1000;
   const minimumLeadMs = input.minimumLeadMinutes * 60 * 1000;
   const leadTimeMinutes = Math.round((kickoff.getTime() - input.evaluatedAt.getTime()) / 60000);
-  const staleGeneratedAt = (input.existingGeneratedAt ?? []).map(parseDate).filter((value): value is Date => value !== null).find((value) => kickoff.getTime() - value.getTime() > windowMs);
-
-  if (staleGeneratedAt) {
-    notes.push("Existing draft/generated output was produced more than the configured window before kickoff.");
-  }
 
   let analysisWindowStatus: FootballPredictionAnalysisWindowReport["analysisWindowStatus"];
-  if (staleGeneratedAt) {
-    analysisWindowStatus = "stale";
-  } else if (kickoff.getTime() <= input.evaluatedAt.getTime() + minimumLeadMs) {
+  if (kickoff.getTime() <= input.evaluatedAt.getTime() + minimumLeadMs) {
     analysisWindowStatus = "too_late";
-  } else if (kickoff.getTime() > input.evaluatedAt.getTime() + windowMs) {
-    analysisWindowStatus = "too_early";
   } else {
     analysisWindowStatus = "within_window";
   }
 
-  if (analysisWindowStatus === "too_early") notes.push("Kickoff is outside the configured near-term analysis window.");
   if (analysisWindowStatus === "too_late") notes.push("Kickoff has passed or is inside the configured minimum lead-time cutoff.");
-  if (analysisWindowStatus === "within_window") notes.push("Kickoff is inside the configured pre-match analysis window.");
+  if (analysisWindowStatus === "within_window") notes.push("Kickoff is outside the minimum lead-time cutoff and remains eligible for pre-match analysis.");
 
   return {
     kickoffAt: kickoff.toISOString(),

@@ -150,7 +150,7 @@ interface AdminSummaryRow {
 const defaultPrematchPolicy = resolveFootballPrematchWindowPolicy();
 const defaultWindowHours = defaultPrematchPolicy.windowHours;
 const defaultMinimumLeadMinutes = defaultPrematchPolicy.minimumLeadMinutes;
-const unsafeWindowStatuses = new Set(["stale", "too_early", "too_late", "unknown"]);
+const unsafeWindowStatuses = new Set(["stale", "too_late", "unknown"]);
 
 @Injectable()
 export class DashboardOverviewService {
@@ -255,8 +255,7 @@ export class DashboardOverviewService {
               and p.generated_at < m.scheduled_start_at
               and (
                 p.rebuild_required = true
-                or p.generation_window_status in ('stale', 'too_early', 'too_late', 'unknown')
-                or p.generated_at <= m.scheduled_start_at - interval '24 hours'
+                or p.generation_window_status in ('stale', 'too_late', 'unknown')
               )
           ) as stale_preview_exists,
           exists (
@@ -275,8 +274,7 @@ export class DashboardOverviewService {
                 where pc.prediction_output_id = p.id
                   and pc.severity = 'blocking'
               )
-              and coalesce(p.generation_window_status, 'within_window') not in ('stale', 'too_early', 'too_late', 'unknown')
-              and p.generated_at > m.scheduled_start_at - interval '24 hours'
+              and coalesce(p.generation_window_status, 'within_window') not in ('stale', 'too_late', 'unknown')
           ) as safe_preview_exists
         from matches m
         inner join sports s on s.id = m.sport_id and s.slug = 'football'
@@ -505,9 +503,7 @@ function evaluateAnalysisWindow(kickoffAt: Date): DashboardUpcomingMatch["analys
   const now = Date.now();
   const kickoff = kickoffAt.getTime();
   const minimumLead = defaultMinimumLeadMinutes * 60 * 1000;
-  const window = defaultWindowHours * 60 * 60 * 1000;
   if (kickoff <= now + minimumLead) return "too_late";
-  if (kickoff > now + window) return "too_early";
   return "within_window";
 }
 

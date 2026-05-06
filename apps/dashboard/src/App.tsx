@@ -2281,7 +2281,7 @@ export function MemberPredictionPreviewSection({ data }: { data: FootballMemberP
         <div>
           <h2>SkorIQ Tahmin Yorumu</h2>
           <p className="muted">Bu bölüm mevcut veri kapsamına göre üretilen ön tahminleri gösterir. Nihai sonuç garantisi değildir.</p>
-          <p className="muted">36 saat kuralı tahmin üretim zamanını belirler.</p>
+          <p className="muted">Tahminler minimum güvenli süre korunarak maç başlayana kadar gösterilebilir.</p>
         </div>
       </div>
       {data.status !== "available" ? (
@@ -2323,7 +2323,7 @@ function memberPredictionPreviewStatusText(data: FootballMemberPredictionPreview
   if (data.status === "stale") return data.message || "Tahminler yenilenmeli.";
   if (data.status === "closed") return data.message || "Maç başladı; aktif tahmin önizlemesi kapandı.";
   if (data.status === "not_ready") return data.message || "Veri kapsamı tahmin üretmek için yeterli değil.";
-  if (data.reasonCode === "too_early") return data.message || "Tahminler maç öncesi analiz penceresinde oluşturulacak.";
+  if (data.reasonCode === "too_early") return data.message || "Tahmin üretimi bekliyor.";
   if (data.reasonCode === "pending_generation") return data.message || "Tahmin üretimi bekliyor.";
   if (data.reasonCode === "too_late") return data.message || "Maç başladı; aktif tahmin önizlemesi kapandı.";
   if (data.status === "not_available") return data.message || "Bu maç için yayınlanabilir tahmin önizlemesi henüz yok.";

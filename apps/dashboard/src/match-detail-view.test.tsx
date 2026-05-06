@@ -254,7 +254,7 @@ describe("MatchDetailReportView", () => {
 
     expect(html).toContain("SkorIQ Tahmin Yorumu");
     expect(html).toContain("Bu bölüm mevcut veri kapsamına göre üretilen ön tahminleri gösterir. Nihai sonuç garantisi değildir.");
-    expect(html).toContain("36 saat kuralı tahmin üretim zamanını belirler.");
+    expect(html).toContain("Tahminler minimum güvenli süre korunarak maç başlayana kadar gösterilebilir.");
     expect(html).toContain("SkorIQ ön tahmin özeti.");
     expect(html).toContain("Veri kapsamı sınırlı alanlar içeriyor.");
     expect(html).not.toContain("Mevcut veri kapsamına göre üretilen adaylar. Nihai sonuç garantisi değildir.");
@@ -321,7 +321,7 @@ describe("MatchDetailReportView", () => {
           ...mockMemberPreviewResponse(),
           status: "not_available",
           reasonCode: "too_early",
-          message: "Tahminler maç öncesi analiz penceresinde oluşturulacak.",
+          message: "Tahmin üretimi bekliyor.",
           groups: { primary: [], try: [], alternative: [] },
           summary: "",
           warnings: []
@@ -345,7 +345,7 @@ describe("MatchDetailReportView", () => {
     expect(staleHtml).toContain("Tahminler yenilenmeli.");
     expect(staleHtml).not.toContain("MS 2.5 Üst");
     expect(unavailableHtml).toContain("Tahmin üretimi bekliyor.");
-    expect(tooEarlyHtml).toContain("Tahminler maç öncesi analiz penceresinde oluşturulacak.");
+    expect(tooEarlyHtml).toContain("Tahmin üretimi bekliyor.");
     expect(notReadyHtml).toContain("Veri kapsamı tahmin üretmek için yeterli değil.");
     expect(closedHtml).toContain("Maç başladı; aktif tahmin önizlemesi kapandı.");
   });

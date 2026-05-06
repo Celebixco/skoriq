@@ -91,18 +91,18 @@ describe("football pre-match pipeline runner", () => {
     expect(pipelineCalls).toBe(0);
   });
 
-  it("skips a match outside the window before running builders", async () => {
+  it("skips a match inside minimum lead time before running builders", async () => {
     let pipelineCalls = 0;
     const report = await runFootballPrematchPipeline(baseOptions(), {
-      now: () => new Date("2026-05-01T00:00:00.000Z"),
+      now: () => new Date("2026-05-01T17:45:00.000Z"),
       loadMatches: async () => [sampleMatches()[2]],
       runMatchPipeline: async () => {
         pipelineCalls += 1;
-        return readyMatchReport("too-early", false, 0);
+        return readyMatchReport("too-late", false, 0);
       }
     });
 
-    expect(report.matches[0].skipReason).toContain("too_early");
+    expect(report.matches[0].skipReason).toContain("too_late");
     expect(report.processedMatches).toBe(0);
     expect(pipelineCalls).toBe(0);
   });
@@ -210,9 +210,9 @@ function sampleMatches(): FootballPrematchPipelineMatchTarget[] {
       leagueId: "152"
     },
     {
-      matchId: "too-early",
+      matchId: "too-late",
       matchLabel: "Team E vs Team F",
-      kickoffAt: "2026-05-03T18:00:00.000Z",
+      kickoffAt: "2026-05-01T18:00:00.000Z",
       status: "not_started",
       competitionId: "competition-1",
       countryId: "44",

@@ -159,7 +159,7 @@ describe("football prediction candidate runner", () => {
     expect(result.report.analysisWindow?.analysisWindowStatus).toBe("within_window");
   });
 
-  it("reports too early without blocking generation", async () => {
+  it("keeps generation eligible even when kickoff is well beyond the former 36h window", async () => {
     const result = await runFootballPredictionCandidateGeneration(
       baseOptions,
       mockDependencies({
@@ -168,12 +168,12 @@ describe("football prediction candidate runner", () => {
       })
     );
 
-    expect(result.report.analysisWindow?.analysisWindowStatus).toBe("too_early");
+    expect(result.report.analysisWindow?.analysisWindowStatus).toBe("within_window");
     expect(result.report.candidates.length).toBeGreaterThan(0);
-    expect(result.report.warnings).toContain("Pre-match analysis window status: too_early. Reporting-only; generation and draft persistence are not blocked yet.");
+    expect(result.report.warnings).not.toContain(expect.stringContaining("too_early"));
   });
 
-  it("reports stale existing outputs without blocking persist-draft", async () => {
+  it("does not mark existing outputs stale only because they were generated well ahead of kickoff", async () => {
     const persistDrafts = vi.fn().mockResolvedValue({
       persistedOutputsCount: 2,
       outputIds: ["prediction-1", "prediction-2"],
@@ -194,8 +194,8 @@ describe("football prediction candidate runner", () => {
       })
     );
 
-    expect(result.report.analysisWindow?.analysisWindowStatus).toBe("stale");
-    expect(result.report.analysisWindow?.requiresRebuild).toBe(true);
+    expect(result.report.analysisWindow?.analysisWindowStatus).toBe("within_window");
+    expect(result.report.analysisWindow?.requiresRebuild).toBe(false);
     expect(result.persistence?.persistedOutputsCount).toBe(2);
   });
 
@@ -207,7 +207,7 @@ describe("football prediction candidate runner", () => {
     expect(result.report.blockedReasons).not.toContain(expect.stringContaining("enforcement blocked"));
   });
 
-  it("blocks too_early with --enforce-window", async () => {
+  it("does not block with --enforce-window when kickoff is simply far in the future", async () => {
     const result = await runFootballPredictionCandidateGeneration(
       { ...baseOptions, enforceWindow: true },
       mockDependencies({
@@ -216,9 +216,9 @@ describe("football prediction candidate runner", () => {
       })
     );
 
-    expect(result.report.analysisWindow?.analysisWindowStatus).toBe("too_early");
-    expect(result.report.candidates).toHaveLength(0);
-    expect(result.report.blockedReasons).toContain("Pre-match analysis window enforcement blocked candidate generation: too_early.");
+    expect(result.report.analysisWindow?.analysisWindowStatus).toBe("within_window");
+    expect(result.report.candidates.length).toBeGreaterThan(0);
+    expect(result.report.blockedReasons).not.toContain(expect.stringContaining("too_early"));
   });
 
   it("blocks too_late with --enforce-window", async () => {
@@ -235,7 +235,7 @@ describe("football prediction candidate runner", () => {
     expect(result.report.blockedReasons).toContain("Pre-match analysis window enforcement blocked candidate generation: too_late.");
   });
 
-  it("blocks stale with --enforce-window", async () => {
+  it("does not block with --enforce-window just because an older draft exists", async () => {
     const result = await runFootballPredictionCandidateGeneration(
       { ...baseOptions, enforceWindow: true },
       mockDependencies({
@@ -245,10 +245,10 @@ describe("football prediction candidate runner", () => {
       })
     );
 
-    expect(result.report.analysisWindow?.analysisWindowStatus).toBe("stale");
-    expect(result.report.analysisWindow?.requiresRebuild).toBe(true);
-    expect(result.report.candidates).toHaveLength(0);
-    expect(result.report.blockedReasons).toContain("Pre-match analysis window enforcement blocked candidate generation: stale.");
+    expect(result.report.analysisWindow?.analysisWindowStatus).toBe("within_window");
+    expect(result.report.analysisWindow?.requiresRebuild).toBe(false);
+    expect(result.report.candidates.length).toBeGreaterThan(0);
+    expect(result.report.blockedReasons).not.toContain(expect.stringContaining("stale"));
   });
 
   it("blocks unknown with --enforce-window", async () => {
@@ -264,7 +264,7 @@ describe("football prediction candidate runner", () => {
     expect(result.report.blockedReasons).toContain("Pre-match analysis window enforcement blocked candidate generation: unknown.");
   });
 
-  it("does not write drafts when --persist-draft is blocked by --enforce-window", async () => {
+  it("still writes drafts with --persist-draft when kickoff is far away but minimum lead is respected", async () => {
     const persistDrafts = vi.fn();
     const result = await runFootballPredictionCandidateGeneration(
       { ...baseOptions, persistDraft: true, checkConsistency: true, enforceWindow: true },
@@ -276,31 +276,18 @@ describe("football prediction candidate runner", () => {
       })
     );
 
-    expect(persistDrafts).not.toHaveBeenCalled();
-    expect(result.persistence).toBeUndefined();
-    expect(result.report.candidates).toHaveLength(0);
-    expect(result.report.summary).toBe("Analysis-only: pre-match analysis window enforcement blocked candidate generation.");
+    expect(persistDrafts).toHaveBeenCalled();
+    expect(result.report.candidates.length).toBeGreaterThan(0);
   });
 });
 
 describe("evaluatePreMatchAnalysisWindow", () => {
   const evaluatedAt = new Date("2026-04-30T12:00:00.000Z");
 
-  it("reports too_early 37h before kickoff with the 36h policy", () => {
+  it("reports within_window 37h before kickoff once the upper time limit is removed", () => {
     expect(
       evaluatePreMatchAnalysisWindow({
         kickoffAt: "2026-05-02T01:00:00.000Z",
-        evaluatedAt,
-        windowHours: 36,
-        minimumLeadMinutes: 30
-      }).analysisWindowStatus
-    ).toBe("too_early");
-  });
-
-  it("reports within_window 35h before kickoff with the 36h policy", () => {
-    expect(
-      evaluatePreMatchAnalysisWindow({
-        kickoffAt: "2026-05-01T23:00:00.000Z",
         evaluatedAt,
         windowHours: 36,
         minimumLeadMinutes: 30
@@ -319,7 +306,7 @@ describe("evaluatePreMatchAnalysisWindow", () => {
     ).toBe("within_window");
   });
 
-  it("reports too_early when kickoff is beyond the window", () => {
+  it("reports within_window when kickoff is beyond the former window but still before kickoff", () => {
     expect(
       evaluatePreMatchAnalysisWindow({
         kickoffAt: "2026-05-02T18:30:00.000Z",
@@ -327,7 +314,7 @@ describe("evaluatePreMatchAnalysisWindow", () => {
         windowHours: 36,
         minimumLeadMinutes: 30
       }).analysisWindowStatus
-    ).toBe("too_early");
+    ).toBe("within_window");
   });
 
   it("reports too_late when kickoff is inside minimum lead time", () => {

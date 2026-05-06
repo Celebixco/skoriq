@@ -118,7 +118,7 @@ describe("FootballMemberPredictionPreviewService", () => {
     expect(response.message).toBe("Tahminler yenilenmeli.");
   });
 
-  it("returns safe candidate generated within the valid window even when current time is too early", async () => {
+  it("returns safe candidate generated ahead of kickoff once minimum lead is still satisfied", async () => {
     const kickoff = "2026-05-03T18:30:00.000Z";
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-01T10:00:00.000Z"));
@@ -133,12 +133,12 @@ describe("FootballMemberPredictionPreviewService", () => {
 
     expect(response.status).toBe("available");
     expect(response.reasonCode).toBe("available");
-    expect(response.analysisWindow.status).toBe("too_early");
+    expect(response.analysisWindow.status).toBe("within_window");
     expect(response.groups.try).toHaveLength(1);
     vi.useRealTimers();
   });
 
-  it("returns stale when safe-looking candidate was generated too early", async () => {
+  it("keeps safe-looking candidates visible even when they were generated well ahead of kickoff", async () => {
     const kickoff = "2026-05-03T18:30:00.000Z";
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-02T12:00:00.000Z"));
@@ -151,8 +151,8 @@ describe("FootballMemberPredictionPreviewService", () => {
 
     const response = await service.getMatchPredictionPreview(matchId);
 
-    expect(response.status).toBe("stale");
-    expect(response.groups.try).toHaveLength(0);
+    expect(response.status).toBe("available");
+    expect(response.groups.try).toHaveLength(1);
     vi.useRealTimers();
   });
 
@@ -189,7 +189,7 @@ describe("FootballMemberPredictionPreviewService", () => {
     expect(response.message).toBe("Tahmin üretimi bekliyor.");
   });
 
-  it("tells members predictions will be created in the 36 hour window when analysis is ready but kickoff is too early", async () => {
+  it("keeps analysis-ready matches pending generation even when kickoff is far in the future", async () => {
     const service = new FootballMemberPredictionPreviewService(
       createDatabaseMock([[matchRow({ kickoff_at: farFutureKickoff(), feature_status: "ready" })], []]) as never
     );
@@ -197,11 +197,11 @@ describe("FootballMemberPredictionPreviewService", () => {
     const response = await service.getMatchPredictionPreview(matchId);
 
     expect(response.status).toBe("not_available");
-    expect(response.reasonCode).toBe("too_early");
-    expect(response.message).toBe("Tahminler maç öncesi 36 saatlik analiz penceresinde oluşturulacak.");
+    expect(response.reasonCode).toBe("pending_generation");
+    expect(response.message).toBe("Tahmin üretimi bekliyor.");
   });
 
-  it("tells members prediction generation is pending when analysis is ready inside the 36 hour window", async () => {
+  it("tells members prediction generation is pending when analysis is ready inside the active lead-time window", async () => {
     const service = new FootballMemberPredictionPreviewService(
       createDatabaseMock([[matchRow({ kickoff_at: withinWindowKickoff(), feature_status: "ready" })], []]) as never
     );

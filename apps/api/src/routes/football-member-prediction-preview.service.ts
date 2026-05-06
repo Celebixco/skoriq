@@ -71,8 +71,8 @@ interface PreviewCandidateRow {
   stale_at: Date | string | null;
 }
 
-const staleWindowStatuses = new Set(["stale", "too_early", "too_late"]);
-const unsafeWindowStatuses = new Set(["stale", "too_early", "too_late", "unknown"]);
+const staleWindowStatuses = new Set(["stale", "too_late"]);
+const unsafeWindowStatuses = new Set(["stale", "too_late", "unknown"]);
 const defaultPrematchPolicy = resolveFootballPrematchWindowPolicy();
 const defaultWindowHours = defaultPrematchPolicy.windowHours;
 const defaultMinimumLeadMinutes = defaultPrematchPolicy.minimumLeadMinutes;
@@ -118,7 +118,7 @@ export class FootballMemberPredictionPreviewService {
         analysisWindow: currentWindow,
         groups: emptyGroups(),
         summary: "Ön tahminler güncel analiz penceresinde yenilenmeden gösterilmez.",
-        warnings: ["Tahmin önizlemesi stale/too_early/too_late pencere durumunda gizlendi."]
+        warnings: ["Tahmin önizlemesi stale/too_late pencere durumunda gizlendi."]
       };
     }
 
@@ -145,7 +145,7 @@ export class FootballMemberPredictionPreviewService {
       analysisWindow: currentWindow,
       groups: groupCandidates(candidates.map(mapCandidateRow)),
       summary: "Bu ön tahminler mevcut veri kapsamına göre üretilmiştir; nihai sonuç garantisi değildir.",
-      warnings: ["36 saat kuralı tahmin üretim zamanını belirler."]
+      warnings: ["Tahminler minimum güvenli süre korunarak maç başlayana kadar gösterilebilir."]
     };
   }
 
@@ -311,9 +311,9 @@ function resolveEmptyPreviewState(
 
     return {
       status: "not_available",
-      reasonCode: "too_early",
-      message: "Tahminler maç öncesi 36 saatlik analiz penceresinde oluşturulacak.",
-      summary: "Analiz hazır; maç henüz tahmin üretim penceresinde değil."
+      reasonCode: "pending_generation",
+      message: "Tahmin üretimi bekliyor.",
+      summary: "Analiz hazır; güvenli tahmin draftı henüz oluşturulmadı."
     };
   }
 
@@ -335,10 +335,8 @@ function evaluateCurrentAnalysisWindow(match: PreviewMatchRow): FootballMemberPr
     return { status: "closed", windowHours: defaultWindowHours, minimumLeadMinutes: defaultMinimumLeadMinutes };
   }
   const minimumLeadMs = defaultMinimumLeadMinutes * 60 * 1000;
-  const windowMs = defaultWindowHours * 60 * 60 * 1000;
   if (now >= kickoff) return { status: "closed", windowHours: defaultWindowHours, minimumLeadMinutes: defaultMinimumLeadMinutes };
   if (now > kickoff - minimumLeadMs) return { status: "too_late", windowHours: defaultWindowHours, minimumLeadMinutes: defaultMinimumLeadMinutes };
-  if (now < kickoff - windowMs) return { status: "too_early", windowHours: defaultWindowHours, minimumLeadMinutes: defaultMinimumLeadMinutes };
   return { status: "within_window", windowHours: defaultWindowHours, minimumLeadMinutes: defaultMinimumLeadMinutes };
 }
 
@@ -347,8 +345,7 @@ function wasGeneratedInsideDefaultWindow(generatedAt: Date | string, kickoffAt: 
   const kickoff = parseDate(kickoffAt)?.getTime();
   if (!generated || !kickoff) return false;
   const minimumLeadMs = defaultMinimumLeadMinutes * 60 * 1000;
-  const windowMs = defaultWindowHours * 60 * 60 * 1000;
-  return generated >= kickoff - windowMs && generated <= kickoff - minimumLeadMs;
+  return generated <= kickoff - minimumLeadMs;
 }
 
 function predictionMarketLabel(type: string, value: string) {
