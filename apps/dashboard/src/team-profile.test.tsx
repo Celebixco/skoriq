@@ -177,6 +177,7 @@ function fullProfile(patch: Partial<FootballTeamProfileResponse> = {}): Football
         analysisStatus: "ready"
       }
     ],
+    playerAvailability: [],
     dataCoverage: {
       matchesAvailable: 30,
       scoresAvailable: 28,
@@ -370,9 +371,9 @@ describe("TeamProfileDataCoverage", () => {
     expect(html).toContain("Mevcut");
     expect(html).toContain("Form kapsamı");
     expect(html).toContain("Logo");
-    expect(html).toContain("Oyuncu verisi yakında");
-    expect(html).toContain("Kadro verisi yakında");
-    expect(html).toContain("Sakatlık verisi yakında");
+    expect(html).toContain("Oyuncu verisi");
+    expect(html).toContain("Kadro verisi");
+    expect(html).toContain("Sakatlık verisi");
   });
 });
 

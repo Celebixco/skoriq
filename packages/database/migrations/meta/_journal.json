@@ -141,6 +141,27 @@
       "when": 1777575090465,
       "tag": "0019_thankful_thunderbolt_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1777819980901,
+      "tag": "0020_silky_whirlwind",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1777858294335,
+      "tag": "0021_acoustic_nomad",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1778000000000,
+      "tag": "0022_balanced_prodigy",
+      "breakpoints": true
     }
   ]
 }

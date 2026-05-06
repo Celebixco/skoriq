@@ -8,6 +8,8 @@ import {
   fetchFootballCountries,
   fetchFootballCountryCompetitions,
   fetchFootballCompetitionProfile,
+  fetchFootballMatchLineups,
+  fetchFootballMatchPlayerAvailability,
   fetchFootballMemberPredictionPreview,
   fetchFootballMatchPredictionDrafts,
   fetchFootballMatchPublicEligibility,
@@ -19,6 +21,8 @@ import {
   fetchFootballPredictionResultsSummary,
   fetchFootballPredictionSettlements,
   fetchFootballPublicEligibility,
+  fetchFootballTeamAvailability,
+  fetchFootballTeamPlayers,
   fetchFootballTeamProfile,
   fetchFootballTeams,
   fetchCurrentUser,
@@ -43,6 +47,7 @@ import type {
   FootballAnalyticsMatchListResponse,
   FootballCompetitionsListResponse,
   FootballMatchPredictionDraftsResponse,
+  FootballMatchLineupsResponse,
   FootballMemberPredictionPreviewResponse,
   FootballMatchPredictionSettlementsResponse,
   FootballPredictionDraftDetail,
@@ -60,6 +65,7 @@ import type {
   FootballPredictionSettlementListItem,
   FootballPredictionSettlementsListResponse,
   FootballTeamListItem,
+  FootballTeamPlayersResponse,
   FootballTeamProfileResponse,
   FootballTeamProfileFormSummary,
   FootballTeamProfileRecentMatch,
@@ -1855,6 +1861,8 @@ function getMatchAnalyticsStats(items: FootballAnalyticsMatchListResponse["items
 
 function MatchDetailPage({ matchId, navigate, user }: { matchId: string; navigate: (path: string) => void; user: AuthUser }) {
   const { data: report, loading, error } = useLoad(() => fetchFootballAnalyticsMatch(matchId), [matchId]);
+  const { data: lineups } = useLoad(() => fetchFootballMatchLineups(matchId), [matchId]);
+  const { data: availability } = useLoad(() => fetchFootballMatchPlayerAvailability(matchId), [matchId]);
 
   return (
     <>
@@ -1865,7 +1873,7 @@ function MatchDetailPage({ matchId, navigate, user }: { matchId: string; navigat
       {error ? <StatePanel title="Veri yüklenemedi" body={error} /> : null}
       {!loading && !error && !report ? <StatePanel title="Analiz raporu bulunamadı" /> : null}
       {report ? (
-        <MatchDetailReportView report={report} matchId={matchId} user={user} navigate={navigate} />
+        <MatchDetailReportView report={report} matchId={matchId} user={user} navigate={navigate} lineups={lineups ?? undefined} availability={availability?.items ?? []} />
       ) : null}
     </>
   );
@@ -1875,12 +1883,16 @@ export function MatchDetailReportView({
   report,
   matchId,
   user,
-  navigate
+  navigate,
+  lineups,
+  availability
 }: {
   report: FootballAnalyticsMatchReport;
   matchId: string;
   user: AuthUser;
   navigate: (path: string) => void;
+  lineups?: FootballMatchLineupsResponse;
+  availability: FootballTeamProfileResponse["playerAvailability"];
 }) {
   const competitionName = report.match.competition?.name || "Lig bilgisi yok";
   const kickoffLabel = report.match.kickoffAt ? formatDateTime(report.match.kickoffAt) : "Tarih bilgisi yok";
@@ -1945,6 +1957,9 @@ export function MatchDetailReportView({
       ) : null}
 
       <MemberPredictionPreview matchId={matchId} />
+
+      <MatchLineupsSection lineups={lineups} />
+      <MatchAvailabilitySection items={availability} />
 
       <div className="signal-grid analysis-signal-grid">
         <ReportSignalCard title="Pozitif Sinyaller" items={report.positiveSignals.map((item) => formatSignalText(item, report))} tone="positive" />
@@ -2076,6 +2091,64 @@ function GoalProfileSection({ report }: { report: FootballAnalyticsMatchReport }
   );
 }
 
+function MatchLineupsSection({ lineups }: { lineups?: FootballMatchLineupsResponse }) {
+  return (
+    <section className="panel">
+      <h2>Takım Kadroları</h2>
+      {!lineups || lineups.dataStatus !== "ok" || lineups.items.length === 0 ? <p className="muted">Muhtemel kadro verisi henüz yok.</p> : null}
+      <div className="form-summary-grid">
+        {lineups?.items.map((item) => (
+          <div className="form-summary-card" key={item.team.id}>
+            <h3>{item.team.name}</h3>
+            <p className="muted">
+              {item.confirmed ? "Onaylı ilk 11" : "Muhtemel kadro"}
+              {item.formation ? ` · ${item.formation}` : ""}
+            </p>
+            <div className="form-summary-body">
+              <div className="form-summary-row">
+                <span>İlk 11</span>
+                <strong>{item.startingXi.length}</strong>
+              </div>
+              <div className="form-summary-row">
+                <span>Yedekler</span>
+                <strong>{item.substitutes.length}</strong>
+              </div>
+              <div className="form-summary-row">
+                <span>Kadroda yok</span>
+                <strong>{item.unavailable.length}</strong>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MatchAvailabilitySection({ items }: { items: FootballTeamProfileResponse["playerAvailability"] }) {
+  return (
+    <section className="panel">
+      <h2>Sakat-Cezalı Oyuncular</h2>
+      {items.length === 0 ? <p className="muted">Oyuncu durumu verisi henüz yok.</p> : null}
+      <div className="recent-matches-list">
+        {items.map((item) => (
+          <article className="recent-match-row" key={`${item.playerId}-${item.status}-${item.reason ?? ""}`}>
+            <div className="recent-match-opponent">
+              <div>
+                <strong>{item.playerName}</strong>
+                <span className="muted">
+                  {item.team.name} · {mapAvailabilityStatusLabel(item.status)}
+                  {item.reason ? ` · ${item.reason}` : ""}
+                </span>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function getGoalProfileItems(report: FootballAnalyticsMatchReport) {
   const fields: Array<[keyof FootballAnalyticsMatchReport, string]> = [
     ["goalProfile", "Maç Gol Profili"],
@@ -2113,6 +2186,20 @@ function formatGoalProfileText(value: string) {
     no_lean: "KG Yok eğilimi",
     yes_lean: "KG Var eğilimi",
     balanced: "Dengeli"
+  };
+  return labels[normalized] ?? value;
+}
+
+function mapAvailabilityStatusLabel(value: string) {
+  const normalized = value.trim().toLowerCase();
+  const labels: Record<string, string> = {
+    injured: "Sakat",
+    suspended: "Cezalı",
+    doubtful: "Şüpheli",
+    questionable: "Oynaması belirsiz",
+    unavailable: "Kadroda yok",
+    unknown: "Veri yok",
+    returned: "Döndü"
   };
   return labels[normalized] ?? value;
 }
@@ -2773,6 +2860,8 @@ function matchesTeamDirectoryFilter(team: FootballTeamListItem, activeFilter: Te
 
 function TeamDetailPage({ teamId, navigate }: { teamId: string; navigate: (path: string) => void }) {
   const { data: profile, loading, error } = useLoad(() => fetchFootballTeamProfile(teamId), [teamId]);
+  const { data: players } = useLoad(() => fetchFootballTeamPlayers(teamId), [teamId]);
+  const { data: availability } = useLoad(() => fetchFootballTeamAvailability(teamId), [teamId]);
 
   return (
     <>
@@ -2805,6 +2894,8 @@ function TeamDetailPage({ teamId, navigate }: { teamId: string; navigate: (path:
             <TeamProfileGoalProfile goalProfile={profile.goalProfile} />
             <TeamProfileRecentMatches matches={profile.recentMatches} />
             <TeamProfileUpcomingMatches matches={profile.upcomingMatches} navigate={navigate} />
+            <TeamProfilePlayers players={players?.items ?? []} />
+            <TeamProfileAvailability items={availability?.items ?? profile.playerAvailability ?? []} />
             <TeamProfileDataCoverage coverage={profile.dataCoverage} />
           </div>
         </>
@@ -3022,6 +3113,57 @@ export function TeamProfileUpcomingMatches({ matches, navigate }: { matches: Foo
   );
 }
 
+export function TeamProfilePlayers({ players }: { players: FootballTeamPlayersResponse["items"] }) {
+  return (
+    <section className="panel">
+      <h2>Oyuncular</h2>
+      {players.length === 0 ? <p className="muted">Kadro verisi yok.</p> : null}
+      <div className="recent-matches-list">
+        {players.map((player) => (
+          <article className="recent-match-row" key={player.playerId}>
+            <div className="recent-match-opponent">
+              <div>
+                <strong>{player.name}</strong>
+                <span className="muted">
+                  {player.position ?? "Pozisyon yok"}{player.shirtNumber !== null ? ` · #${player.shirtNumber}` : ""}
+                </span>
+              </div>
+            </div>
+            <div className="recent-match-meta">
+              <span className={`pill ${player.activeMembership ? "" : "pill-muted"}`}>{player.activeMembership ? "Aktif" : "Pasif"}</span>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function TeamProfileAvailability({ items }: { items: FootballTeamProfileResponse["playerAvailability"] }) {
+  return (
+    <section className="panel">
+      <h2>Oyuncu Durumu</h2>
+      {items.length === 0 ? <p className="muted">Oyuncu durumu verisi henüz yok.</p> : null}
+      <div className="recent-matches-list">
+        {items.map((item) => (
+          <article className="recent-match-row" key={`${item.playerId}-${item.status}-${item.reason ?? ""}`}>
+            <div className="recent-match-opponent">
+              <div>
+                <strong>{item.playerName}</strong>
+                <span className="muted">
+                  {mapAvailabilityStatusLabel(item.status)}
+                  {item.reason ? ` · ${item.reason}` : ""}
+                  {item.expectedReturnDate ? ` · Dönüş ${formatDate(item.expectedReturnDate)}` : ""}
+                </span>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function TeamProfileDataCoverage({ coverage }: { coverage: FootballTeamProfileResponse["dataCoverage"] }) {
   const items: Array<{ label: string; available: boolean; count?: number; soonMessage?: string }> = [
     { label: "Maç verisi", available: coverage.matchesAvailable > 0, count: coverage.matchesAvailable },
@@ -3029,9 +3171,9 @@ export function TeamProfileDataCoverage({ coverage }: { coverage: FootballTeamPr
     { label: "Puan durumu", available: coverage.hasStanding },
     { label: "Form kapsamı", available: coverage.formCoverageScore !== null && coverage.formCoverageScore > 0 },
     { label: "Logo", available: coverage.hasLogo },
-    { label: "Oyuncu verisi", available: coverage.playersAvailable, soonMessage: "Oyuncu verisi yakında" },
-    { label: "Kadro verisi", available: coverage.lineupsAvailable, soonMessage: "Kadro verisi yakında" },
-    { label: "Sakatlık verisi", available: coverage.injuriesAvailable, soonMessage: "Sakatlık verisi yakında" }
+    { label: "Oyuncu verisi", available: coverage.playersAvailable },
+    { label: "Kadro verisi", available: coverage.lineupsAvailable },
+    { label: "Sakatlık verisi", available: coverage.injuriesAvailable }
   ];
 
   return (

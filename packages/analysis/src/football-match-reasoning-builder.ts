@@ -61,6 +61,7 @@ export class FootballMatchReasoningBuilder {
 export function buildFootballMatchReasoning(feature: FootballMatchReasoningPredictionFeature): FootballMatchReasoningSnapshot {
   const metadata = feature.metadataJson ?? {};
   const sampleSizes = extractSampleSizes(metadata);
+  const playerContext = extractPlayerContext(metadata);
   const h2hMissing = metadata.h2hMissing === true || sampleSizes.h2h === 0;
   const positiveSignals: string[] = [];
   const negativeSignals: string[] = [];
@@ -111,9 +112,24 @@ export function buildFootballMatchReasoning(feature: FootballMatchReasoningPredi
     negativeSignals.push("Feature snapshot is insufficient; critical data is missing or too weak.");
   }
 
+  if (playerContext) {
+    if ((playerContext.homeMissingPlayersCount ?? 0) > 0) {
+      riskFactors.push("Ev sahibi takımda eksik oyuncu bilgisi mevcut.");
+    }
+    if ((playerContext.awayAvailabilityCoverageScore ?? 0) < 40) {
+      missingDataWarnings.push("Deplasman tarafında oyuncu durumu verisi sınırlı.");
+    }
+    if (!playerContext.homeLineupConfirmed || !playerContext.awayLineupConfirmed) {
+      riskFactors.push("İlk 11 verisi henüz onaylı değil.");
+    }
+    if ((playerContext.playerContextRiskLevel ?? "unknown") === "high") {
+      riskFactors.push("Kadrodaki eksikler tahmin güvenini sınırlayan risk olarak işlendi.");
+    }
+  }
+
   const predictionEligible = feature.featureStatus === "ready";
   const kuponEligible = false;
-  const confidenceCeiling = resolveConfidenceCeiling(feature.featureStatus, feature.combinedCoverageScore, h2hMissing);
+  const confidenceCeiling = resolveConfidenceCeiling(feature.featureStatus, feature.combinedCoverageScore, h2hMissing, playerContext);
   const reasoningStatus = resolveReasoningStatus(feature.featureStatus);
 
   return {
@@ -159,8 +175,21 @@ function extractSampleSizes(metadata: Record<string, unknown>) {
   };
 }
 
-function resolveConfidenceCeiling(status: FootballMatchPredictionFeatureStatus, combinedCoverageScore: number, h2hMissing: boolean) {
-  if (status === "ready") return h2hMissing ? 65 : 80;
+function resolveConfidenceCeiling(
+  status: FootballMatchPredictionFeatureStatus,
+  combinedCoverageScore: number,
+  h2hMissing: boolean,
+  playerContext: ReturnType<typeof extractPlayerContext>
+) {
+  if (status === "ready") {
+    let ceiling = h2hMissing ? 65 : 80;
+    if (playerContext?.playerContextRiskLevel === "high") ceiling = Math.min(ceiling, 62);
+    else if (playerContext?.playerContextRiskLevel === "medium") ceiling = Math.min(ceiling, 70);
+    if (playerContext && (!playerContext.homeLineupConfirmed || !playerContext.awayLineupConfirmed)) {
+      ceiling = Math.min(ceiling, 68);
+    }
+    return ceiling;
+  }
   if (status === "partial") return 50;
   return Math.max(0, Math.min(30, Math.round(combinedCoverageScore)));
 }
@@ -199,4 +228,19 @@ function numberFromUnknown(value: unknown) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function extractPlayerContext(metadata: Record<string, unknown>) {
+  const playerContext = isRecord(metadata.playerContext) ? metadata.playerContext : null;
+  if (!playerContext) return null;
+  return {
+    homeMissingPlayersCount: numberFromUnknown(playerContext.homeMissingPlayersCount),
+    awayMissingPlayersCount: numberFromUnknown(playerContext.awayMissingPlayersCount),
+    homeLineupConfirmed: playerContext.homeLineupConfirmed === true,
+    awayLineupConfirmed: playerContext.awayLineupConfirmed === true,
+    homeAvailabilityCoverageScore: numberFromUnknown(playerContext.homeAvailabilityCoverageScore),
+    awayAvailabilityCoverageScore: numberFromUnknown(playerContext.awayAvailabilityCoverageScore),
+    playerContextRiskLevel:
+      typeof playerContext.playerContextRiskLevel === "string" ? playerContext.playerContextRiskLevel : "unknown"
+  };
 }

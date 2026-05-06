@@ -32,6 +32,7 @@ Current implemented normalized facts:
 
 - Shared: `sports`, `countries`, `competitions`, `seasons`, `teams`, `players`, `matches`.
 - Football: `football_match_scores`, `football_match_team_statistics`, `football_standings`.
+- Football supporting context: `football_player_team_memberships`, `football_player_availability`.
 - Basketball: `basketball_match_scores`, `basketball_period_scores`, `basketball_team_match_statistics`, `basketball_standings`.
 
 Feature builders should create precomputed rows so future prediction consumers can read stable snapshots instead of recalculating from raw match history at request time.
@@ -105,6 +106,13 @@ See [Football Goal Signal Interpretation](./football-goal-signal-interpretation.
 Readiness is defined in [Prediction Readiness Policy](./prediction-readiness-policy.md). MVP `ready` rows require home and away form samples of at least 3 and combined coverage of at least 50. H2H is optional when form coverage is strong: if H2H has samples, coverage uses 40% home form, 40% away form, and 20% H2H; if H2H is missing or zero-sample, coverage uses 50% home form and 50% away form and records `metadata.h2hMissing=true`. `insufficient_data` rows must be excluded from future prediction and public-use candidate generation.
 
 H2H remains a supporting causal signal. It may support or weaken goal-profile, BTTS, and over/under reasoning when the sample is recent and meaningful, but it must not override current form, home/away performance, goal-profile evidence, player/referee/injury/lineup context when implemented, or consistency checks. Missing H2H should cap confidence and add a risk warning rather than automatically block MVP readiness when form coverage is strong. Old or low-sample H2H should be downweighted. H2H that contradicts current form should produce risk context, not an automatic decision.
+
+Player availability follows the same principle. Injury, suspension, doubtful, or unavailable rows are supporting evidence only:
+
+- explicit provider availability may strengthen or weaken causal interpretation
+- missing availability data means `unknown`, not "healthy squad"
+- player availability must not mechanically force a prediction direction
+- consistency checks, coverage gates, and reasoning summaries remain the decision boundary until a separate approved feature task consumes this data
 
 ### Süper Lig MVP Readiness
 
@@ -259,6 +267,7 @@ This runner only fills canonical H2H match/score inputs for individually safe up
 14. Implemented: admin settlement/audit views.
 15. Implemented: public eligibility dry-run evaluator and internal review pages.
 16. In progress: football goal-feature expansion. First team-form slice is implemented; H2H goal fields, match-level goal profiles, candidate-generator usage, and consistency-engine updates remain future work.
+16a. Implemented foundation: football player-context features for missing-player counts, lineup confirmation, availability coverage, and risk-level scoring.
 17. Add public successful predictions page.
 18. Add member active predictions page.
 19. Add tahmin kombini engine later.
@@ -274,3 +283,12 @@ This runner only fills canonical H2H match/score inputs for individually safe up
 - No live-score recalculation.
 - No paid analytics infrastructure.
 - No schema, migrations, builders, or APIs from this planning document alone.
+
+## Player Context Guardrail
+
+Player availability and lineup data are supporting context only.
+
+- They may reduce confidence ceilings.
+- They may add risk notes.
+- They may temper first-half, BTTS, and defensive confidence.
+- They must not automatically flip a pick or bypass consistency checks.

@@ -185,6 +185,7 @@ describe("analytics frontend filtering", () => {
   });
 
   it("filters out finished matches regardless of other filters", () => {
+    const now = new Date("2026-05-01T12:00:00.000Z");
     const items = [
       matchItem({ id: "match-1", home: "Lille", away: "Le Havre", status: "not_started" }),
       matchItem({ id: "match-2", home: "Arsenal", away: "Fulham", status: "finished" }),
@@ -193,45 +194,48 @@ describe("analytics frontend filtering", () => {
       matchItem({ id: "match-5", home: "Bayern", away: "Dortmund", status: "scheduled" }),
     ];
 
-    const filtered = filterFootballAnalyticsItems(items, baseFrontendFilters, "");
+    const filtered = filterFootballAnalyticsItems(items, baseFrontendFilters, "", now);
 
     expect(filtered).toHaveLength(2);
     expect(filtered.map(i => i.match.homeTeam.name)).toEqual(["Lille", "Bayern"]);
   });
 
   it("filters out abandoned and after_penalties matches", () => {
+    const now = new Date("2026-05-01T12:00:00.000Z");
     const items = [
       matchItem({ id: "match-1", home: "Team A", away: "Team B", status: "abandoned" }),
       matchItem({ id: "match-2", home: "Team C", away: "Team D", status: "after_penalties" }),
       matchItem({ id: "match-3", home: "Team E", away: "Team F", status: "not_started" }),
     ];
 
-    const filtered = filterFootballAnalyticsItems(items, baseFrontendFilters, "");
+    const filtered = filterFootballAnalyticsItems(items, baseFrontendFilters, "", now);
 
     expect(filtered).toHaveLength(1);
     expect(filtered[0]?.match.homeTeam.name).toBe("Team E");
   });
 
   it("filters by hasPrediction using real preview availability", () => {
+    const now = new Date("2026-05-01T12:00:00.000Z");
     const items = [
       matchItem({ id: "match-1", home: "A", away: "B", kuponEligible: false, hasPredictionPreview: true }),
       matchItem({ id: "match-2", home: "C", away: "D", kuponEligible: true, hasPredictionPreview: false }),
       matchItem({ id: "match-3", home: "E", away: "F", kuponEligible: false, hasPredictionPreview: true }),
     ];
 
-    const filtered = filterFootballAnalyticsItems(items, { ...baseFrontendFilters, hasPrediction: true }, "");
+    const filtered = filterFootballAnalyticsItems(items, { ...baseFrontendFilters, hasPrediction: true }, "", now);
 
     expect(filtered).toHaveLength(2);
     expect(filtered.map(i => i.match.homeTeam.name)).toEqual(["A", "E"]);
   });
 
   it("keeps postponed matches since they may be rescheduled", () => {
+    const now = new Date("2026-05-01T12:00:00.000Z");
     const items = [
       matchItem({ id: "match-1", home: "Team A", away: "Team B", status: "postponed" }),
       matchItem({ id: "match-2", home: "Team C", away: "Team D", status: "not_started" }),
     ];
 
-    const filtered = filterFootballAnalyticsItems(items, baseFrontendFilters, "");
+    const filtered = filterFootballAnalyticsItems(items, baseFrontendFilters, "", now);
 
     expect(filtered).toHaveLength(2);
   });

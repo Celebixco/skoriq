@@ -43,10 +43,10 @@ Latest local sample review: 2026-04-29 second staged capture succeeded for leagu
 | `APIFOOTBALL_COM_API_KEY_EVENTS` | none | optional | Preferred for historical/current `get_events`. |
 | `APIFOOTBALL_COM_API_KEY_RESULTS` | none | optional | Preferred for finished score/result refreshes; falls back through default/legacy when missing. |
 | `APIFOOTBALL_COM_API_KEY_FIXTURES` | none | optional | Preferred for upcoming fixture fetches; falls back through default/legacy when missing. |
-| `APIFOOTBALL_COM_API_KEY_PLAYERS` | none | optional | Reserved for future player profile endpoints. |
+| `APIFOOTBALL_COM_API_KEY_PLAYERS` | none | optional | Reserved for future dedicated player profile endpoints. |
 | `APIFOOTBALL_COM_API_KEY_STATISTICS` | none | optional | Reserved for future match/team statistics endpoints. |
 | `APIFOOTBALL_COM_API_KEY_LINEUPS` | none | optional | Reserved for future lineup endpoints. |
-| `APIFOOTBALL_COM_API_KEY_INJURIES` | none | optional | Reserved for future injury/suspension endpoints. |
+| `APIFOOTBALL_COM_API_KEY_INJURIES` | none | conditionally required | Required for the controlled `provider:football:player-availability-sync` command. If missing, the command must exit safely with `missing_injuries_credential` and must not call the provider. |
 | `APIFOOTBALL_COM_BASE_URL` | `https://apiv3.apifootball.com/` | yes | Action-based request base URL. |
 | `APIFOOTBALL_COM_ENABLED` | `false` | yes | Must remain false by default. |
 | `APIFOOTBALL_COM_TIMEOUT_MS` | `15000` | yes | Local HTTP timeout. |
@@ -80,6 +80,7 @@ Request auth uses the apifootball.com documented query parameter `APIkey`. Do no
 | `get_events` | `list_upcoming_matches`, `list_finished_matches`, `get_match_details` | `ProviderMatch` | `MatchNormalizer` / `matches` | POC implemented | Requires stable home/away team IDs; name-only rows are unresolved. |
 | `get_events` | `get_football_match_score` | `ProviderFootballMatchScore` | `FootballMatchScoreNormalizer` / `football_match_scores` | POC implemented | Maps current/fulltime, halftime, extra-time, and penalty score fields when present. |
 | `get_standings` | `get_football_standings` | `ProviderFootballStanding` | `FootballStandingNormalizer` / `football_standings` | POC implemented | Requires stable `team_id`; rows without it are unresolved. |
+| `get_teams` + nested `players[]` | controlled player availability sync | `ProviderPlayer` + `ProviderFootballPlayerAvailability` | `players`, `football_player_team_memberships`, `football_player_availability` | Controlled implementation | Uses only explicit provider player rows. Missing data means unknown, not healthy squad. |
 | `get_H2H` | head-to-head evidence for upcoming/analyzable matches | canonical `matches` + `football_match_scores` for clean rows | `football_head_to_head_features` inputs after feature build | Dry-run/guarded execute implemented | Must run after countries/leagues, teams, and events are mapped. Fetch scoped upcoming/analyzable match pairs only, not all possible team pairs. |
 | `get_predictions` | none | none | raw-only/not used | Not implemented | Do not depend on provider predictions. |
 | `get_livescore` | none | none | blocked | Not implemented | No live-score polling. |
@@ -164,6 +165,14 @@ If stable team IDs are missing, event rows are unresolved. The adapter must not 
 | home/away splits | `home_*`, `away_*` fields | `confirmed` |
 
 Rows without stable `team_id` are unresolved and must not be sent to the standing normalizer.
+
+### Controlled Player Availability Notes
+
+- Current controlled support uses `get_teams` team payloads when they include nested `players[]` rows and explicit injury-like flags such as `player_injured`.
+- Dedicated `get_injuries` field evidence is still incomplete; do not invent suspension data and do not infer injuries from lineup absence alone.
+- Only explicit unavailability context should normalize into `football_player_availability`.
+- Missing player availability data must be treated as `unknown`, not "full squad" or "no injuries".
+- Public/member APIs may expose only safe fields such as player name, team, status, reason, expected return date, and freshness. They must never expose provider IDs or raw payloads.
 
 ### Future H2H Evidence
 
@@ -396,3 +405,17 @@ When a failed APIFootball raw payload becomes recoverable after a mapping fix, t
 - No basketball adapter.
 - No frontend.
 - No prediction model.
+
+## Player / Availability Evidence
+
+Current project evidence treats these APIFootball actions as cautiously usable for football:
+
+- `get_teams` with nested `players[]` for squad / player-list normalization
+- `get_teams` with injury credential for explicit player availability rows when the provider marks a player as injured / doubtful / unavailable
+- `get_lineups` for starting XI / substitutes when the payload is present
+
+Important:
+
+- no suspension is inferred unless the provider says so explicitly
+- no injury is inferred from a missing lineup appearance alone
+- no provider IDs or raw payload bodies should surface in member APIs

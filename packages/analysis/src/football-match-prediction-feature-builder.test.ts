@@ -338,7 +338,8 @@ describe("football match prediction feature builder", () => {
     const sources: FootballMatchPredictionSourceRepository = {
       findMatchById: vi.fn().mockResolvedValue(match),
       findBestTeamFormFeature: vi.fn().mockResolvedValueOnce(homeForm).mockResolvedValueOnce(awayForm),
-      findBestHeadToHeadFeature: vi.fn().mockResolvedValue(h2h)
+      findBestHeadToHeadFeature: vi.fn().mockResolvedValue(h2h),
+      findPlayerContextFeature: vi.fn().mockResolvedValue(undefined)
     };
     const features: FootballMatchPredictionFeatureRepository = { upsertFeature };
     const builder = new FootballMatchPredictionFeatureBuilder({ sources, features });
@@ -363,7 +364,8 @@ describe("football match prediction feature builder", () => {
       sources: {
         findMatchById: vi.fn().mockResolvedValue(undefined),
         findBestTeamFormFeature: vi.fn(),
-        findBestHeadToHeadFeature: vi.fn()
+        findBestHeadToHeadFeature: vi.fn(),
+        findPlayerContextFeature: vi.fn()
       },
       features: { upsertFeature: vi.fn() }
     });

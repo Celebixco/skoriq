@@ -14,6 +14,7 @@ import {
   footballPredictionOutputs,
   footballPredictionSettlements,
   footballMatchPredictionFeatures,
+  footballMatchPlayerContextFeatures,
   footballStandings,
   footballTeamFormFeatures,
   matches,
@@ -974,6 +975,15 @@ export class PlayerRepository {
 
   async findPlayerBySportAndSlug(sportId: string, slug: string) {
     const rows = await this.db.select().from(players).where(and(eq(players.sportId, sportId), eq(players.slug, slug))).limit(1);
+    return rows[0];
+  }
+
+  async findPlayerByTeamAndSlug(sportId: string, currentTeamId: string, slug: string) {
+    const rows = await this.db
+      .select()
+      .from(players)
+      .where(and(eq(players.sportId, sportId), eq(players.currentTeamId, currentTeamId), eq(players.slug, slug)))
+      .limit(1);
     return rows[0];
   }
 
@@ -2069,6 +2079,15 @@ export class FootballMatchPredictionFeatureRepository {
       .orderBy(desc(footballHeadToHeadFeatures.asOfDate), desc(footballHeadToHeadFeatures.updatedAt))
       .limit(1);
     return latestRows[0];
+  }
+
+  async findPlayerContextFeature(matchId: string) {
+    const rows = await this.db
+      .select()
+      .from(footballMatchPlayerContextFeatures)
+      .where(eq(footballMatchPlayerContextFeatures.matchId, matchId))
+      .limit(1);
+    return rows[0];
   }
 }
 

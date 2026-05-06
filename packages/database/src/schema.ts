@@ -24,6 +24,9 @@ import {
   footballPredictionRiskLevels,
   footballPredictionSettlementStatuses,
   footballPredictionStatuses,
+  footballMatchLineupRoles,
+  footballPlayerAvailabilityStatuses,
+  footballPlayerContextRiskLevels,
   footballTeamFormScopes,
   matchStatuses,
   providerEntityTypes,
@@ -48,6 +51,9 @@ export const footballPredictionStatusEnum = pgEnum("football_prediction_status",
 export const footballPredictionConsistencyStatusEnum = pgEnum("football_prediction_consistency_status", footballPredictionConsistencyStatuses);
 export const footballPredictionConflictSeverityEnum = pgEnum("football_prediction_conflict_severity", footballPredictionConflictSeverities);
 export const footballPredictionSettlementStatusEnum = pgEnum("football_prediction_settlement_status", footballPredictionSettlementStatuses);
+export const footballPlayerAvailabilityStatusEnum = pgEnum("football_player_availability_status", footballPlayerAvailabilityStatuses);
+export const footballMatchLineupRoleEnum = pgEnum("football_match_lineup_role", footballMatchLineupRoles);
+export const footballPlayerContextRiskLevelEnum = pgEnum("football_player_context_risk_level", footballPlayerContextRiskLevels);
 export const publicSuccessfulPredictionStatusEnum = pgEnum("public_successful_prediction_status", publicSuccessfulPredictionStatuses);
 
 const id = uuid("id").primaryKey().defaultRandom();
@@ -137,6 +143,24 @@ export const users = pgTable(
   ]
 );
 
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id,
+    userId: uuid("user_id").notNull().references(() => users.id),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt,
+    updatedAt
+  },
+  (table) => [
+    uniqueIndex("password_reset_tokens_hash_uidx").on(table.tokenHash),
+    index("password_reset_tokens_user_idx").on(table.userId),
+    index("password_reset_tokens_expires_idx").on(table.expiresAt)
+  ]
+);
+
 export const teams = pgTable(
   "teams",
   {
@@ -192,6 +216,30 @@ export const players = pgTable(
   ]
 );
 
+export const footballPlayerTeamMemberships = pgTable(
+  "football_player_team_memberships",
+  {
+    id,
+    playerId: uuid("player_id").notNull().references(() => players.id),
+    teamId: uuid("team_id").notNull().references(() => teams.id),
+    competitionId: uuid("competition_id").references(() => competitions.id),
+    shirtNumber: integer("shirt_number"),
+    position: text("position"),
+    active: boolean("active").notNull().default(true),
+    validFrom: date("valid_from"),
+    validTo: date("valid_to"),
+    metadataJson,
+    createdAt,
+    updatedAt
+  },
+  (table) => [
+    unique("football_player_team_memberships_player_team_competition_uidx").on(table.playerId, table.teamId, table.competitionId).nullsNotDistinct(),
+    index("football_player_team_memberships_team_idx").on(table.teamId),
+    index("football_player_team_memberships_player_idx").on(table.playerId),
+    index("football_player_team_memberships_competition_idx").on(table.competitionId)
+  ]
+);
+
 export const matches = pgTable(
   "matches",
   {
@@ -222,6 +270,116 @@ export const matches = pgTable(
     index("matches_competition_date_idx").on(table.competitionId, table.scheduledStartAt),
     index("matches_home_team_date_idx").on(table.homeTeamId, table.scheduledStartAt),
     index("matches_away_team_date_idx").on(table.awayTeamId, table.scheduledStartAt)
+  ]
+);
+
+export const footballPlayerAvailability = pgTable(
+  "football_player_availability",
+  {
+    id,
+    playerId: uuid("player_id").notNull().references(() => players.id),
+    teamId: uuid("team_id").notNull().references(() => teams.id),
+    competitionId: uuid("competition_id").references(() => competitions.id),
+    matchId: uuid("match_id").references(() => matches.id),
+    status: footballPlayerAvailabilityStatusEnum("status").notNull(),
+    reason: text("reason"),
+    injuryType: text("injury_type"),
+    expectedReturnDate: date("expected_return_date"),
+    providerReportedAt: timestamp("provider_reported_at", { withTimezone: true }),
+    sourceLabel: text("source_label").notNull(),
+    sourceQuality: text("source_quality"),
+    metadataJson,
+    createdAt,
+    updatedAt
+  },
+  (table) => [
+    unique("football_player_availability_identity_uidx")
+      .on(table.playerId, table.teamId, table.competitionId, table.matchId, table.status, table.reason, table.injuryType, table.expectedReturnDate, table.sourceLabel)
+      .nullsNotDistinct(),
+    index("football_player_availability_team_idx").on(table.teamId),
+    index("football_player_availability_match_idx").on(table.matchId),
+    index("football_player_availability_player_idx").on(table.playerId),
+    index("football_player_availability_competition_idx").on(table.competitionId),
+    index("football_player_availability_status_idx").on(table.status),
+    index("football_player_availability_reported_idx").on(table.providerReportedAt)
+  ]
+);
+
+export const footballMatchLineups = pgTable(
+  "football_match_lineups",
+  {
+    id,
+    matchId: uuid("match_id").notNull().references(() => matches.id),
+    teamId: uuid("team_id").notNull().references(() => teams.id),
+    formation: text("formation"),
+    confirmed: boolean("confirmed").notNull().default(false),
+    providerReportedAt: timestamp("provider_reported_at", { withTimezone: true }),
+    metadataJson,
+    createdAt,
+    updatedAt
+  },
+  (table) => [
+    unique("football_match_lineups_match_team_uidx").on(table.matchId, table.teamId),
+    index("football_match_lineups_match_idx").on(table.matchId),
+    index("football_match_lineups_team_idx").on(table.teamId),
+    index("football_match_lineups_reported_idx").on(table.providerReportedAt)
+  ]
+);
+
+export const footballMatchLineupPlayers = pgTable(
+  "football_match_lineup_players",
+  {
+    id,
+    matchLineupId: uuid("match_lineup_id").notNull().references(() => footballMatchLineups.id),
+    matchId: uuid("match_id").notNull().references(() => matches.id),
+    teamId: uuid("team_id").notNull().references(() => teams.id),
+    playerId: uuid("player_id").notNull().references(() => players.id),
+    role: footballMatchLineupRoleEnum("role").notNull().default("unknown"),
+    position: text("position"),
+    shirtNumber: integer("shirt_number"),
+    orderIndex: integer("order_index"),
+    metadataJson,
+    createdAt,
+    updatedAt
+  },
+  (table) => [
+    unique("football_match_lineup_players_identity_uidx").on(table.matchLineupId, table.playerId, table.role, table.orderIndex).nullsNotDistinct(),
+    index("football_match_lineup_players_lineup_idx").on(table.matchLineupId),
+    index("football_match_lineup_players_match_idx").on(table.matchId),
+    index("football_match_lineup_players_team_idx").on(table.teamId),
+    index("football_match_lineup_players_player_idx").on(table.playerId)
+  ]
+);
+
+export const footballMatchPlayerContextFeatures = pgTable(
+  "football_match_player_context_features",
+  {
+    id,
+    matchId: uuid("match_id").notNull().references(() => matches.id),
+    homeMissingPlayersCount: integer("home_missing_players_count").notNull().default(0),
+    awayMissingPlayersCount: integer("away_missing_players_count").notNull().default(0),
+    homeSuspendedCount: integer("home_suspended_count").notNull().default(0),
+    awaySuspendedCount: integer("away_suspended_count").notNull().default(0),
+    homeInjuredCount: integer("home_injured_count").notNull().default(0),
+    awayInjuredCount: integer("away_injured_count").notNull().default(0),
+    homeDoubtfulCount: integer("home_doubtful_count").notNull().default(0),
+    awayDoubtfulCount: integer("away_doubtful_count").notNull().default(0),
+    homeLineupConfirmed: boolean("home_lineup_confirmed").notNull().default(false),
+    awayLineupConfirmed: boolean("away_lineup_confirmed").notNull().default(false),
+    homeStartingXiKnown: boolean("home_starting_xi_known").notNull().default(false),
+    awayStartingXiKnown: boolean("away_starting_xi_known").notNull().default(false),
+    homeAvailabilityCoverageScore: numeric("home_availability_coverage_score", { precision: 5, scale: 2, mode: "number" }).notNull().default(0),
+    awayAvailabilityCoverageScore: numeric("away_availability_coverage_score", { precision: 5, scale: 2, mode: "number" }).notNull().default(0),
+    playerContextCoverageScore: numeric("player_context_coverage_score", { precision: 5, scale: 2, mode: "number" }).notNull().default(0),
+    playerContextRiskLevel: footballPlayerContextRiskLevelEnum("player_context_risk_level").notNull().default("unknown"),
+    metadataJson,
+    createdAt,
+    updatedAt
+  },
+  (table) => [
+    uniqueIndex("football_match_player_context_features_match_uidx").on(table.matchId),
+    index("football_match_player_context_features_risk_idx").on(table.playerContextRiskLevel),
+    index("football_match_player_context_features_updated_idx").on(table.updatedAt)
   ]
 );
 

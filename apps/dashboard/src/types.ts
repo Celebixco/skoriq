@@ -688,7 +688,50 @@ export interface FootballTeamProfileResponse {
   goalProfile: FootballTeamProfileGoalProfile;
   recentMatches: FootballTeamProfileRecentMatch[];
   upcomingMatches: FootballTeamProfileUpcomingMatch[];
+  playerAvailability: FootballPlayerAvailabilityItem[];
   dataCoverage: FootballTeamProfileDataCoverage;
+}
+
+export interface FootballPlayerAvailabilityItem {
+  playerId: string;
+  playerName: string;
+  team: TeamSummary;
+  status: string;
+  reason: string | null;
+  injuryType: string | null;
+  expectedReturnDate: string | null;
+  sourceFreshness: string | null;
+}
+
+export interface FootballTeamPlayersResponse {
+  team: TeamSummary;
+  dataStatus: "ok" | "not_available";
+  items: Array<{
+    playerId: string;
+    name: string;
+    position: string | null;
+    shirtNumber: number | null;
+    photoUrl: string | null;
+    activeMembership: boolean;
+  }>;
+}
+
+export interface FootballMatchLineupsResponse {
+  match: {
+    id: string;
+    kickoffAt: string;
+    homeTeam: TeamSummary;
+    awayTeam: TeamSummary;
+  };
+  dataStatus: "ok" | "not_available";
+  items: Array<{
+    team: TeamSummary;
+    formation: string | null;
+    confirmed: boolean;
+    startingXi: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
+    substitutes: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
+    unavailable: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
+  }>;
 }
 
 export interface FootballTeamProfileStanding {

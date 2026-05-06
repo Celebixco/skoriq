@@ -7,6 +7,7 @@ import {
   mapCompetitionProfile,
   mapCountryExplorerRow,
   mapMatchRow,
+  mapPlayerAvailabilityRow,
   mapReadinessRow,
   mapTeamProfileCoverageRow,
   mapTeamProfileFormSummary,
@@ -75,13 +76,17 @@ describe("FootballCatalogController", () => {
 
     await controller.getFootballTeam(teamId);
     await controller.getFootballTeamProfile(teamId);
+    await controller.getFootballTeamAvailability(teamId);
     await controller.getFootballCompetitionProfile(competitionId);
     await controller.getFootballCompetition(competitionId);
+    await controller.getFootballMatchPlayerAvailability("89759e35-758d-416e-b0d3-ad07436c8a9b");
 
     expect(service.getTeam).toHaveBeenCalledWith(teamId);
     expect(service.getTeamProfile).toHaveBeenCalledWith(teamId);
+    expect(service.getTeamAvailability).toHaveBeenCalledWith(teamId);
     expect(service.getCompetitionProfile).toHaveBeenCalledWith(competitionId);
     expect(service.getCompetition).toHaveBeenCalledWith(competitionId);
+    expect(service.getMatchPlayerAvailability).toHaveBeenCalledWith("89759e35-758d-416e-b0d3-ad07436c8a9b");
   });
 
   it("rejects invalid UUIDs and invalid query values", async () => {
@@ -89,9 +94,11 @@ describe("FootballCatalogController", () => {
 
     await expect(controller.getFootballTeam("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
     await expect(controller.getFootballTeamProfile("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
+    await expect(controller.getFootballTeamAvailability("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
     await expect(controller.listFootballCountryCompetitions("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
     await expect(controller.getFootballCompetitionProfile("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
     await expect(controller.getFootballCompetition("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
+    await expect(controller.getFootballMatchPlayerAvailability("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
     expect(() => parseTeamsQuery({ competitionId: "not-a-uuid" })).toThrow(BadRequestException);
     expect(() => parseTeamsQuery({ search: "x".repeat(81) })).toThrow(BadRequestException);
     expect(() => parseTeamsQuery({ limit: "101" })).toThrow(BadRequestException);
@@ -231,7 +238,7 @@ describe("football catalog response mappers", () => {
     const recentMatch = mapTeamProfileRecentMatchRow(teamProfileMatchRow(), teamId);
     const upcomingMatch = mapTeamProfileUpcomingMatchRow({ ...teamProfileMatchRow(), status: "not_started", feature_status: "partial" }, teamId);
     const coverage = mapTeamProfileCoverageRow({
-      row: { matches_available: "12", scores_available: "8" },
+      row: { matches_available: "12", scores_available: "8", player_memberships_available: "4", lineup_rows_available: "1", availability_rows_available: "2" },
       formSummary,
       standing: standingRow(),
       logoUrl: "https://example.test/dortmund.png"
@@ -279,7 +286,29 @@ describe("football catalog response mappers", () => {
       formCoverageScore: 64,
       hasStanding: true,
       hasLogo: true,
-      playersAvailable: false
+      playersAvailable: true,
+      injuriesAvailable: true
+    });
+    expect(
+      mapPlayerAvailabilityRow({
+        player_id: "player-1",
+        player_name: "Example Player",
+        team_id: teamId,
+        team_name: "Borussia Dortmund",
+        team_logo_url: "https://example.test/dortmund.png",
+        status: "injured",
+        reason: "Knock",
+        injury_type: "Muscle",
+        expected_return_date: "2026-05-10",
+        source_freshness: "2026-05-01T12:00:00.000Z"
+      })
+    ).toMatchObject({
+      playerId: "player-1",
+      playerName: "Example Player",
+      status: "injured",
+      reason: "Knock",
+      injuryType: "Muscle",
+      expectedReturnDate: "2026-05-10"
     });
   });
 
@@ -334,6 +363,7 @@ function mockService(overrides: Partial<FootballCatalogService> = {}): FootballC
       goalProfile: mapTeamProfileGoalProfile(null),
       recentMatches: [],
       upcomingMatches: [],
+      playerAvailability: [],
       dataCoverage: {
         matchesAvailable: 0,
         scoresAvailable: 0,
@@ -344,6 +374,14 @@ function mockService(overrides: Partial<FootballCatalogService> = {}): FootballC
         lineupsAvailable: false,
         injuriesAvailable: false
       }
+    }),
+    getTeamAvailability: vi.fn().mockResolvedValue({
+      team: {
+        id: teamId,
+        name: "Borussia Dortmund",
+        logoUrl: "https://example.test/dortmund.png"
+      },
+      items: []
     }),
     listCompetitions: vi.fn().mockResolvedValue({
       items: [mapCompetitionRow(competitionRow())],
@@ -366,6 +404,15 @@ function mockService(overrides: Partial<FootballCatalogService> = {}): FootballC
         recentMatches: []
       })
     ),
+    getMatchPlayerAvailability: vi.fn().mockResolvedValue({
+      match: {
+        id: "89759e35-758d-416e-b0d3-ad07436c8a9b",
+        kickoffAt: "2026-05-04T10:00:00.000Z",
+        homeTeam: { id: teamId, name: "Borussia Dortmund", logoUrl: "https://example.test/dortmund.png" },
+        awayTeam: { id: "away-team", name: "SC Freiburg", logoUrl: "https://example.test/freiburg.png" }
+      },
+      items: []
+    }),
     ...overrides
   } as unknown as FootballCatalogService;
 }

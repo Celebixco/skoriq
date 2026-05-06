@@ -36,6 +36,18 @@ export class FootballCatalogController {
     return this.catalogService.getTeamProfile(teamId);
   }
 
+  @Get("teams/:teamId/availability")
+  async getFootballTeamAvailability(@Param("teamId") teamId: string) {
+    validateUuid("teamId", teamId);
+    return this.catalogService.getTeamAvailability(teamId);
+  }
+
+  @Get("teams/:teamId/players")
+  async getFootballTeamPlayers(@Param("teamId") teamId: string) {
+    validateUuid("teamId", teamId);
+    return this.catalogService.getTeamPlayers(teamId);
+  }
+
   @Get("teams/:teamId")
   async getFootballTeam(@Param("teamId") teamId: string) {
     validateUuid("teamId", teamId);
@@ -68,6 +80,18 @@ export class FootballCatalogController {
   async getFootballCompetition(@Param("competitionId") competitionId: string) {
     validateUuid("competitionId", competitionId);
     return this.catalogService.getCompetition(competitionId);
+  }
+
+  @Get("matches/:matchId/player-availability")
+  async getFootballMatchPlayerAvailability(@Param("matchId") matchId: string) {
+    validateUuid("matchId", matchId);
+    return this.catalogService.getMatchPlayerAvailability(matchId);
+  }
+
+  @Get("matches/:matchId/lineups")
+  async getFootballMatchLineups(@Param("matchId") matchId: string) {
+    validateUuid("matchId", matchId);
+    return this.catalogService.getMatchLineups(matchId);
   }
 }
 

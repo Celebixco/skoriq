@@ -89,7 +89,97 @@ export interface FootballTeamProfile {
   goalProfile: FootballTeamProfileGoalProfile;
   recentMatches: FootballTeamProfileRecentMatch[];
   upcomingMatches: FootballTeamProfileUpcomingMatch[];
+  playerAvailability: FootballPlayerAvailabilityItem[];
   dataCoverage: FootballTeamProfileDataCoverage;
+}
+
+export interface FootballPlayerAvailabilityItem {
+  playerId: string;
+  playerName: string;
+  team: {
+    id: string;
+    name: string;
+    logoUrl: string | null;
+  };
+  status: string;
+  reason: string | null;
+  injuryType: string | null;
+  expectedReturnDate: string | null;
+  sourceFreshness: string | null;
+}
+
+export interface FootballTeamAvailabilityResponse {
+  team: {
+    id: string;
+    name: string;
+    logoUrl: string | null;
+  };
+  items: FootballPlayerAvailabilityItem[];
+}
+
+export interface FootballTeamPlayersResponse {
+  team: {
+    id: string;
+    name: string;
+    logoUrl: string | null;
+  };
+  dataStatus: "ok" | "not_available";
+  items: Array<{
+    playerId: string;
+    name: string;
+    position: string | null;
+    shirtNumber: number | null;
+    photoUrl: string | null;
+    activeMembership: boolean;
+  }>;
+}
+
+export interface FootballMatchPlayerAvailabilityResponse {
+  match: {
+    id: string;
+    kickoffAt: string;
+    homeTeam: {
+      id: string;
+      name: string;
+      logoUrl: string | null;
+    };
+    awayTeam: {
+      id: string;
+      name: string;
+      logoUrl: string | null;
+    };
+  };
+  items: FootballPlayerAvailabilityItem[];
+}
+
+export interface FootballMatchLineupsResponse {
+  match: {
+    id: string;
+    kickoffAt: string;
+    homeTeam: {
+      id: string;
+      name: string;
+      logoUrl: string | null;
+    };
+    awayTeam: {
+      id: string;
+      name: string;
+      logoUrl: string | null;
+    };
+  };
+  dataStatus: "ok" | "not_available";
+  items: Array<{
+    team: {
+      id: string;
+      name: string;
+      logoUrl: string | null;
+    };
+    formation: string | null;
+    confirmed: boolean;
+    startingXi: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
+    substitutes: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
+    unavailable: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
+  }>;
 }
 
 export interface FootballTeamProfileStanding {
@@ -457,6 +547,57 @@ export interface TeamProfileStandingRow {
 export interface TeamProfileCoverageRow {
   matches_available: string | number | null;
   scores_available: string | number | null;
+  player_memberships_available: string | number | null;
+  lineup_rows_available: string | number | null;
+  availability_rows_available: string | number | null;
+}
+
+interface TeamPlayerRow {
+  player_id: string;
+  player_name: string;
+  position: string | null;
+  shirt_number: string | number | null;
+  photo_url: string | null;
+  active: boolean | null;
+}
+
+interface MatchLineupRow {
+  match_lineup_id: string;
+  team_id: string;
+  team_name: string;
+  team_logo_url: string | null;
+  formation: string | null;
+  confirmed: boolean;
+  player_id: string;
+  player_name: string;
+  role: string;
+  position: string | null;
+  shirt_number: string | number | null;
+  order_index: string | number | null;
+}
+
+interface PlayerAvailabilityRow {
+  player_id: string;
+  player_name: string;
+  team_id: string;
+  team_name: string;
+  team_logo_url: string | null;
+  status: string;
+  reason: string | null;
+  injury_type: string | null;
+  expected_return_date: string | null;
+  source_freshness: Date | string | null;
+}
+
+interface MatchAvailabilityIdentityRow {
+  match_id: string;
+  kickoff_at: Date | string;
+  home_team_id: string;
+  home_team_name: string;
+  home_team_logo_url: string | null;
+  away_team_id: string;
+  away_team_name: string;
+  away_team_logo_url: string | null;
 }
 
 interface ReadinessRow {
@@ -566,12 +707,13 @@ export class FootballCatalogService {
     }
 
     const primaryCompetitionId = identity.primary_competition_id;
-    const [standing, formRows, recentMatches, upcomingMatches, coverage] = await Promise.all([
+    const [standing, formRows, recentMatches, upcomingMatches, coverage, playerAvailability] = await Promise.all([
       this.findTeamProfileStanding(teamId, primaryCompetitionId),
       this.findTeamProfileFormRows(teamId, primaryCompetitionId),
       this.findTeamProfileRecentMatches(teamId, 10),
       this.findTeamProfileUpcomingMatches(teamId, 5),
-      this.findTeamProfileCoverage(teamId)
+      this.findTeamProfileCoverage(teamId),
+      this.findTeamAvailabilityItems(teamId)
     ]);
     const formSummary = mapTeamProfileFormSummary(formRows);
 
@@ -582,12 +724,137 @@ export class FootballCatalogService {
       goalProfile: mapTeamProfileGoalProfile(formSummary.overall),
       recentMatches: recentMatches.map((row) => mapTeamProfileRecentMatchRow(row, teamId)),
       upcomingMatches: upcomingMatches.map((row) => mapTeamProfileUpcomingMatchRow(row, teamId)),
+      playerAvailability,
       dataCoverage: mapTeamProfileCoverageRow({
         row: coverage,
         formSummary,
         standing,
         logoUrl: identity.logo_url
       })
+    };
+  }
+
+  async getTeamAvailability(teamId: string): Promise<FootballTeamAvailabilityResponse> {
+    const identity = await this.findTeamProfileIdentity(teamId);
+    if (!identity) {
+      throw new NotFoundException("Football team not found.");
+    }
+
+    return {
+      team: {
+        id: identity.team_id,
+        name: identity.name,
+        logoUrl: identity.logo_url
+      },
+      items: await this.findTeamAvailabilityItems(teamId)
+    };
+  }
+
+  async getTeamPlayers(teamId: string): Promise<FootballTeamPlayersResponse> {
+    const identity = await this.findTeamProfileIdentity(teamId);
+    if (!identity) {
+      throw new NotFoundException("Football team not found.");
+    }
+
+    const items = await this.findTeamPlayersItems(teamId);
+    return {
+      team: {
+        id: identity.team_id,
+        name: identity.name,
+        logoUrl: identity.logo_url
+      },
+      dataStatus: items.length > 0 ? "ok" : "not_available",
+      items
+    };
+  }
+
+  async getMatchPlayerAvailability(matchId: string): Promise<FootballMatchPlayerAvailabilityResponse> {
+    const match = await this.findMatchAvailabilityIdentity(matchId);
+    if (!match) {
+      throw new NotFoundException("Football match not found.");
+    }
+
+    return {
+      match: {
+        id: match.match_id,
+        kickoffAt: toIso(match.kickoff_at),
+        homeTeam: {
+          id: match.home_team_id,
+          name: match.home_team_name,
+          logoUrl: match.home_team_logo_url
+        },
+        awayTeam: {
+          id: match.away_team_id,
+          name: match.away_team_name,
+          logoUrl: match.away_team_logo_url
+        }
+      },
+      items: await this.findMatchAvailabilityItems(matchId)
+    };
+  }
+
+  async getMatchLineups(matchId: string): Promise<FootballMatchLineupsResponse> {
+    const match = await this.findMatchAvailabilityIdentity(matchId);
+    if (!match) {
+      throw new NotFoundException("Football match not found.");
+    }
+    const rows = await this.findMatchLineupRows(matchId);
+    const grouped = new Map<
+      string,
+      {
+        team: { id: string; name: string; logoUrl: string | null };
+        formation: string | null;
+        confirmed: boolean;
+        startingXi: FootballMatchLineupsResponse["items"][number]["startingXi"];
+        substitutes: FootballMatchLineupsResponse["items"][number]["substitutes"];
+        unavailable: FootballMatchLineupsResponse["items"][number]["unavailable"];
+      }
+    >();
+
+    for (const row of rows) {
+      const lineup =
+        grouped.get(row.team_id) ??
+        {
+          team: {
+            id: row.team_id,
+            name: row.team_name,
+            logoUrl: row.team_logo_url
+          },
+          formation: row.formation,
+          confirmed: row.confirmed,
+          startingXi: [],
+          substitutes: [],
+          unavailable: []
+        };
+      const player = {
+        playerId: row.player_id,
+        name: row.player_name,
+        position: row.position,
+        shirtNumber: integer(row.shirt_number)
+      };
+      if (row.role === "starting") lineup.startingXi.push(player);
+      else if (row.role === "substitute") lineup.substitutes.push(player);
+      else lineup.unavailable.push(player);
+      grouped.set(row.team_id, lineup);
+    }
+
+    return {
+      match: {
+        id: match.match_id,
+        kickoffAt: toIso(match.kickoff_at),
+        homeTeam: {
+          id: match.home_team_id,
+          name: match.home_team_name,
+          logoUrl: match.home_team_logo_url
+        },
+        awayTeam: {
+          id: match.away_team_id,
+          name: match.away_team_name,
+          logoUrl: match.away_team_logo_url
+        }
+      },
+      dataStatus: grouped.size > 0 ? "ok" : "not_available",
+      items: [...grouped.values()]
     };
   }
 
@@ -970,13 +1237,155 @@ export class FootballCatalogService {
       sql`
         select
           count(distinct m.id) as matches_available,
-          count(distinct s.id) as scores_available
+          count(distinct s.id) as scores_available,
+          count(distinct pm.id) as player_memberships_available,
+          count(distinct l.id) as lineup_rows_available,
+          count(distinct pa.id) as availability_rows_available
         from matches m
         left join football_match_scores s on s.match_id = m.id
+        left join football_player_team_memberships pm on pm.team_id = ${teamId}
+        left join football_match_lineups l on l.team_id = ${teamId}
+        left join football_player_availability pa on pa.team_id = ${teamId}
         where m.home_team_id = ${teamId} or m.away_team_id = ${teamId}
       `
     );
     return rows[0];
+  }
+
+  private async findTeamAvailabilityItems(teamId: string): Promise<FootballPlayerAvailabilityItem[]> {
+    const rows = await executeRows<PlayerAvailabilityRow>(
+      this.database,
+      sql`
+        select distinct on (pa.player_id, pa.status, coalesce(pa.reason, ''), coalesce(pa.injury_type, ''))
+          p.id as player_id,
+          p.name as player_name,
+          t.id as team_id,
+          t.name as team_name,
+          t.logo_url as team_logo_url,
+          pa.status,
+          pa.reason,
+          pa.injury_type,
+          pa.expected_return_date::text as expected_return_date,
+          coalesce(pa.provider_reported_at, pa.updated_at) as source_freshness
+        from football_player_availability pa
+        inner join players p on p.id = pa.player_id
+        inner join teams t on t.id = pa.team_id
+        where pa.team_id = ${teamId}
+        order by pa.player_id, pa.status, coalesce(pa.reason, ''), coalesce(pa.injury_type, ''), coalesce(pa.provider_reported_at, pa.updated_at) desc
+      `
+    );
+
+    return rows.map(mapPlayerAvailabilityRow);
+  }
+
+  private async findTeamPlayersItems(teamId: string): Promise<FootballTeamPlayersResponse["items"]> {
+    const rows = await executeRows<TeamPlayerRow>(
+      this.database,
+      sql`
+        select distinct on (p.id)
+          p.id as player_id,
+          p.name as player_name,
+          coalesce(pm.position, p.position) as position,
+          coalesce(pm.shirt_number, p.jersey_number) as shirt_number,
+          p.photo_url,
+          pm.active
+        from football_player_team_memberships pm
+        inner join players p on p.id = pm.player_id
+        where pm.team_id = ${teamId}
+        order by p.id, pm.updated_at desc
+      `
+    );
+
+    return rows.map((row) => ({
+      playerId: row.player_id,
+      name: row.player_name,
+      position: row.position,
+      shirtNumber: integer(row.shirt_number),
+      photoUrl: row.photo_url,
+      activeMembership: row.active === true
+    }));
+  }
+
+  private async findMatchAvailabilityIdentity(matchId: string): Promise<MatchAvailabilityIdentityRow | undefined> {
+    const rows = await executeRows<MatchAvailabilityIdentityRow>(
+      this.database,
+      sql`
+        select
+          m.id as match_id,
+          m.scheduled_start_at as kickoff_at,
+          home.id as home_team_id,
+          home.name as home_team_name,
+          home.logo_url as home_team_logo_url,
+          away.id as away_team_id,
+          away.name as away_team_name,
+          away.logo_url as away_team_logo_url
+        from matches m
+        inner join sports s on s.id = m.sport_id and s.slug = 'football'
+        inner join teams home on home.id = m.home_team_id
+        inner join teams away on away.id = m.away_team_id
+        where m.id = ${matchId}
+        limit 1
+      `
+    );
+    return rows[0];
+  }
+
+  private async findMatchAvailabilityItems(matchId: string): Promise<FootballPlayerAvailabilityItem[]> {
+    const match = await this.findMatchAvailabilityIdentity(matchId);
+    if (!match) {
+      return [];
+    }
+
+    const rows = await executeRows<PlayerAvailabilityRow>(
+      this.database,
+      sql`
+        select distinct on (pa.player_id, pa.status, coalesce(pa.reason, ''), coalesce(pa.injury_type, ''))
+          p.id as player_id,
+          p.name as player_name,
+          t.id as team_id,
+          t.name as team_name,
+          t.logo_url as team_logo_url,
+          pa.status,
+          pa.reason,
+          pa.injury_type,
+          pa.expected_return_date::text as expected_return_date,
+          coalesce(pa.provider_reported_at, pa.updated_at) as source_freshness
+        from football_player_availability pa
+        inner join players p on p.id = pa.player_id
+        inner join teams t on t.id = pa.team_id
+        where pa.team_id in (${match.home_team_id}, ${match.away_team_id})
+        order by pa.player_id, pa.status, coalesce(pa.reason, ''), coalesce(pa.injury_type, ''), coalesce(pa.provider_reported_at, pa.updated_at) desc
+      `
+    );
+
+    return rows.map(mapPlayerAvailabilityRow);
+  }
+
+  private async findMatchLineupRows(matchId: string): Promise<MatchLineupRow[]> {
+    return executeRows<MatchLineupRow>(
+      this.database,
+      sql`
+        select
+          l.id as match_lineup_id,
+          l.team_id,
+          t.name as team_name,
+          t.logo_url as team_logo_url,
+          l.formation,
+          l.confirmed,
+          lp.player_id,
+          p.name as player_name,
+          lp.role,
+          lp.position,
+          lp.shirt_number,
+          lp.order_index
+        from football_match_lineups l
+        inner join teams t on t.id = l.team_id
+        inner join football_match_lineup_players lp on lp.match_lineup_id = l.id
+        inner join players p on p.id = lp.player_id
+        where l.match_id = ${matchId}
+        order by l.team_id asc, lp.role asc, lp.order_index asc nulls last, p.name asc
+      `
+    );
   }
 
   private async findTeamRows(filters: FootballTeamsFilters, teamId?: string): Promise<TeamRow[]> {
@@ -1510,9 +1919,26 @@ export function mapTeamProfileCoverageRow(input: {
     formCoverageScore: input.formSummary.overall?.coverageScore ?? input.formSummary.home?.coverageScore ?? input.formSummary.away?.coverageScore ?? null,
     hasStanding: Boolean(input.standing),
     hasLogo: Boolean(input.logoUrl),
-    playersAvailable: false,
-    lineupsAvailable: false,
-    injuriesAvailable: false
+    playersAvailable: integer(input.row?.player_memberships_available) > 0,
+    lineupsAvailable: integer(input.row?.lineup_rows_available) > 0,
+    injuriesAvailable: integer(input.row?.availability_rows_available) > 0
+  };
+}
+
+export function mapPlayerAvailabilityRow(row: PlayerAvailabilityRow): FootballPlayerAvailabilityItem {
+  return {
+    playerId: row.player_id,
+    playerName: row.player_name,
+    team: {
+      id: row.team_id,
+      name: row.team_name,
+      logoUrl: row.team_logo_url
+    },
+    status: row.status,
+    reason: row.reason,
+    injuryType: row.injury_type,
+    expectedReturnDate: row.expected_return_date,
+    sourceFreshness: row.source_freshness ? toIso(row.source_freshness) : null
   };
 }
 

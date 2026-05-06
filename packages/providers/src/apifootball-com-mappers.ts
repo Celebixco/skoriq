@@ -2,18 +2,26 @@ import type { MatchStatus } from "@sports-data/shared";
 import type {
   ProviderCountry,
   ProviderCompetition,
+  ProviderFootballMatchLineup,
+  ProviderFootballMatchLineupPlayer,
+  ProviderFootballPlayerAvailability,
   ProviderFootballMatchScore,
   ProviderFootballStanding,
   ProviderMatch,
+  ProviderPlayer,
   ProviderTeam
 } from "./provider-dtos.js";
 import type {
   APIFootballComCountry,
   APIFootballComEvent,
   APIFootballComLeague,
+  APIFootballComLineupPlayer,
+  APIFootballComLineupResponse,
+  APIFootballComLineupTeamBlock,
   APIFootballComMappingResult,
   APIFootballComStanding,
-  APIFootballComTeam
+  APIFootballComTeam,
+  APIFootballComTeamPlayer
 } from "./apifootball-com-types.js";
 
 export const APIFOOTBALL_COM_PROVIDER_NAME = "apifootball-com";
@@ -239,6 +247,148 @@ export function mapTeamToProviderTeamResult(input: APIFootballComTeam): APIFootb
   }
 }
 
+export function mapTeamPlayerToProviderPlayer(team: APIFootballComTeam, input: APIFootballComTeamPlayer): APIFootballComMappingResult<ProviderPlayer> {
+  const teamProviderId = optionalString(team.team_key) ?? optionalString(team.team_id);
+  if (!teamProviderId) {
+    return unresolved("team player cannot be mapped without stable team provider ID", {
+      teamName: optionalString(team.team_name)
+    });
+  }
+
+  const providerEntityId = optionalString(input.player_key) ?? optionalString(input.player_id);
+  if (!providerEntityId) {
+    return unresolved("team player is missing stable player provider ID", {
+      teamProviderId,
+      playerName: optionalString(input.player_name)
+    });
+  }
+
+  try {
+    const name = requiredString(input.player_name, "player_name");
+    return {
+      status: "mapped",
+      data: {
+        providerEntityId,
+        sportProviderId: APIFOOTBALL_COM_FOOTBALL_SPORT_ID,
+        currentTeamProviderId: teamProviderId,
+        countryProviderId: optionalString(team.country_id),
+        name,
+        shortName: name,
+        slug: name,
+        dateOfBirth: normalizeOptionalDate(input.player_birthdate),
+        age: parseOptionalInteger(input.player_age),
+        position: optionalString(input.player_type),
+        jerseyNumber: parseOptionalInteger(input.player_number),
+        photoUrl: optionalString(input.player_image),
+        metadata: {
+          source: APIFOOTBALL_COM_PROVIDER_NAME,
+          teamName: optionalString(team.team_name),
+          teamProviderId,
+          playerCountry: optionalString(input.player_country)
+        },
+        raw: input
+      }
+    };
+  } catch (error) {
+    return unresolved(error instanceof Error ? error.message : "team player could not be mapped", {
+      teamProviderId,
+      playerId: providerEntityId,
+      playerName: optionalString(input.player_name)
+    });
+  }
+}
+
+export function mapTeamPlayerToProviderAvailability(
+  team: APIFootballComTeam,
+  input: APIFootballComTeamPlayer
+): APIFootballComMappingResult<ProviderFootballPlayerAvailability> {
+  const providerPlayerId = optionalString(input.player_key) ?? optionalString(input.player_id);
+  const teamProviderId = optionalString(team.team_key) ?? optionalString(team.team_id);
+  if (!teamProviderId) {
+    return unresolved("team availability cannot be mapped without stable team provider ID", {
+      teamName: optionalString(team.team_name)
+    });
+  }
+
+  const status = mapAvailabilityStatus(input.player_injured);
+  if (!status) {
+    return unresolved("provider player row does not indicate an actionable availability status", {
+      teamProviderId,
+      playerId: providerPlayerId,
+      playerName: optionalString(input.player_name)
+    });
+  }
+
+  try {
+    return {
+      status: "mapped",
+      data: {
+        providerPlayerId,
+        sportProviderId: APIFOOTBALL_COM_FOOTBALL_SPORT_ID,
+        teamProviderId,
+        playerName: requiredString(input.player_name, "player_name"),
+        status,
+        reason: optionalString(input.player_reason),
+        injuryType: optionalString(input.injury_type),
+        expectedReturnDate: normalizeOptionalDate(input.expected_return_date ?? input.expected_return),
+        sourceQuality: "provider_explicit",
+        metadata: {
+          source: APIFOOTBALL_COM_PROVIDER_NAME,
+          teamName: optionalString(team.team_name)
+        }
+      }
+    };
+  } catch (error) {
+    return unresolved(error instanceof Error ? error.message : "team availability could not be mapped", {
+      teamProviderId,
+      playerId: providerPlayerId,
+      playerName: optionalString(input.player_name)
+    });
+  }
+}
+
+export function mapLineupResponseToProviderLineups(input: APIFootballComLineupResponse): APIFootballComMappingResult<ProviderFootballMatchLineup>[] {
+  const matchProviderId = optionalString(input.match_id);
+  if (!matchProviderId) {
+    return [unresolved("lineup response is missing stable match provider ID")];
+  }
+
+  return extractLineupBlocks(input).map((block) => mapLineupBlockToProviderLineup(matchProviderId, block));
+}
+
+export function mapLineupBlockToProviderLineup(
+  matchProviderId: string,
+  input: APIFootballComLineupTeamBlock
+): APIFootballComMappingResult<ProviderFootballMatchLineup> {
+  const teamProviderId = optionalString(input.team_key) ?? optionalString(input.team_id);
+  if (!teamProviderId) {
+    return unresolved("lineup block is missing stable team provider ID", {
+      matchProviderId,
+      teamName: optionalString(input.team_name)
+    });
+  }
+
+  return {
+    status: "mapped",
+    data: {
+      providerMatchId: matchProviderId,
+      teamProviderId,
+      teamName: optionalString(input.team_name),
+      formation: optionalString(input.formation),
+      confirmed: parseOptionalBoolean(input.lineup_confirmed) ?? parseOptionalBoolean(input.confirmed) ?? false,
+      starting: normalizeLineupPlayers(input.starting_lineups ?? input.startingLineups, "starting"),
+      substitutes: normalizeLineupPlayers(input.substitutes, "substitute"),
+      unavailable: [
+        ...normalizeLineupPlayers(input.unavailable_players ?? input.missing_players, "unavailable"),
+        ...normalizeCoachRows(input.coach)
+      ],
+      metadata: {
+        source: APIFOOTBALL_COM_PROVIDER_NAME
+      }
+    }
+  };
+}
+
 export function mapAPIFootballComStatus(status: unknown): MatchStatus {
   const normalized = String(status ?? "").trim().toLowerCase();
 
@@ -318,6 +468,69 @@ function requiredString(value: unknown, field: string): string {
   return normalized;
 }
 
+function extractLineupBlocks(input: APIFootballComLineupResponse): APIFootballComLineupTeamBlock[] {
+  if (Array.isArray(input.lineups) && input.lineups.length > 0) {
+    return input.lineups;
+  }
+
+  const blocks: APIFootballComLineupTeamBlock[] = [];
+  if (input.home && typeof input.home === "object") blocks.push(input.home);
+  if (input.away && typeof input.away === "object") blocks.push(input.away);
+  return blocks;
+}
+
+function normalizeLineupPlayers(
+  players: APIFootballComLineupPlayer[] | undefined,
+  role: "starting" | "substitute" | "unavailable"
+): ProviderFootballMatchLineupPlayer[] {
+  return (Array.isArray(players) ? players : []).reduce<ProviderFootballMatchLineupPlayer[]>((acc, player, index) => {
+      const playerName = optionalString(player.player_name) ?? optionalString(player.player) ?? optionalString(player.lineup_player);
+      if (!playerName) return acc;
+      acc.push({
+        providerPlayerId:
+          optionalString(player.player_key) ?? optionalString(player.player_id) ?? optionalString(player.lineups_player_id),
+        playerName,
+        role,
+        position: optionalString(player.player_position) ?? optionalString(player.lineup_position) ?? optionalString(player.player_type),
+        shirtNumber: parseOptionalInteger(player.player_number) ?? parseOptionalInteger(player.lineup_number),
+        orderIndex: index,
+        metadata: {
+          source: APIFOOTBALL_COM_PROVIDER_NAME
+        }
+      } satisfies ProviderFootballMatchLineupPlayer);
+      return acc;
+    }, []);
+}
+
+function normalizeCoachRows(coaches: unknown): ProviderFootballMatchLineupPlayer[] {
+  return (Array.isArray(coaches) ? coaches : []).reduce<ProviderFootballMatchLineupPlayer[]>((acc, coach, index) => {
+      const coachName =
+        typeof coach === "object" && coach !== null
+          ? optionalString((coach as Record<string, unknown>).coach_name) ?? optionalString((coach as Record<string, unknown>).coach)
+          : undefined;
+      if (!coachName) return acc;
+      acc.push({
+        playerName: coachName,
+        role: "coach",
+        orderIndex: index,
+        metadata: {
+          source: APIFOOTBALL_COM_PROVIDER_NAME
+        }
+      } satisfies ProviderFootballMatchLineupPlayer);
+      return acc;
+    }, []);
+}
+
+function parseOptionalBoolean(value: unknown) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["1", "true", "yes", "confirmed"].includes(normalized)) return true;
+    if (["0", "false", "no", "unconfirmed"].includes(normalized)) return false;
+  }
+  return undefined;
+}
+
 function optionalString(value: unknown): string | undefined {
   if (value === undefined || value === null) {
     return undefined;
@@ -325,6 +538,37 @@ function optionalString(value: unknown): string | undefined {
 
   const normalized = String(value).trim();
   return normalized ? normalized : undefined;
+}
+
+function normalizeOptionalDate(value: unknown): string | undefined {
+  const normalized = optionalString(value);
+  if (!normalized) {
+    return undefined;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return undefined;
+  }
+  return normalized;
+}
+
+function mapAvailabilityStatus(value: unknown): ProviderFootballPlayerAvailability["status"] | undefined {
+  const normalized = optionalString(value)?.toLowerCase();
+  if (!normalized) {
+    return undefined;
+  }
+  if (["yes", "injured", "true", "1"].includes(normalized)) {
+    return "injured";
+  }
+  if (normalized === "doubtful") {
+    return "doubtful";
+  }
+  if (normalized === "questionable") {
+    return "questionable";
+  }
+  if (["unavailable"].includes(normalized)) {
+    return "unavailable";
+  }
+  return undefined;
 }
 
 function unresolved(reason: string, metadata?: Record<string, unknown>): APIFootballComMappingResult<never> {

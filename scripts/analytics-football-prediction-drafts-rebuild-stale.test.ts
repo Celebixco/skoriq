@@ -60,7 +60,7 @@ describe("football stale draft rebuild runner", () => {
     expect(dependencies.updateWindowMetadataForOutputs).not.toHaveBeenCalled();
   });
 
-  it("blocks execute when too early", async () => {
+  it("allows execute eligibility when the old 36h upper cap no longer applies", async () => {
     const dependencies = mockDependencies({
       findMatch: vi.fn().mockResolvedValue(match({ kickoffAt: "2026-05-02T18:30:00.000Z" })),
       listDraftOutputs: vi.fn().mockResolvedValue([draft({ generatedAt: "2026-04-30T10:00:00.000Z" })])
@@ -68,10 +68,8 @@ describe("football stale draft rebuild runner", () => {
 
     const result = await runFootballStaleDraftRebuild({ ...baseOptions, execute: true }, dependencies);
 
-    expect(result.report.analysisWindow.analysisWindowStatus).toBe("too_early");
-    expect(result.report.rebuildRan).toBe(false);
-    expect(result.report.blockedReasons).toContain("Analysis window status is too_early; execute is allowed only within_window.");
-    expect(dependencies.runTeamForm).not.toHaveBeenCalled();
+    expect(result.report.analysisWindow.analysisWindowStatus).toBe("within_window");
+    expect(result.report.blockedReasons).not.toContain("Analysis window status is too_early; execute is allowed only within_window.");
   });
 
   it("blocks execute when too late", async () => {

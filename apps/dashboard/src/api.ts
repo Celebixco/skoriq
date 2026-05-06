@@ -11,6 +11,7 @@ import type {
   FootballCompetitionProfile,
   FootballCountrySummary,
   FootballMatchPredictionDraftsResponse,
+  FootballMatchLineupsResponse,
   FootballMemberPredictionPreviewResponse,
   FootballMatchPublicEligibilityResponse,
   FootballMatchPredictionSettlementsResponse,
@@ -26,6 +27,7 @@ import type {
   FootballPredictionResultsSummary,
   FootballPredictionSettlementsListResponse,
   FootballTeamDetail,
+  FootballTeamPlayersResponse,
   FootballTeamProfileResponse,
   FootballTeamsListResponse
 } from "./types";
@@ -137,6 +139,14 @@ export async function fetchFootballTeamProfile(teamId: string): Promise<Football
   return requestJson<FootballTeamProfileResponse>(`/football/teams/${encodeURIComponent(teamId)}/profile`);
 }
 
+export async function fetchFootballTeamPlayers(teamId: string): Promise<FootballTeamPlayersResponse> {
+  return requestJson<FootballTeamPlayersResponse>(`/football/teams/${encodeURIComponent(teamId)}/players`);
+}
+
+export async function fetchFootballTeamAvailability(teamId: string): Promise<{ team: { id: string; name: string; logoUrl: string | null }; items: FootballTeamProfileResponse["playerAvailability"] }> {
+  return requestJson(`/football/teams/${encodeURIComponent(teamId)}/availability`);
+}
+
 export async function fetchFootballCompetitions(filters: { limit?: number; offset?: number } = {}): Promise<FootballCompetitionsListResponse> {
   const params = new URLSearchParams();
   params.set("limit", String(filters.limit ?? 50));
@@ -180,6 +190,14 @@ export async function fetchFootballMatchPredictionDrafts(matchId: string): Promi
 
 export async function fetchFootballMemberPredictionPreview(matchId: string): Promise<FootballMemberPredictionPreviewResponse> {
   return requestJson<FootballMemberPredictionPreviewResponse>(`/member/football/matches/${encodeURIComponent(matchId)}/prediction-preview`);
+}
+
+export async function fetchFootballMatchLineups(matchId: string): Promise<FootballMatchLineupsResponse> {
+  return requestJson<FootballMatchLineupsResponse>(`/football/matches/${encodeURIComponent(matchId)}/lineups`);
+}
+
+export async function fetchFootballMatchPlayerAvailability(matchId: string): Promise<{ match: { id: string }; items: FootballTeamProfileResponse["playerAvailability"] }> {
+  return requestJson(`/football/matches/${encodeURIComponent(matchId)}/player-availability`);
 }
 
 export async function fetchFootballPredictionSettlements(filters: FootballPredictionSettlementFilters = {}): Promise<FootballPredictionSettlementsListResponse> {

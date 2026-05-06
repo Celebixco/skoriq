@@ -18,7 +18,7 @@ const adminUser: AuthUser = {
 };
 
 function renderReport(report: FootballAnalyticsMatchReport, user: AuthUser = memberUser) {
-  return renderToStaticMarkup(<MatchDetailReportView report={report} matchId={report.match.matchId} user={user} navigate={vi.fn()} />);
+  return renderToStaticMarkup(<MatchDetailReportView report={report} matchId={report.match.matchId} user={user} navigate={vi.fn()} availability={[]} />);
 }
 
 function mockReport(patch: Partial<FootballAnalyticsMatchReport> = {}): FootballAnalyticsMatchReport {

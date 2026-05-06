@@ -1,4 +1,4 @@
-import type { BasketballPeriodType, MatchStatus } from "@sports-data/shared";
+import type { BasketballPeriodType, FootballMatchLineupRole, FootballPlayerAvailabilityStatus, MatchStatus } from "@sports-data/shared";
 
 export interface ProviderEntityBase {
   providerEntityId: string;
@@ -69,6 +69,45 @@ export interface ProviderPlayer extends ProviderEntityBase {
   marketValue?: string;
   contractUntil?: string;
   photoUrl?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ProviderFootballPlayerAvailability {
+  providerPlayerId?: string;
+  sportProviderId: string;
+  teamProviderId: string;
+  competitionProviderId?: string;
+  matchProviderId?: string;
+  playerName: string;
+  status: FootballPlayerAvailabilityStatus;
+  reason?: string;
+  injuryType?: string;
+  expectedReturnDate?: string;
+  providerReportedAt?: string;
+  sourceQuality?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ProviderFootballMatchLineupPlayer {
+  providerPlayerId?: string;
+  playerName: string;
+  role: FootballMatchLineupRole;
+  position?: string;
+  shirtNumber?: number;
+  orderIndex?: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ProviderFootballMatchLineup {
+  providerMatchId: string;
+  teamProviderId: string;
+  teamName?: string;
+  formation?: string;
+  confirmed?: boolean;
+  providerReportedAt?: string;
+  starting: ProviderFootballMatchLineupPlayer[];
+  substitutes: ProviderFootballMatchLineupPlayer[];
+  unavailable: ProviderFootballMatchLineupPlayer[];
   metadata?: Record<string, unknown>;
 }
 

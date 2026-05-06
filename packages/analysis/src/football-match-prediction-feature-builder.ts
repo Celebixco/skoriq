@@ -66,6 +66,27 @@ export interface FootballPredictionH2HFeature {
   coverageScore: number;
 }
 
+export interface FootballPredictionPlayerContextFeature {
+  matchId: string;
+  homeMissingPlayersCount: number;
+  awayMissingPlayersCount: number;
+  homeSuspendedCount: number;
+  awaySuspendedCount: number;
+  homeInjuredCount: number;
+  awayInjuredCount: number;
+  homeDoubtfulCount: number;
+  awayDoubtfulCount: number;
+  homeLineupConfirmed: boolean;
+  awayLineupConfirmed: boolean;
+  homeStartingXiKnown: boolean;
+  awayStartingXiKnown: boolean;
+  homeAvailabilityCoverageScore: number;
+  awayAvailabilityCoverageScore: number;
+  playerContextCoverageScore: number;
+  playerContextRiskLevel: "low" | "medium" | "high" | "unknown";
+  metadataJson?: Record<string, unknown> | null;
+}
+
 export interface FootballMatchPredictionFeatureInput {
   matchId: string;
   competitionId: string;
@@ -142,6 +163,7 @@ export interface FootballMatchPredictionSourceRepository {
   findMatchById(matchId: string): Promise<FootballPredictionMatch | undefined>;
   findBestTeamFormFeature(input: FindFootballPredictionTeamFormFeatureInput): Promise<FootballPredictionTeamFormFeature | undefined>;
   findBestHeadToHeadFeature(input: FindFootballPredictionH2HFeatureInput): Promise<FootballPredictionH2HFeature | undefined>;
+  findPlayerContextFeature(matchId: string): Promise<FootballPredictionPlayerContextFeature | undefined>;
 }
 
 export interface FootballMatchPredictionFeatureBuilderRepositories {
@@ -209,12 +231,14 @@ export class FootballMatchPredictionFeatureBuilder implements AnalysisFeatureBui
       asOfDate: match.scheduledStartAt,
       windowSize: options.h2hWindowSize
     });
+    const playerContext = await this.repositories.sources.findPlayerContextFeature(match.id);
 
     return calculateFootballMatchPredictionFeature({
       match,
       homeForm,
       awayForm,
       h2h,
+      playerContext,
       formWindowSize: options.formWindowSize,
       h2hWindowSize: options.h2hWindowSize
     });
@@ -226,12 +250,13 @@ export interface CalculateFootballMatchPredictionFeatureInput {
   homeForm?: FootballPredictionTeamFormFeature;
   awayForm?: FootballPredictionTeamFormFeature;
   h2h?: FootballPredictionH2HFeature;
+  playerContext?: FootballPredictionPlayerContextFeature;
   formWindowSize: number;
   h2hWindowSize: number;
 }
 
 export function calculateFootballMatchPredictionFeature(input: CalculateFootballMatchPredictionFeatureInput): FootballMatchPredictionFeatureInput {
-  const { match, homeForm, awayForm, h2h } = input;
+  const { match, homeForm, awayForm, h2h, playerContext } = input;
   const h2hHasSamples = (h2h?.sampleSize ?? 0) > 0;
   const h2hMissing = !h2hHasSamples;
   const combinedCoverageScore = calculateCombinedCoverageScore(homeForm, awayForm, h2h);
@@ -301,7 +326,27 @@ export function calculateFootballMatchPredictionFeature(input: CalculateFootball
         homeForm: homeForm?.sampleSize ?? 0,
         awayForm: awayForm?.sampleSize ?? 0,
         h2h: h2h?.sampleSize ?? 0
-      }
+      },
+      playerContext: playerContext
+        ? {
+            homeMissingPlayersCount: playerContext.homeMissingPlayersCount,
+            awayMissingPlayersCount: playerContext.awayMissingPlayersCount,
+            homeSuspendedCount: playerContext.homeSuspendedCount,
+            awaySuspendedCount: playerContext.awaySuspendedCount,
+            homeInjuredCount: playerContext.homeInjuredCount,
+            awayInjuredCount: playerContext.awayInjuredCount,
+            homeDoubtfulCount: playerContext.homeDoubtfulCount,
+            awayDoubtfulCount: playerContext.awayDoubtfulCount,
+            homeLineupConfirmed: playerContext.homeLineupConfirmed,
+            awayLineupConfirmed: playerContext.awayLineupConfirmed,
+            homeStartingXiKnown: playerContext.homeStartingXiKnown,
+            awayStartingXiKnown: playerContext.awayStartingXiKnown,
+            homeAvailabilityCoverageScore: playerContext.homeAvailabilityCoverageScore,
+            awayAvailabilityCoverageScore: playerContext.awayAvailabilityCoverageScore,
+            playerContextCoverageScore: playerContext.playerContextCoverageScore,
+            playerContextRiskLevel: playerContext.playerContextRiskLevel
+          }
+        : null
     }
   };
 }

@@ -96,3 +96,21 @@ export type FootballPredictionSettlementStatus = (typeof footballPredictionSettl
 
 export const publicSuccessfulPredictionStatuses = ["draft", "published", "hidden"] as const;
 export type PublicSuccessfulPredictionStatus = (typeof publicSuccessfulPredictionStatuses)[number];
+
+export const footballPlayerAvailabilityStatuses = [
+  "injured",
+  "suspended",
+  "doubtful",
+  "unavailable",
+  "questionable",
+  "returned",
+  "unknown"
+] as const;
+
+export type FootballPlayerAvailabilityStatus = (typeof footballPlayerAvailabilityStatuses)[number];
+
+export const footballMatchLineupRoles = ["starting", "substitute", "coach", "unavailable", "unknown"] as const;
+export type FootballMatchLineupRole = (typeof footballMatchLineupRoles)[number];
+
+export const footballPlayerContextRiskLevels = ["low", "medium", "high", "unknown"] as const;
+export type FootballPlayerContextRiskLevel = (typeof footballPlayerContextRiskLevels)[number];

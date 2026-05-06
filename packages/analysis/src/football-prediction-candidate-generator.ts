@@ -127,6 +127,7 @@ export function generateFootballPredictionCandidates(feature: FootballPrediction
   });
   const confidenceCeiling = reasoning.confidence_ceiling;
   const sampleSizes = reasoning.metadata.sampleSizes;
+  const playerContext = extractPlayerContext(feature.metadataJson);
 
   if (feature.featureStatus !== "ready") {
     blockedReasons.push(`Feature snapshot is ${feature.featureStatus}; candidate generation requires ready.`);
@@ -135,6 +136,9 @@ export function generateFootballPredictionCandidates(feature: FootballPrediction
 
   if (reasoning.metadata.h2hMissing) {
     warnings.push("H2H sample is missing; confidence is capped and candidates require extra caution.");
+  }
+  if (playerContext?.playerContextRiskLevel === "high") {
+    warnings.push("Oyuncu eksikliği riski yüksek; güven tavanı aşağı çekildi.");
   }
 
   const expectedHomeGoals = valueOrUndefined(feature.expectedHomeGoalsProxy) ?? expectedTeamGoals(feature.homeAvgGoalsFor ?? feature.homeAttackStrengthProxy, feature.awayAvgGoalsAgainst ?? feature.awayDefenseStrengthProxy);
@@ -156,7 +160,10 @@ export function generateFootballPredictionCandidates(feature: FootballPrediction
     first_half_goal_signal_score: feature.firstHalfGoalSignalScore ?? null,
     btts_signal_score: feature.bttsSignalScore ?? null,
     h2h_missing: reasoning.metadata.h2hMissing,
-    confidence_ceiling: confidenceCeiling
+    confidence_ceiling: confidenceCeiling,
+    player_context_risk_level: playerContext?.playerContextRiskLevel ?? "unknown",
+    home_lineup_confirmed: playerContext?.homeLineupConfirmed ?? false,
+    away_lineup_confirmed: playerContext?.awayLineupConfirmed ?? false
   };
 
   const candidates: FootballPredictionCandidate[] = [];
@@ -172,7 +179,7 @@ export function generateFootballPredictionCandidates(feature: FootballPrediction
   const bttsCandidate = buildBothTeamsToScoreCandidate(feature, confidenceCeiling, expectedHomeGoals, expectedAwayGoals, expectationSnapshot);
   if (bttsCandidate) candidates.push(bttsCandidate);
 
-  const firstHalfCandidate = buildFirstHalfGoalCandidate(feature, confidenceCeiling, expectationSnapshot, sampleSizes);
+  const firstHalfCandidate = buildFirstHalfGoalCandidate(feature, confidenceCeiling, expectationSnapshot, sampleSizes, playerContext);
   if (firstHalfCandidate) candidates.push(firstHalfCandidate);
 
   const finalCandidates = enforceTierRules(candidates);
@@ -335,8 +342,21 @@ function buildFirstHalfGoalCandidate(
   feature: FootballPredictionCandidateFeature,
   ceiling: number,
   expectationSnapshot: Record<string, unknown>,
-  sampleSizes: { homeForm: number; awayForm: number; h2h: number }
+  sampleSizes: { homeForm: number; awayForm: number; h2h: number },
+  playerContext: ReturnType<typeof extractPlayerContext>
 ) {
+  if (playerContext && (!playerContext.homeLineupConfirmed || !playerContext.awayLineupConfirmed)) {
+    return candidate({
+      predictionType: "first_half_over_0_5",
+      predictionValue: "avoid_unconfirmed_lineups",
+      predictionFamily: "first_half_goals",
+      confidenceScore: Math.min(42, ceiling),
+      recommendationTier: "avoid",
+      reasoningSummary: "İlk 11 verisi onaylı olmadığı için ilk yarı tahmininde aşırı güven kullanılmadı.",
+      metadata: { ...expectationSnapshot, missingEvidence: "unconfirmed_lineups" }
+    });
+  }
+
   if (feature.firstHalfGoalProfile === "likely_goal" && (feature.firstHalfGoalSignalScore ?? 0) >= 65) {
     const confidence = capConfidence(58 + Math.min(5, ((feature.firstHalfGoalSignalScore ?? 65) - 65) / 3), ceiling);
     return candidate({
@@ -495,4 +515,18 @@ function summarizeCandidates(candidates: FootballPredictionCandidate[]) {
 function round(value: number, digits = 2): number {
   const factor = 10 ** digits;
   return Math.round(value * factor) / factor;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function extractPlayerContext(metadata: Record<string, unknown> | null | undefined) {
+  if (!isRecord(metadata) || !isRecord(metadata.playerContext)) return null;
+  const playerContext = metadata.playerContext;
+  return {
+    playerContextRiskLevel: typeof playerContext.playerContextRiskLevel === "string" ? playerContext.playerContextRiskLevel : "unknown",
+    homeLineupConfirmed: playerContext.homeLineupConfirmed === true,
+    awayLineupConfirmed: playerContext.awayLineupConfirmed === true
+  };
 }

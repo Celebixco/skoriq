@@ -608,4 +608,58 @@ describe("APIFootball.com adapter POC", () => {
     expect(new URL(String(fetchSpy.mock.calls[1]?.[0])).searchParams.get(APIFOOTBALL_COM_API_KEY_QUERY_PARAM)).toBe("test-events-key");
     expect(new URL(String(fetchSpy.mock.calls[2]?.[0])).searchParams.get(APIFOOTBALL_COM_API_KEY_QUERY_PARAM)).toBe("test-results-key");
   });
+
+  it("maps nested team-player injury flags through the injuries credential label", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            team_key: "100",
+            team_name: "Example FC",
+            players: [
+              {
+                player_key: "200",
+                player_name: "Example Player",
+                player_type: "Midfielder",
+                player_number: "8",
+                player_injured: "Yes",
+                player_reason: "Knock",
+                injury_type: "Muscle",
+                expected_return_date: "2026-05-10"
+              }
+            ]
+          }
+        ]),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        }
+      )
+    );
+    const adapter = new APIFootballComAdapter({
+      enabled: true,
+      apiKeys: {
+        injuriesApiKey: "test-injuries-key"
+      },
+      baseUrl: "https://apiv3.apifootball.com/",
+      timeoutMs: 15000,
+      environment: { nodeEnv: "test" },
+      fetchImpl: fetchSpy
+    });
+
+    const result = await adapter.getTeamPlayerAvailability({ teamId: "100" });
+
+    expect(result.metadata.credentialLabel).toBe("injuries");
+    expect(result.data).toEqual([
+      expect.objectContaining({
+        providerPlayerId: "200",
+        teamProviderId: "100",
+        playerName: "Example Player",
+        status: "injured",
+        reason: "Knock",
+        injuryType: "Muscle",
+        expectedReturnDate: "2026-05-10"
+      })
+    ]);
+  });
 });

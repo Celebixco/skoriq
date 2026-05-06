@@ -102,6 +102,71 @@ export interface APIFootballComTeam {
   team_venue?: string;
   founded?: string | number;
   founded_year?: string | number;
+  players?: APIFootballComTeamPlayer[];
+  [key: string]: unknown;
+}
+
+export interface APIFootballComTeamPlayer {
+  player_key?: string | number;
+  player_id?: string | number;
+  player_name?: string;
+  player_number?: string | number;
+  player_type?: string;
+  player_age?: string | number;
+  player_country?: string;
+  player_birthdate?: string;
+  player_image?: string;
+  player_injured?: string;
+  player_reason?: string;
+  injury_type?: string;
+  expected_return?: string;
+  expected_return_date?: string;
+  [key: string]: unknown;
+}
+
+export interface APIFootballComLineupPlayer {
+  player_key?: string | number;
+  player_id?: string | number;
+  lineups_player_id?: string | number;
+  player?: string;
+  player_name?: string;
+  lineup_player?: string;
+  player_number?: string | number;
+  lineup_number?: string | number;
+  player_position?: string;
+  lineup_position?: string;
+  player_type?: string;
+  [key: string]: unknown;
+}
+
+export interface APIFootballComLineupCoach {
+  coach_name?: string;
+  coach?: string;
+  [key: string]: unknown;
+}
+
+export interface APIFootballComLineupTeamBlock {
+  team_key?: string | number;
+  team_id?: string | number;
+  team_name?: string;
+  formation?: string;
+  starting_lineups?: APIFootballComLineupPlayer[];
+  startingLineups?: APIFootballComLineupPlayer[];
+  substitutes?: APIFootballComLineupPlayer[];
+  coach?: APIFootballComLineupCoach[];
+  missing_players?: APIFootballComLineupPlayer[];
+  unavailable_players?: APIFootballComLineupPlayer[];
+  lineup_confirmed?: string | boolean;
+  confirmed?: string | boolean;
+  [key: string]: unknown;
+}
+
+export interface APIFootballComLineupResponse {
+  match_id?: string | number;
+  match_status?: string;
+  lineups?: APIFootballComLineupTeamBlock[];
+  home?: APIFootballComLineupTeamBlock;
+  away?: APIFootballComLineupTeamBlock;
   [key: string]: unknown;
 }
 

@@ -95,7 +95,15 @@ apifootball.com is now the controlled low/no-cost football POC candidate. It is 
 
 APIFootball.com now supports endpoint-based multi-credential routing. Provider code chooses keys by safe operation label: countries, leagues, teams, standings, fixtures, events, results, players, statistics, lineups, injuries, then falls back to default and legacy labels. Real keys live only in `.env` or deployment secrets; ingestion reports may show only the safe label used and must never expose raw key values, partial keys, request URLs with keys, or frontend-visible credentials.
 
-The apifootball.com POC supports manual fetching/mapping for countries, leagues, teams, events/scores, and standings. Country data is a required onboarding dependency: every league must confirm `country_id` and `country_name`, then execute countries/leagues before teams, standings, events, scores, or future H2H execute. This keeps the canonical relation chain stable: `country -> competition -> team -> match`, and it powers the future Football Explorer path from Country to Leagues to League detail to Standings to Teams to Team detail. The reviewed football slice now has guarded local/manual database writes through `--execute`; it does not implement livescore polling, odds, predictions, lineups, injuries, players, production ingestion, or frontend behavior.
+The apifootball.com POC supports manual fetching/mapping for countries, leagues, teams, events/scores, standings, and controlled player-availability context. Country data is a required onboarding dependency: every league must confirm `country_id` and `country_name`, then execute countries/leagues before teams, standings, events, scores, player availability, or future H2H execute. This keeps the canonical relation chain stable: `country -> competition -> team -> match`, and it powers the future Football Explorer path from Country to Leagues to League detail to Standings to Teams to Team detail. Player availability currently remains supporting evidence only: it normalizes players, team memberships, and explicit injury-like rows, but it does not override the prediction consistency engine or imply a healthy squad when data is missing.
+
+Controlled dry-run/execute command:
+
+```bash
+npm run provider:football:player-availability-sync -- --country-id=44 --league-id=152 --window-days=7 --limit=50
+```
+
+The command is dry-run by default, requires a safe DB target, processes reviewed/enabled leagues only, and exits safely with `missing_injuries_credential` when `APIFOOTBALL_COM_API_KEY_INJURIES` is absent. It must not infer suspensions from absence and must not call provider endpoints at all when the injuries credential is missing.
 
 Reviewed/enabled APIFootball leagues now have a controlled upcoming fixture sync command:
 
@@ -244,3 +252,18 @@ Keep raw-only when:
 - No betting or odds module unless separately approved.
 - No frontend.
 - No schema or normalizer changes from this roadmap alone.
+
+## Player Intelligence Expansion
+
+The reviewed APIFootball football slice now has an approved extension path for:
+
+- squad / player list normalization
+- explicit player availability rows
+- starting XI / substitute lineup storage
+
+Guardrails:
+
+- missing injury data means `unknown`, not `healthy`
+- suspensions are supported only when the provider explicitly identifies them
+- lineups are stored only when the provider returns them; absence of a lineup is not a guessed formation
+- player context is supporting evidence for reasoning, confidence caps, and risk notes only

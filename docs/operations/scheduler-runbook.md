@@ -28,6 +28,21 @@ Safety:
 - Does not run feature builders, candidates, drafts, settlement, public publishing, member-visible mutation, or tahmin kombini.
 - Never creates fake countries, competitions, teams, matches, scores, or provider IDs.
 
+## Future Controlled Player Availability Sync
+
+This job is not enabled by default. First review dry-run evidence:
+
+```bash
+npm run provider:football:player-availability-sync -- --country-id=44 --league-id=152 --window-days=7 --limit=50
+```
+
+Safety:
+- Requires `APIFOOTBALL_COM_API_KEY_INJURIES`; if missing, exits safely with `missing_injuries_credential`.
+- Reads upcoming reviewed/enabled football matches only.
+- Normalizes supporting context into `players`, `football_player_team_memberships`, and `football_player_availability`.
+- Does not infer suspensions from missing lineups or missing players.
+- Does not generate predictions, drafts, settlement, public publishing, member-visible mutations, or tahmin kombini.
+
 ## Daily 09:00 Pre-Match Scan
 
 Purpose: generate draft-only SkorIQ pre-match analysis for reviewed/enabled football leagues when kickoff is inside the 36-hour window and outside the 30-minute minimum lead cutoff.
@@ -103,3 +118,13 @@ Never run these as scheduler side effects:
 - member-visible mutation
 - settlement/public/member-visible flows outside their explicit commands
 - tahmin kombini
+
+## Future Player Intelligence Schedule
+
+Do not enable automatically until dry-runs are reviewed:
+
+- `08:35 TR` `npm run provider:football:players-sync -- --all-reviewed-enabled --window-days=7 --execute`
+- `08:40 TR` `npm run provider:football:player-availability-sync -- --all-reviewed-enabled --window-days=7 --execute`
+- Matchday lineup refresh: `npm run provider:football:lineups-sync -- --all-reviewed-enabled --window-hours=12 --execute`
+
+These jobs support reasoning quality only. They must not generate predictions, publish outputs, mark member-visible rows, or infer a healthy squad from missing provider data.

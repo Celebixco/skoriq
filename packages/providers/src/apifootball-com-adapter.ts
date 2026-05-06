@@ -19,10 +19,14 @@ import {
   mapEventToProviderFootballMatchScore,
   mapEventToProviderMatch,
   mapLeagueToProviderCompetition,
+  mapLineupResponseToProviderLineups,
   mapStandingToProviderFootballStanding,
+  mapTeamPlayerToProviderAvailability,
+  mapTeamPlayerToProviderPlayer,
   mapTeamToProviderTeamResult
 } from "./apifootball-com-mappers.js";
-import type { APIFootballComCountry, APIFootballComEvent, APIFootballComLeague, APIFootballComStanding, APIFootballComTeam } from "./apifootball-com-types.js";
+import type { ProviderFootballMatchLineup, ProviderFootballPlayerAvailability } from "./provider-dtos.js";
+import type { APIFootballComCountry, APIFootballComEvent, APIFootballComLeague, APIFootballComLineupResponse, APIFootballComStanding, APIFootballComTeam } from "./apifootball-com-types.js";
 
 export const APIFOOTBALL_COM_ADAPTER_NAME = "apifootball-com";
 
@@ -51,6 +55,8 @@ const capabilities: ProviderCapabilities = {
   supportsScores: true,
   supportsTeamStatistics: false,
   supportsStandings: true,
+  supportsPlayers: true,
+  supportsLineups: true,
   supportsPreMatchData: true,
   supportsPostMatchData: true,
   supportsRateLimitMetadata: false
@@ -77,6 +83,16 @@ const endpointMetadata: readonly ProviderEndpointMetadata[] = [
     normalizedTarget: "teams",
     rawOnly: false,
     notes: "APIFootball.com action get_teams; logo fields map to ProviderTeam.logoUrl when present."
+  },
+  {
+    operation: "list_players",
+    sport: "football",
+    entityType: "player",
+    priority: "P1",
+    timing: "periodic",
+    normalizedTarget: "players",
+    rawOnly: false,
+    notes: "APIFootball.com action get_teams with nested players[] payloads."
   },
   {
     operation: "list_upcoming_matches",
@@ -237,6 +253,92 @@ export class APIFootballComAdapter implements ProviderAdapter {
     );
   }
 
+  async getTeamPlayers(params: Record<string, unknown> = {}) {
+    return this.requestAndMap("list_players", "player", "get_teams", params, (payload: APIFootballComTeam[]) =>
+      payload.flatMap((team) =>
+        (Array.isArray(team.players) ? team.players : [])
+          .map((player) => mapTeamPlayerToProviderPlayer(team, player))
+          .filter((result) => result.status === "mapped")
+          .map((result) => result.data)
+      )
+    );
+  }
+
+  async getTeamPlayerAvailability(params: Record<string, unknown> = {}) {
+    if (!this.client) {
+      throw new Error("APIFootball.com adapter is disabled.");
+    }
+
+    const providerParams = toProviderParams(params);
+    const result = await this.client.requestJson<APIFootballComTeam[]>({
+      action: "get_teams",
+      credentialAction: "get_injuries",
+      params: providerParams
+    });
+
+    const availability = result.payload.flatMap((team) =>
+      (Array.isArray(team.players) ? team.players : [])
+        .map((player) => mapTeamPlayerToProviderAvailability(team, player))
+        .filter((mapped): mapped is { status: "mapped"; data: ProviderFootballPlayerAvailability } => mapped.status === "mapped")
+        .map((mapped) => mapped.data)
+    );
+
+    return buildProviderFetchResult({
+      context: {
+        provider: this.name,
+        operation: "list_teams",
+        sport: "football",
+        entityType: "team",
+        params: providerParams
+      },
+      data: availability,
+      rawPayload: result.payload,
+      credentialLabel: result.metadata.credentialLabel,
+      durationMs: result.metadata.durationMs,
+      fetchedAt: result.metadata.fetchedAt,
+      response: {
+        statusCode: result.metadata.status
+      }
+    });
+  }
+
+  async getMatchLineups(params: Record<string, unknown> = {}) {
+    if (!this.client) {
+      throw new Error("APIFootball.com adapter is disabled.");
+    }
+
+    const providerParams = toProviderParams(params);
+    const result = await this.client.requestJson<APIFootballComLineupResponse[]>({
+      action: "get_lineups",
+      credentialAction: "get_lineups",
+      params: providerParams
+    });
+
+    const lineups = result.payload.flatMap((row) =>
+      mapLineupResponseToProviderLineups(row)
+        .filter((mapped): mapped is { status: "mapped"; data: ProviderFootballMatchLineup } => mapped.status === "mapped")
+        .map((mapped) => mapped.data)
+    );
+
+    return buildProviderFetchResult({
+      context: {
+        provider: this.name,
+        operation: "get_match_details",
+        sport: "football",
+        entityType: "match",
+        params: providerParams
+      },
+      data: lineups,
+      rawPayload: result.payload,
+      credentialLabel: result.metadata.credentialLabel,
+      durationMs: result.metadata.durationMs,
+      fetchedAt: result.metadata.fetchedAt,
+      response: {
+        statusCode: result.metadata.status
+      }
+    });
+  }
+
   async getEventsAsMatches(operation: "list_upcoming_matches" | "list_finished_matches" | "get_match_details", params: Record<string, unknown> = {}) {
     return this.requestAndMap(operation, "match", "get_events", params, (payload: APIFootballComEvent[]) =>
       payload.map(mapEventToProviderMatch).filter((result) => result.status === "mapped").map((result) => result.data)
@@ -263,6 +365,8 @@ export class APIFootballComAdapter implements ProviderAdapter {
         return this.getLeagues(params);
       case "list_teams":
         return this.getTeams(params);
+      case "list_players":
+        return this.getTeamPlayers(params);
       case "list_upcoming_matches":
       case "list_finished_matches":
       case "get_match_details":
@@ -356,10 +460,12 @@ function credentialActionForOperation(operation: ProviderOperation): APIFootball
       return "countries";
     case "list_competitions":
       return "leagues";
-    case "list_teams":
-      return "teams";
-    case "get_football_standings":
-      return "standings";
+      case "list_teams":
+        return "teams";
+      case "list_players":
+        return "players";
+      case "get_football_standings":
+        return "standings";
     case "list_upcoming_matches":
       return "fixtures";
     case "get_football_match_score":
