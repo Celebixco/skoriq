@@ -28,7 +28,7 @@ services:
 
   db-migrate:
     build:
-      context: ../..
+      context: .
       dockerfile: Dockerfile
     restart: "no"
     command: ["npx", "tsx", "scripts/db-migrate.ts"]
@@ -40,7 +40,7 @@ services:
 
   api:
     build:
-      context: ../..
+      context: .
       dockerfile: Dockerfile
     restart: unless-stopped
     command: ["node", "apps/api/dist/main.js"]
@@ -71,7 +71,7 @@ services:
 
   dashboard:
     build:
-      context: ../..
+      context: .
       dockerfile: apps/dashboard/Dockerfile
       args:
         VITE_API_BASE_URL: /api
@@ -83,7 +83,7 @@ services:
 
   worker:
     build:
-      context: ../..
+      context: .
       dockerfile: Dockerfile
     restart: unless-stopped
     command: ["node", "apps/worker/dist/main.js"]
@@ -104,7 +104,7 @@ services:
 
   scheduler:
     build:
-      context: ../..
+      context: .
       dockerfile: Dockerfile
     restart: unless-stopped
     command: ["node", "apps/scheduler/dist/main.js"]

@@ -149,7 +149,7 @@ function rawPayload(overrides: Partial<RawPayloadRecord> = {}): RawPayloadRecord
     receivedAt: new Date("2026-04-30T20:00:00.000Z"),
     processedAt: new Date("2026-04-30T20:01:00.000Z"),
     normalizationError: 'Cannot normalize football standing "322:192" without competition mapping "322".',
-    deleteAfter: new Date("2026-05-30T20:00:00.000Z"),
+    deleteAfter: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     ...overrides
   };
 }
