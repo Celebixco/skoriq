@@ -204,13 +204,14 @@ export async function seedInitialData(pool: pg.Pool) {
   let totalStandingsIngested = 0;
   let totalMatchesIngested = 0;
   let totalStatsIngested = 0;
+  let totalPlayersIngested = 0;
 
-  const existingStatsCountRes = await pool.query('SELECT count(*) FROM football_match_team_statistics');
-  const existingStatsCount = parseInt(existingStatsCountRes.rows[0]?.count || '0', 10);
+  const existingPlayersCountRes = await pool.query('SELECT count(*) FROM players');
+  const existingPlayersCount = parseInt(existingPlayersCountRes.rows[0]?.count || '0', 10);
   const forceSeed = process.env.FORCE_SEED === 'true';
 
-  if (existingStatsCount >= 200 && !forceSeed) {
-    console.log(`Initial seed already applied (${existingStatsCount} match statistics found). Skipping seed. Use FORCE_SEED=true to override.`);
+  if (existingPlayersCount >= 500 && !forceSeed) {
+    console.log(`Initial seed already applied (${existingPlayersCount} players found). Skipping seed. Use FORCE_SEED=true to override.`);
     return;
   }
 
@@ -380,6 +381,144 @@ export async function seedInitialData(pool: pg.Pool) {
       ]);
 
       totalStandingsIngested++;
+
+      // 8a. Ingest Squad Players for Team
+      if (team.players && Array.isArray(team.players)) {
+        for (const p of team.players) {
+          try {
+            const playerCountryId = p.country_name ? await getOrCreateCountry(p.country_name, p.country_code, p.country_code?.toLowerCase() || p.slug) : teamCountryId;
+            const playerSlug = `${slugify(p.name)}-${p.sofascore_id}`;
+            const dob = p.date_of_birth_timestamp ? new Date(p.date_of_birth_timestamp * 1000).toISOString().split("T")[0] : null;
+
+            const playerRes = await pool.query(`
+              INSERT INTO players (
+                sport_id, country_id, current_team_id, name, short_name, slug,
+                position, jersey_number, height_cm, photo_url, date_of_birth, metadata_json
+              )
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+              ON CONFLICT (id) DO UPDATE SET
+                current_team_id = EXCLUDED.current_team_id,
+                position = EXCLUDED.position,
+                jersey_number = EXCLUDED.jersey_number,
+                photo_url = EXCLUDED.photo_url
+              RETURNING id;
+            `, [
+              sportId,
+              playerCountryId,
+              teamId,
+              p.name,
+              p.short_name,
+              playerSlug,
+              p.position || null,
+              p.jersey_number || null,
+              p.height || null,
+              p.photo_url || null,
+              dob,
+              JSON.stringify({
+                sofascoreId: p.sofascore_id,
+                marketValue: p.proposed_market_value,
+                preferredFoot: p.preferred_foot
+              })
+            ]);
+
+            const pid = playerRes.rows[0]?.id;
+            if (pid) {
+              await pool.query(`
+                INSERT INTO football_player_team_memberships (
+                  player_id, team_id, competition_id, season_id, position, shirt_number, active
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, true)
+                ON CONFLICT DO NOTHING;
+              `, [pid, teamId, compId, seasonId, p.position || null, p.jersey_number || null]);
+              totalPlayersIngested++;
+            }
+          } catch (playerErr) {
+            // Ignore duplicate/parse error for single player
+          }
+        }
+      }
+
+      // 8b. Ingest Team Recent Matches
+      if (team.recent_matches && Array.isArray(team.recent_matches)) {
+        for (const rm of team.recent_matches) {
+          try {
+            let hTeamId = teamIdCache.get(rm.home_team_id);
+            let aTeamId = teamIdCache.get(rm.away_team_id);
+
+            if (!hTeamId) {
+              const hRes = await pool.query(`
+                INSERT INTO teams (sport_id, name, short_name, slug, type, gender, logo_url, metadata_json)
+                VALUES ($1, $2, $2, $3, 'club', 'men', $4, '{}')
+                ON CONFLICT (sport_id, slug) DO UPDATE SET name = EXCLUDED.name RETURNING id;
+              `, [sportId, rm.home_team_name, `${slugify(rm.home_team_name)}-${rm.home_team_id}`, rm.home_team_logo]);
+              hTeamId = hRes.rows[0]?.id;
+              if (hTeamId) teamIdCache.set(rm.home_team_id, hTeamId);
+            }
+
+            if (!aTeamId) {
+              const aRes = await pool.query(`
+                INSERT INTO teams (sport_id, name, short_name, slug, type, gender, logo_url, metadata_json)
+                VALUES ($1, $2, $2, $3, 'club', 'men', $4, '{}')
+                ON CONFLICT (sport_id, slug) DO UPDATE SET name = EXCLUDED.name RETURNING id;
+              `, [sportId, rm.away_team_name, `${slugify(rm.away_team_name)}-${rm.away_team_id}`, rm.away_team_logo]);
+              aTeamId = aRes.rows[0]?.id;
+              if (aTeamId) teamIdCache.set(rm.away_team_id, aTeamId);
+            }
+
+            if (hTeamId && aTeamId && rm.start_timestamp) {
+              let winId: string | null = null;
+              if (typeof rm.home_score === "number" && typeof rm.away_score === "number") {
+                if (rm.home_score > rm.away_score) winId = hTeamId;
+                else if (rm.away_score > rm.home_score) winId = aTeamId;
+              }
+              const matchDate = new Date(rm.start_timestamp * 1000);
+              const mMeta = { sofascoreId: rm.sofascore_id, statistics: rm.statistics || null };
+
+              const mRes = await pool.query(`
+                INSERT INTO matches (
+                  sport_id, competition_id, season_id, home_team_id, away_team_id,
+                  scheduled_start_at, status, winner_team_id, metadata_json
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, 'finished', $7, $8)
+                ON CONFLICT ON CONSTRAINT "matches_natural_uidx" DO UPDATE SET
+                  status = 'finished',
+                  winner_team_id = EXCLUDED.winner_team_id,
+                  metadata_json = EXCLUDED.metadata_json
+                RETURNING id;
+              `, [sportId, compId, seasonId, hTeamId, aTeamId, matchDate, winId, JSON.stringify(mMeta)]);
+
+              const mId = mRes.rows[0]?.id;
+              if (mId && typeof rm.home_score === "number" && typeof rm.away_score === "number") {
+                await pool.query(`
+                  INSERT INTO football_match_scores (
+                    match_id, home_team_id, away_team_id, winner_team_id,
+                    home_score_current, away_score_current, home_score_fulltime, away_score_fulltime,
+                    home_score_halftime, away_score_halftime, status
+                  )
+                  VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, 'finished')
+                  ON CONFLICT (match_id) DO UPDATE SET
+                    home_score_current = EXCLUDED.home_score_current,
+                    away_score_current = EXCLUDED.away_score_current,
+                    home_score_fulltime = EXCLUDED.home_score_fulltime,
+                    away_score_fulltime = EXCLUDED.away_score_fulltime,
+                    home_score_halftime = EXCLUDED.home_score_halftime,
+                    away_score_halftime = EXCLUDED.away_score_halftime,
+                    winner_team_id = EXCLUDED.winner_team_id;
+                `, [mId, hTeamId, aTeamId, winId, rm.home_score, rm.away_score, rm.home_score_halftime ?? null, rm.away_score_halftime ?? null]);
+
+                if (rm.statistics) {
+                  await insertTeamStats(pool, mId, hTeamId, aTeamId, rm.statistics.home);
+                  await insertTeamStats(pool, mId, aTeamId, hTeamId, rm.statistics.away);
+                  totalStatsIngested += 2;
+                }
+                totalMatchesIngested++;
+              }
+            }
+          } catch (rmErr) {
+            // Ignore single match error
+          }
+        }
+      }
     }
 
     // 9. Ingest Recent Finished Matches & Detailed Telemetry Statistics
@@ -606,6 +745,9 @@ export async function seedInitialData(pool: pg.Pool) {
 
     console.log(`[INGESTED] ${league.country}: ${league.league_name} (${league.teams.length} teams, ${league.recent_matches?.length || 0} finished, ${league.upcoming_matches?.length || 0} upcoming)`);
   }
+
+  // 10. Generate and Populate Football Team Form Features
+  await generateTeamFormFeatures(pool);
 
   // 11. Ensure Admin User
   const adminEmail = (process.env.ADMIN_EMAIL || "admin@skoriq.local").trim().toLowerCase();

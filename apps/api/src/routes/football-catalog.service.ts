@@ -1293,7 +1293,11 @@ export class FootballCatalogService {
           ) ranked
           inner join competitions c on c.id = ranked.competition_id
           left join countries cco on cco.id = c.country_id
-          order by ranked.priority desc, ranked.sort_date desc nulls last, c.name asc
+          order by
+            case when c.country_id = t.country_id then 1 else 0 end desc,
+            ranked.priority desc,
+            ranked.sort_date desc nulls last,
+            c.name asc
           limit 1
         ) pc on true
         where t.id = ${teamId}
@@ -1499,11 +1503,11 @@ export class FootballCatalogService {
           coalesce(pm.position, p.position) as position,
           coalesce(pm.shirt_number, p.jersey_number) as shirt_number,
           p.photo_url,
-          pm.active
-        from football_player_team_memberships pm
-        inner join players p on p.id = pm.player_id
-        where pm.team_id = ${teamId}
-        order by p.id, pm.updated_at desc
+          coalesce(pm.active, true) as active
+        from players p
+        left join football_player_team_memberships pm on pm.player_id = p.id and pm.team_id = ${teamId}
+        where p.current_team_id = ${teamId} or pm.team_id = ${teamId}
+        order by p.id, pm.updated_at desc nulls last
       `
     );
 

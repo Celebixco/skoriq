@@ -3601,60 +3601,232 @@ export function TeamProfileDataCoverage({ coverage }: { coverage: FootballTeamPr
 }
 
 function CompetitionListPage({ navigate }: { navigate: (path: string) => void }) {
-  const { data, loading, error } = useLoad(() => fetchFootballCompetitions({ limit: 50 }), []);
+  const { data, loading, error } = useLoad(() => fetchFootballCompetitions({ limit: 100 }), []);
+  const [search, setSearch] = useState("");
+  const [countryFilter, setCountryFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"matches" | "teams" | "name" | "coverage">("matches");
+
+  const items = data?.items ?? [];
+
+  const countries = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of items) {
+      if (item.country) {
+        map.set(item.country, (map.get(item.country) ?? 0) + 1);
+      }
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({ name, count }));
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    let list = items;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          (c.country && c.country.toLowerCase().includes(q))
+      );
+    }
+    if (countryFilter !== "all") {
+      list = list.filter((c) => c.country === countryFilter);
+    }
+    return [...list].sort((a, b) => {
+      if (sortBy === "matches") return b.matchesCount - a.matchesCount;
+      if (sortBy === "teams") return b.teamsCount - a.teamsCount;
+      if (sortBy === "coverage") return (b.averageCoverage ?? 0) - (a.averageCoverage ?? 0);
+      return a.name.localeCompare(b.name, "tr");
+    });
+  }, [items, search, countryFilter, sortBy]);
+
+  const totals = useMemo(() => {
+    return {
+      competitions: items.length,
+      teams: items.reduce((sum, c) => sum + c.teamsCount, 0),
+      matches: items.reduce((sum, c) => sum + c.matchesCount, 0),
+      readyMatches: items.reduce((sum, c) => sum + c.readyMatchesCount, 0)
+    };
+  }, [items]);
 
   return (
-    <>
-      <header className="hero">
+    <div className="competitions-shell">
+      <header className="hero competitions-hero">
         <div>
-          <p className="eyebrow">SkorIQ Futbol</p>
-          <h1>Ligler</h1>
-          <p>Normalize futbol verisinden salt okunur lig kapsamı ve analiz hazırlık özetleri.</p>
+          <p className="eyebrow">SkorIQ Futbol Keşfi</p>
+          <h1>Ligler & Turnuvalar</h1>
+          <p>Normalize futbol verisinden doğrulanmış lig kapsamı, puan durumları ve analiz hazırlık özetleri.</p>
         </div>
       </header>
+
       {loading ? <StatePanel title="Ligler yükleniyor..." /> : null}
       {error ? <StatePanel title="Ligler yüklenemedi" body={error} /> : null}
       {!loading && !error && data?.items.length === 0 ? <StatePanel title="Futbol ligi bulunamadı" /> : null}
-      {!loading && !error && data ? <CompetitionList data={data} navigate={navigate} /> : null}
-    </>
+
+      {!loading && !error && data ? (
+        <>
+          {/* Global Statistics Strip */}
+          <section className="explorer-global-stats competitions-stats-strip" aria-label="Global lig istatistikleri">
+            <div className="explorer-stat-item">
+              <span className="explorer-stat-value">{totals.competitions}</span>
+              <span className="explorer-stat-label">Lig / Kupa</span>
+            </div>
+            <div className="explorer-stat-divider" />
+            <div className="explorer-stat-item">
+              <span className="explorer-stat-value">{totals.teams.toLocaleString("tr-TR")}</span>
+              <span className="explorer-stat-label">Takım</span>
+            </div>
+            <div className="explorer-stat-divider" />
+            <div className="explorer-stat-item">
+              <span className="explorer-stat-value">{totals.matches.toLocaleString("tr-TR")}</span>
+              <span className="explorer-stat-label">Toplam Maç</span>
+            </div>
+            <div className="explorer-stat-divider" />
+            <div className="explorer-stat-item">
+              <span className="explorer-stat-value">{totals.readyMatches.toLocaleString("tr-TR")}</span>
+              <span className="explorer-stat-label">Analize Hazır</span>
+            </div>
+          </section>
+
+          {/* Filter Bar */}
+          <section className="competition-filter-bar">
+            <div className="competition-search-wrap">
+              <span className="search-icon" aria-hidden="true">🔍</span>
+              <input
+                type="text"
+                className="competition-search-input"
+                placeholder="Lig veya ülke ara..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Lig ara"
+              />
+              {search ? (
+                <button type="button" className="search-clear-btn" onClick={() => setSearch("")} aria-label="Aramayı temizle">
+                  ✕
+                </button>
+              ) : null}
+            </div>
+
+            <div className="competition-sort-wrap">
+              <label htmlFor="comp-sort-select">Sırala:</label>
+              <select
+                id="comp-sort-select"
+                className="competition-sort-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+              >
+                <option value="matches">En Çok Maç</option>
+                <option value="teams">En Çok Takım</option>
+                <option value="coverage">Veri Kapsamı</option>
+                <option value="name">İsim (A-Z)</option>
+              </select>
+            </div>
+          </section>
+
+          {/* Country Filter Chips */}
+          {countries.length > 0 ? (
+            <div className="competition-country-chips" role="tablist" aria-label="Ülke filtreleri">
+              <button
+                type="button"
+                className={`country-chip ${countryFilter === "all" ? "active" : ""}`}
+                onClick={() => setCountryFilter("all")}
+              >
+                Tümü ({items.length})
+              </button>
+              {countries.map((c) => (
+                <button
+                  type="button"
+                  key={c.name}
+                  className={`country-chip ${countryFilter === c.name ? "active" : ""}`}
+                  onClick={() => setCountryFilter(c.name)}
+                >
+                  {c.name} ({c.count})
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {/* Bento Grid of Competitions */}
+          {filteredItems.length === 0 ? (
+            <section className="panel empty-competitions-panel">
+              <p className="muted">Filtrelere uygun lig bulunamadı.</p>
+            </section>
+          ) : (
+            <div className="competition-bento-grid">
+              {filteredItems.map((competition) => {
+                const openComp = () => navigate(`/football/competitions/${competition.competitionId}`);
+                return (
+                  <article
+                    className="competition-bento-card"
+                    key={competition.competitionId}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${competition.name} detaylarını aç`}
+                    onClick={openComp}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openComp();
+                      }
+                    }}
+                  >
+                    <div className="comp-card-header">
+                      <span className="comp-country-pill">
+                        {competition.country ?? "Uluslararası"}
+                      </span>
+                      {competition.readyMatchesCount > 0 ? (
+                        <span className="badge badge-ready">
+                          {competition.readyMatchesCount} Hazır Maç
+                        </span>
+                      ) : (
+                        <span className="badge badge-muted">Arşiv / Kapsam</span>
+                      )}
+                    </div>
+
+                    <div className="comp-card-body">
+                      <div className="comp-avatar">
+                        {competition.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <h3 className="comp-card-title">{competition.name}</h3>
+                    </div>
+
+                    <div className="comp-card-telemetry">
+                      <div className="comp-telemetry-item">
+                        <span className="comp-telemetry-val">{competition.teamsCount}</span>
+                        <span className="comp-telemetry-lbl">Takım</span>
+                      </div>
+                      <div className="comp-telemetry-item">
+                        <span className="comp-telemetry-val">{competition.matchesCount}</span>
+                        <span className="comp-telemetry-lbl">Maç</span>
+                      </div>
+                      <div className="comp-telemetry-item">
+                        <span className="comp-telemetry-val">
+                          {competition.averageCoverage != null ? `${Math.round(competition.averageCoverage)}%` : "—"}
+                        </span>
+                        <span className="comp-telemetry-lbl">Kapsam</span>
+                      </div>
+                    </div>
+
+                    <div className="comp-card-footer">
+                      <span className="comp-view-link">Ligi İncele →</span>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </>
+      ) : null}
+    </div>
   );
 }
 
-function CompetitionList({ data, navigate }: { data: FootballCompetitionsListResponse; navigate: (path: string) => void }) {
-  return (
-    <section className="panel">
-      <div className="panel-header">
-        <h2>Futbol ligleri</h2>
-        <span className="muted">
-          {data.pagination.total} kayıttan {data.items.length} gösteriliyor
-        </span>
-      </div>
-      <div className="catalog-grid">
-        {data.items.map((competition) => (
-          <article className="catalog-card" key={competition.competitionId}>
-            <div className="competition-mark">{competition.name.slice(0, 2).toUpperCase()}</div>
-            <div>
-              <h3>{competition.name}</h3>
-              <p className="muted">{competition.country ?? "Ülke bilinmiyor"}</p>
-            </div>
-            <div className="catalog-meta">
-              <span>{competition.teamsCount} takım</span>
-              <span>{competition.matchesCount} maç</span>
-              <span>{competition.readyMatchesCount} hazır</span>
-              <span>{formatPercent(competition.averageCoverage)} ort. kapsam</span>
-            </div>
-            <button type="button" onClick={() => navigate(`/football/competitions/${competition.competitionId}`)}>
-              Ligi aç
-            </button>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
+type CompetitionDetailTab = "standings" | "teams" | "upcoming" | "recent";
 
 export function CompetitionDetailPage({ competitionId, navigate }: { competitionId: string; navigate: (path: string) => void }) {
   const { data: profile, loading, error } = useLoad(() => fetchFootballCompetitionProfile(competitionId), [competitionId]);
+  const [activeTab, setActiveTab] = useState<CompetitionDetailTab>("standings");
 
   const statusLabel = (s: string) => {
     if (s === "ready") return "Hazır";
@@ -3677,8 +3849,8 @@ export function CompetitionDetailPage({ competitionId, navigate }: { competition
       {loading ? <StatePanel title="Lig yükleniyor..." /> : null}
       {error ? <StatePanel title="Lig yüklenemedi" body={error} /> : null}
       {profile ? (
-        <>
-          <header className="explorer-hero">
+        <div className="competition-detail-shell">
+          <header className="explorer-hero competition-detail-hero">
             <div className="explorer-hero-main">
               <div className="explorer-hero-logo">
                 {profile.competition.logoUrl ? (
@@ -3723,148 +3895,221 @@ export function CompetitionDetailPage({ competitionId, navigate }: { competition
             </div>
           </section>
 
-          {profile.standings.length > 0 ? (
-            <section className="explorer-panel">
-              <div className="explorer-panel-header">
-                <h2>Puan Durumu</h2>
-              </div>
-              <div className="standings-table-wrap">
-                <table className="standings-table">
-                  <thead>
-                    <tr>
-                      <th>Sıra</th>
-                      <th>Takım</th>
-                      <th>O</th>
-                      <th>G</th>
-                      <th>B</th>
-                      <th>M</th>
-                      <th>A</th>
-                      <th>Y</th>
-                      <th>Av</th>
-                      <th>P</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {profile.standings.map((row) => (
-                      <tr key={row.teamId}>
-                        <td>{row.position}</td>
-                        <td>
-                          <button type="button" className="standings-team" onClick={() => navigate(`/football/teams/${row.teamId}`)}>
-                            <TeamLogo name={row.teamName} logoUrl={row.logoUrl} size="sm" />
-                            <span>{row.teamName}</span>
-                          </button>
-                        </td>
-                        <td>{row.played}</td>
-                        <td>{row.wins}</td>
-                        <td>{row.draws}</td>
-                        <td>{row.losses}</td>
-                        <td>{row.goalsFor}</td>
-                        <td>{row.goalsAgainst}</td>
-                        <td>{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</td>
-                        <td><strong>{row.points}</strong></td>
+          {/* Sub-Navigation Tabs */}
+          <div className="match-center-tab-bar competition-tab-bar" role="tablist" aria-label="Lig detay sekmeleri">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "standings"}
+              className={`match-center-tab-btn ${activeTab === "standings" ? "active" : ""}`}
+              onClick={() => setActiveTab("standings")}
+            >
+              <span className="tab-icon">🏆</span> Puan Durumu ({profile.standings.length})
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "teams"}
+              className={`match-center-tab-btn ${activeTab === "teams" ? "active" : ""}`}
+              onClick={() => setActiveTab("teams")}
+            >
+              <span className="tab-icon">👥</span> Takımlar ({profile.teams.length})
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "upcoming"}
+              className={`match-center-tab-btn ${activeTab === "upcoming" ? "active" : ""}`}
+              onClick={() => setActiveTab("upcoming")}
+            >
+              <span className="tab-icon">📅</span> Yaklaşan Maçlar ({profile.upcomingMatches.length})
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "recent"}
+              className={`match-center-tab-btn ${activeTab === "recent" ? "active" : ""}`}
+              onClick={() => setActiveTab("recent")}
+            >
+              <span className="tab-icon">⏱️</span> Son Maçlar ({profile.recentMatches.length})
+            </button>
+          </div>
+
+          {/* Tab Content: Standings */}
+          {activeTab === "standings" ? (
+            profile.standings.length > 0 ? (
+              <section className="explorer-panel standings-panel">
+                <div className="explorer-panel-header">
+                  <h2>Puan Durumu</h2>
+                  <div className="standings-legend">
+                    <span className="legend-item"><span className="legend-dot ucl" /> Şampiyonlar Ligi (1-4)</span>
+                    <span className="legend-item"><span className="legend-dot uel" /> Avrupa Ligi (5)</span>
+                    <span className="legend-item"><span className="legend-dot rel" /> Düşme Hattı</span>
+                  </div>
+                </div>
+                <div className="standings-table-wrap">
+                  <table className="standings-table">
+                    <thead>
+                      <tr>
+                        <th>Sıra</th>
+                        <th>Takım</th>
+                        <th>O</th>
+                        <th>G</th>
+                        <th>B</th>
+                        <th>M</th>
+                        <th>A</th>
+                        <th>Y</th>
+                        <th>Av</th>
+                        <th>P</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          ) : (
-            <section className="explorer-panel">
-              <p className="empty-message">Puan durumu verisi bulunmuyor.</p>
-            </section>
-          )}
+                    </thead>
+                    <tbody>
+                      {profile.standings.map((row) => {
+                        const totalRows = profile.standings.length;
+                        const isUcl = row.position <= 4;
+                        const isUel = row.position === 5;
+                        const isRelegation = totalRows > 10 && row.position > totalRows - 4;
+                        const rowZoneClass = isUcl ? "zone-ucl" : isUel ? "zone-uel" : isRelegation ? "zone-relegation" : "";
+                        return (
+                          <tr key={row.teamId} className={rowZoneClass}>
+                            <td className="standings-pos-cell">
+                              <span className="pos-indicator">{row.position}</span>
+                            </td>
+                            <td>
+                              <button type="button" className="standings-team" onClick={() => navigate(`/football/teams/${row.teamId}`)}>
+                                <TeamLogo name={row.teamName} logoUrl={row.logoUrl} size="sm" />
+                                <span>{row.teamName}</span>
+                              </button>
+                            </td>
+                            <td className="tabular-cell">{row.played}</td>
+                            <td className="tabular-cell">{row.wins}</td>
+                            <td className="tabular-cell">{row.draws}</td>
+                            <td className="tabular-cell">{row.losses}</td>
+                            <td className="tabular-cell">{row.goalsFor}</td>
+                            <td className="tabular-cell">{row.goalsAgainst}</td>
+                            <td className={`tabular-cell ${row.goalDifference > 0 ? "gd-positive" : row.goalDifference < 0 ? "gd-negative" : ""}`}>
+                              {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
+                            </td>
+                            <td className="tabular-cell points-cell"><strong>{row.points}</strong></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ) : (
+              <section className="explorer-panel">
+                <p className="empty-message">Puan durumu verisi bulunmuyor.</p>
+              </section>
+            )
+          ) : null}
 
-          {profile.teams.length > 0 ? (
-            <section className="explorer-panel">
-              <div className="explorer-panel-header">
-                <h2>Takımlar</h2>
-                <span className="muted">{profile.teams.length} kayıt</span>
-              </div>
-              <div className="explorer-team-grid">
-                {profile.teams.map((team) => (
-                  <button type="button" className="explorer-team-card" key={team.teamId} onClick={() => navigate(`/football/teams/${team.teamId}`)}>
-                    <TeamLogo name={team.name} logoUrl={team.logoUrl} />
-                    <span className="explorer-team-name">{team.name}</span>
-                    {team.latestFormCoverage != null ? (
-                      <span className="coverage-pill">{Math.round(team.latestFormCoverage)}%</span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-            </section>
-          ) : (
-            <section className="explorer-panel">
-              <p className="empty-message">Takım verisi bulunmuyor.</p>
-            </section>
-          )}
-
-          {profile.upcomingMatches.length > 0 ? (
-            <section className="explorer-panel">
-              <div className="explorer-panel-header">
-                <h2>Yaklaşan Maçlar</h2>
-              </div>
-              <div className="explorer-match-list">
-                {profile.upcomingMatches.map((match) => (
-                  <div className="explorer-match-row" key={match.matchId}>
-                    <div className="explorer-match-teams">
-                      <span className="explorer-match-team">
-                        <TeamLogo name={match.homeTeam.name} logoUrl={match.homeTeam.logoUrl} size="sm" />
-                        {match.homeTeam.name}
-                      </span>
-                      <span className="explorer-match-vs">vs</span>
-                      <span className="explorer-match-team">
-                        <TeamLogo name={match.awayTeam.name} logoUrl={match.awayTeam.logoUrl} size="sm" />
-                        {match.awayTeam.name}
-                      </span>
-                    </div>
-                    <span className="explorer-match-kickoff">{formatDateTime(match.kickoffAt)}</span>
-                    <button type="button" className="explorer-match-cta" onClick={() => navigate(`/football/analytics/${match.matchId}`)}>
-                      Analizi Aç
+          {/* Tab Content: Teams */}
+          {activeTab === "teams" ? (
+            profile.teams.length > 0 ? (
+              <section className="explorer-panel">
+                <div className="explorer-panel-header">
+                  <h2>Takımlar</h2>
+                  <span className="muted">{profile.teams.length} takım listeleniyor</span>
+                </div>
+                <div className="explorer-team-grid">
+                  {profile.teams.map((team) => (
+                    <button type="button" className="explorer-team-card" key={team.teamId} onClick={() => navigate(`/football/teams/${team.teamId}`)}>
+                      <TeamLogo name={team.name} logoUrl={team.logoUrl} size="md" />
+                      <span className="explorer-team-name">{team.name}</span>
+                      {team.latestFormCoverage != null ? (
+                        <span className="coverage-pill">{Math.round(team.latestFormCoverage)}% form kapsamı</span>
+                      ) : null}
                     </button>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : (
-            <section className="explorer-panel">
-              <p className="empty-message">Yaklaşan maç bulunmuyor.</p>
-            </section>
-          )}
+                  ))}
+                </div>
+              </section>
+            ) : (
+              <section className="explorer-panel">
+                <p className="empty-message">Takım verisi bulunmuyor.</p>
+              </section>
+            )
+          ) : null}
 
-          {profile.recentMatches.length > 0 ? (
-            <section className="explorer-panel">
-              <div className="explorer-panel-header">
-                <h2>Son Maçlar</h2>
-              </div>
-              <div className="explorer-match-list">
-                {profile.recentMatches.map((match) => (
-                  <div className="explorer-match-row" key={match.matchId}>
-                    <div className="explorer-match-teams">
-                      <span className="explorer-match-team">
-                        <TeamLogo name={match.homeTeam.name} logoUrl={match.homeTeam.logoUrl} size="sm" />
-                        {match.homeTeam.name}
-                      </span>
-                      <span className="explorer-match-score">
-                        {match.status === "finished" || match.status === "after_extra_time" || match.status === "after_penalties"
-                          ? `${match.homeTeam.name} - ${match.awayTeam.name}`
-                          : match.status}
-                      </span>
-                      <span className="explorer-match-team">
-                        <TeamLogo name={match.awayTeam.name} logoUrl={match.awayTeam.logoUrl} size="sm" />
-                        {match.awayTeam.name}
-                      </span>
+          {/* Tab Content: Upcoming Matches */}
+          {activeTab === "upcoming" ? (
+            profile.upcomingMatches.length > 0 ? (
+              <section className="explorer-panel">
+                <div className="explorer-panel-header">
+                  <h2>Yaklaşan Karşılaşmalar</h2>
+                  <span className="muted">{profile.upcomingMatches.length} maç</span>
+                </div>
+                <div className="explorer-match-list">
+                  {profile.upcomingMatches.map((match) => (
+                    <div className="explorer-match-row" key={match.matchId}>
+                      <div className="explorer-match-teams">
+                        <span className="explorer-match-team">
+                          <TeamLogo name={match.homeTeam.name} logoUrl={match.homeTeam.logoUrl} size="sm" />
+                          {match.homeTeam.name}
+                        </span>
+                        <span className="explorer-match-vs">vs</span>
+                        <span className="explorer-match-team">
+                          <TeamLogo name={match.awayTeam.name} logoUrl={match.awayTeam.logoUrl} size="sm" />
+                          {match.awayTeam.name}
+                        </span>
+                      </div>
+                      <span className="explorer-match-kickoff">{formatDateTime(match.kickoffAt)}</span>
+                      <button type="button" className="explorer-match-cta" onClick={() => navigate(`/football/analytics/${match.matchId}`)}>
+                        Analizi Aç
+                      </button>
                     </div>
-                    <span className="explorer-match-kickoff">{formatDate(match.kickoffAt)}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : (
-            <section className="explorer-panel">
-              <p className="empty-message">Son maç verisi bulunmuyor.</p>
-            </section>
-          )}
-        </>
+                  ))}
+                </div>
+              </section>
+            ) : (
+              <section className="explorer-panel">
+                <p className="empty-message">Yaklaşan maç bulunmuyor.</p>
+              </section>
+            )
+          ) : null}
+
+          {/* Tab Content: Recent Matches */}
+          {activeTab === "recent" ? (
+            profile.recentMatches.length > 0 ? (
+              <section className="explorer-panel">
+                <div className="explorer-panel-header">
+                  <h2>Son Karşılaşmalar</h2>
+                  <span className="muted">{profile.recentMatches.length} maç</span>
+                </div>
+                <div className="explorer-match-list">
+                  {profile.recentMatches.map((match) => (
+                    <div className="explorer-match-row" key={match.matchId}>
+                      <div className="explorer-match-teams">
+                        <span className="explorer-match-team">
+                          <TeamLogo name={match.homeTeam.name} logoUrl={match.homeTeam.logoUrl} size="sm" />
+                          {match.homeTeam.name}
+                        </span>
+                        <span className="explorer-match-score">
+                          {match.status === "finished" || match.status === "after_extra_time" || match.status === "after_penalties"
+                            ? `${match.homeTeam.name} - ${match.awayTeam.name}`
+                            : match.status}
+                        </span>
+                        <span className="explorer-match-team">
+                          <TeamLogo name={match.awayTeam.name} logoUrl={match.awayTeam.logoUrl} size="sm" />
+                          {match.awayTeam.name}
+                        </span>
+                      </div>
+                      <span className="explorer-match-kickoff">{formatDate(match.kickoffAt)}</span>
+                      <button type="button" className="explorer-match-cta" onClick={() => navigate(`/football/analytics/${match.matchId}`)}>
+                        Telemetri
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : (
+              <section className="explorer-panel">
+                <p className="empty-message">Son maç verisi bulunmuyor.</p>
+              </section>
+            )
+          ) : null}
+        </div>
       ) : null}
     </>
   );

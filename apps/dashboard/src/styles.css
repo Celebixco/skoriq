@@ -8390,3 +8390,352 @@ p {
   margin-top: 0.3rem;
 }
 
+/* ==========================================================================
+   Competitions & League Explorer Styling
+   ========================================================================== */
+
+.competitions-shell,
+.competition-detail-shell {
+  display: grid;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.competitions-stats-strip {
+  margin-bottom: 0.5rem;
+}
+
+/* Competition Filter Bar */
+.competition-filter-bar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.5rem;
+}
+
+.competition-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: min(100%, 18rem);
+}
+
+.competition-search-wrap .search-icon {
+  position: absolute;
+  left: 0.85rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.competition-search-input {
+  width: 100%;
+  padding: 0.55rem 2.2rem 0.55rem 2.4rem;
+  font-size: 0.86rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.375rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.competition-search-input:focus {
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 0.75rem;
+  padding: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.search-clear-btn:hover {
+  color: var(--text);
+}
+
+.competition-sort-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--muted-strong);
+}
+
+.competition-sort-select {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.375rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.competition-sort-select:focus {
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+/* Country Filter Chips */
+.competition-country-chips {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: none;
+}
+
+.competition-country-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.country-chip {
+  padding: 0.38rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted-strong);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line-subtle);
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.country-chip:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.country-chip.active {
+  color: #fff;
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+/* Competition Bento Grid */
+.competition-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: 1rem;
+}
+
+.competition-bento-card {
+  display: grid;
+  gap: 0.95rem;
+  padding: 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.6rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.15s ease, background 0.15s ease;
+  user-select: none;
+}
+
+.competition-bento-card:hover {
+  border-color: rgba(56, 189, 248, 0.25);
+  background: rgba(17, 24, 39, 0.75);
+  transform: translateY(-2px);
+}
+
+.comp-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.comp-country-pill {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.comp-card-body {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.comp-avatar {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.5rem;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--cyan, #38bdf8);
+  font-family: var(--font-mono, monospace);
+  flex-shrink: 0;
+}
+
+.comp-card-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.comp-card-telemetry {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.45rem;
+}
+
+.comp-telemetry-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.comp-telemetry-val {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.comp-telemetry-lbl {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.comp-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.comp-view-link {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--cyan, #38bdf8);
+  transition: transform 0.15s ease;
+}
+
+.competition-bento-card:hover .comp-view-link {
+  transform: translateX(3px);
+}
+
+.empty-competitions-panel {
+  padding: 2.5rem;
+  text-align: center;
+}
+
+/* Standings Panel & UEFA Zones */
+.standings-panel .explorer-panel-header {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.standings-legend {
+  display: flex;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.legend-dot.ucl {
+  background: #38bdf8;
+}
+
+.legend-dot.uel {
+  background: #f59e0b;
+}
+
+.legend-dot.rel {
+  background: #fb7185;
+}
+
+/* Standings Rows & Zones */
+.standings-table tr.zone-ucl {
+  border-left: 3px solid #38bdf8;
+  background: rgba(56, 189, 248, 0.03);
+}
+
+.standings-table tr.zone-uel {
+  border-left: 3px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.03);
+}
+
+.standings-table tr.zone-relegation {
+  border-left: 3px solid #fb7185;
+  background: rgba(251, 113, 133, 0.03);
+}
+
+.standings-pos-cell {
+  width: 2.5rem;
+}
+
+.pos-indicator {
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--muted-strong);
+}
+
+.tabular-cell {
+  font-family: var(--font-mono, monospace);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.points-cell {
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.gd-positive {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.gd-negative {
+  color: #fb7185;
+  font-weight: 700;
+}
+
+.competition-tab-bar {
+  margin-bottom: 0.5rem;
+}
+
+
