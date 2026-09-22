@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { randomBytes, scrypt as scryptCallback } from "node:crypto";
 import { promisify } from "node:util";
 import pg from "pg";
@@ -20,241 +23,98 @@ export function slugify(text: string): string {
     .replace(/(^-|-$)/g, "");
 }
 
-export interface LeagueCountryDef {
-  country: string;
-  code: string;
+interface SofaScoreTeam {
+  sofascore_id: number;
+  name: string;
+  short_name: string;
+  name_code: string;
   slug: string;
-  providerCountryId: string;
-  compSlug: string;
-  compName: string;
-  providerLeagueId: string;
-  teams: string[];
+  logo_url: string;
+  country_name: string;
+  country_code: string;
+  country_slug: string;
+  team_colors?: {
+    primary?: string;
+    secondary?: string;
+    text?: string;
+  };
+  position: number;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goals_for: number;
+  goals_against: number;
+  goal_difference: number;
+  points: number;
+  home_played?: number;
+  home_wins?: number;
+  home_draws?: number;
+  home_losses?: number;
+  home_goals_for?: number;
+  home_goals_against?: number;
+  away_played?: number;
+  away_wins?: number;
+  away_draws?: number;
+  away_losses?: number;
+  away_goals_for?: number;
+  away_goals_against?: number;
 }
 
-export const realLeaguesAndTeams: LeagueCountryDef[] = [
-  {
-    country: "Turkey",
-    code: "TR",
-    slug: "turkey",
-    providerCountryId: "111",
-    compSlug: "super-lig",
-    compName: "Süper Lig",
-    providerLeagueId: "322",
-    teams: [
-      "Adana Demirspor",
-      "Alanyaspor",
-      "Antalyaspor",
-      "Beşiktaş",
-      "Bodrum FK",
-      "Eyüpspor",
-      "Fenerbahçe",
-      "Galatasaray",
-      "Gaziantep FK",
-      "Göztepe",
-      "Hatayspor",
-      "Kasımpaşa SK",
-      "Kayserispor",
-      "Konyaspor",
-      "Samsunspor",
-      "Sivasspor",
-      "Trabzonspor",
-      "Çaykur Rizespor",
-      "İstanbul Başakşehir"
-    ]
-  },
-  {
-    country: "England",
-    code: "GB",
-    slug: "england",
-    providerCountryId: "44",
-    compSlug: "premier-league",
-    compName: "Premier League",
-    providerLeagueId: "152",
-    teams: [
-      "AFC Bournemouth",
-      "Arsenal FC",
-      "Aston Villa FC",
-      "Brentford FC",
-      "Brighton & Hove Albion FC",
-      "Chelsea FC",
-      "Crystal Palace FC",
-      "Everton FC",
-      "Fulham FC",
-      "Ipswich Town FC",
-      "Leicester City FC",
-      "Liverpool FC",
-      "Manchester City FC",
-      "Manchester United FC",
-      "Newcastle United FC",
-      "Nottingham Forest FC",
-      "Southampton FC",
-      "Tottenham Hotspur FC",
-      "West Ham United FC",
-      "Wolverhampton Wanderers FC"
-    ]
-  },
-  {
-    country: "Spain",
-    code: "ES",
-    slug: "spain",
-    providerCountryId: "6",
-    compSlug: "la-liga",
-    compName: "La Liga",
-    providerLeagueId: "302",
-    teams: [
-      "Athletic Club",
-      "CA Osasuna",
-      "CD Leganés",
-      "Club Atlético de Madrid",
-      "Deportivo Alavés",
-      "FC Barcelona",
-      "Getafe CF",
-      "Girona FC",
-      "RC Celta de Vigo",
-      "RCD Espanyol de Barcelona",
-      "RCD Mallorca",
-      "Rayo Vallecano de Madrid",
-      "Real Betis Balompié",
-      "Real Madrid CF",
-      "Real Sociedad de Fútbol",
-      "Real Valladolid CF",
-      "Sevilla FC",
-      "UD Las Palmas",
-      "Valencia CF",
-      "Villarreal CF"
-    ]
-  },
-  {
-    country: "Italy",
-    code: "IT",
-    slug: "italy",
-    providerCountryId: "5",
-    compSlug: "serie-a",
-    compName: "Serie A",
-    providerLeagueId: "207",
-    teams: [
-      "AC Milan",
-      "AC Monza",
-      "ACF Fiorentina",
-      "AS Roma",
-      "Atalanta BC",
-      "Bologna FC 1909",
-      "Cagliari Calcio",
-      "Como 1907",
-      "Empoli FC",
-      "FC Internazionale Milano",
-      "Genoa CFC",
-      "Hellas Verona FC",
-      "Juventus FC",
-      "Parma Calcio 1913",
-      "SS Lazio",
-      "SSC Napoli",
-      "Torino FC",
-      "US Lecce",
-      "Udinese Calcio",
-      "Venezia FC"
-    ]
-  },
-  {
-    country: "Germany",
-    code: "DE",
-    slug: "germany",
-    providerCountryId: "4",
-    compSlug: "bundesliga",
-    compName: "Bundesliga",
-    providerLeagueId: "175",
-    teams: [
-      "1. FC Heidenheim 1846",
-      "1. FC Union Berlin",
-      "1. FSV Mainz 05",
-      "Bayer 04 Leverkusen",
-      "Borussia Dortmund",
-      "Borussia Mönchengladbach",
-      "Eintracht Frankfurt",
-      "FC Augsburg",
-      "FC Bayern München",
-      "FC St. Pauli 1910",
-      "Holstein Kiel",
-      "RB Leipzig",
-      "SC Freiburg",
-      "SV Werder Bremen",
-      "TSG 1899 Hoffenheim",
-      "VfB Stuttgart",
-      "VfL Bochum 1848",
-      "VfL Wolfsburg"
-    ]
-  },
-  {
-    country: "France",
-    code: "FR",
-    slug: "france",
-    providerCountryId: "3",
-    compSlug: "ligue-1",
-    compName: "Ligue 1",
-    providerLeagueId: "168",
-    teams: [
-      "AJ Auxerre",
-      "AS Monaco FC",
-      "AS Saint-Étienne",
-      "Angers SCO",
-      "FC Nantes",
-      "Le Havre AC",
-      "Lille OSC",
-      "Montpellier HSC",
-      "OGC Nice",
-      "Olympique Lyonnais",
-      "Olympique de Marseille",
-      "Paris Saint-Germain FC",
-      "RC Strasbourg Alsace",
-      "Racing Club de Lens",
-      "Stade Brestois 29",
-      "Stade Rennais FC 1901",
-      "Stade de Reims",
-      "Toulouse FC"
-    ]
-  },
-  {
-    country: "Netherlands",
-    code: "NL",
-    slug: "netherlands",
-    providerCountryId: "82",
-    compSlug: "eredivisie",
-    compName: "Eredivisie",
-    providerLeagueId: "244",
-    teams: [
-      "AFC Ajax",
-      "AZ",
-      "Almere City FC",
-      "FC Groningen",
-      "FC Twente '65",
-      "FC Utrecht",
-      "Feyenoord Rotterdam",
-      "Fortuna Sittard",
-      "Go Ahead Eagles",
-      "Heracles Almelo",
-      "NAC Breda",
-      "NEC",
-      "PEC Zwolle",
-      "PSV",
-      "RKC Waalwijk",
-      "SC Heerenveen",
-      "Sparta Rotterdam",
-      "Willem II Tilburg"
-    ]
-  }
-];
+interface SofaScoreMatch {
+  sofascore_id: number;
+  home_team_id: number;
+  home_team_name: string;
+  away_team_id: number;
+  away_team_name: string;
+  scheduled_start_at: number;
+  status: string;
+  home_score?: number;
+  away_score?: number;
+  round?: string;
+  venue?: string;
+}
+
+interface SofaScoreLeague {
+  country: string;
+  country_code: string;
+  country_slug: string;
+  league_name: string;
+  league_slug: string;
+  sofascore_tournament_id: number;
+  tournament_logo_url: string;
+  season_id: number;
+  season_name: string;
+  teams_count: number;
+  teams: SofaScoreTeam[];
+  recent_matches?: SofaScoreMatch[];
+  upcoming_matches?: SofaScoreMatch[];
+}
 
 export async function seedInitialData(pool: pg.Pool) {
-  console.log("Starting real countries, leagues, and teams ingestion...");
+  console.log("=================================================");
+  console.log("STARTING SOFASCORE AUTHENTIC DATA INGESTION");
+  console.log("=================================================");
 
-  // 1. Ensure clean slate for matches, predictions, and features
+  // 1. Load Scraped Catalog Data
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const catalogPath = path.resolve(__dirname, "sofascore_catalog.json");
+  
+  if (!fs.existsSync(catalogPath)) {
+    throw new Error(`Catalog data file not found at: ${catalogPath}. Please run scripts/scrape_sofascore.py first.`);
+  }
+
+  const catalog: SofaScoreLeague[] = JSON.parse(fs.readFileSync(catalogPath, "utf-8"));
+  console.log(`Loaded catalog with ${catalog.length} leagues.`);
+
+  // 2. Clean stale mock records
   await pool.query(`
     TRUNCATE TABLE teams, matches CASCADE;
-    DELETE FROM provider_mappings WHERE entity_type IN ('team', 'match');
+    DELETE FROM provider_mappings WHERE entity_type IN ('team', 'match', 'competition', 'country');
   `);
-  console.log("Cleaned matches, predictions, and temporary team rows.");
+  console.log("Cleaned teams, matches, standings, and temporary provider mappings.");
 
-  // 2. Ensure Sport: Football
+  // 3. Ensure Sport: Football
   const sportRes = await pool.query(`
     INSERT INTO sports (slug, name)
     VALUES ('football', 'Football')
@@ -262,92 +122,307 @@ export async function seedInitialData(pool: pg.Pool) {
     RETURNING id;
   `);
   const sportId = sportRes.rows[0].id;
-  console.log(`Sport 'football' verified: ${sportId}`);
+  console.log(`Sport 'football' verified with ID: ${sportId}`);
 
-  let totalTeamsIngested = 0;
+  // In-memory caches to prevent duplicates across competitions
+  const countryIdCache = new Map<string, string>(); // slug -> country_id
+  const teamIdCache = new Map<number, string>(); // sofascore_team_id -> team_id
+  const slugCountMap = new Map<string, number>(); // slug tracking for uniqueness
 
-  for (const item of realLeaguesAndTeams) {
-    // 3. Ensure Country
-    const countryRes = await pool.query(`
+  // Helper to ensure country
+  async function getOrCreateCountry(name: string, code: string, slug: string): Promise<string> {
+    const cleanSlug = slugify(slug || name);
+    if (countryIdCache.has(cleanSlug)) {
+      return countryIdCache.get(cleanSlug)!;
+    }
+
+    const cleanCode = (code || cleanSlug.substring(0, 3)).toUpperCase();
+    const res = await pool.query(`
       INSERT INTO countries (code, slug, name)
       VALUES ($1, $2, $3)
-      ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug
+      ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
       RETURNING id;
-    `, [item.code, item.slug, item.country]);
-    const countryId = countryRes.rows[0].id;
+    `, [cleanCode, cleanSlug, name]);
+
+    const countryId = res.rows[0].id;
+    countryIdCache.set(cleanSlug, countryId);
 
     await pool.query(`
       INSERT INTO provider_mappings (provider, entity_type, provider_entity_id, internal_entity_id, internal_entity_type)
-      VALUES ('apifootball-com', 'country', $1, $2, 'country')
+      VALUES ('sofascore', 'country', $1, $2, 'country')
       ON CONFLICT (provider, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
-    `, [item.providerCountryId, countryId]);
+    `, [cleanSlug, countryId]);
 
-    // 4. Ensure Competition (League)
+    return countryId;
+  }
+
+  let totalTeamsIngested = 0;
+  let totalStandingsIngested = 0;
+  let totalMatchesIngested = 0;
+
+  for (const league of catalog) {
+    // 4. Ensure League Country
+    const leagueCountryId = await getOrCreateCountry(league.country, league.country_code, league.country_slug);
+
+    // 5. Ensure Competition with official SofaScore Tournament Logo
+    const compMetadata = {
+      logoUrl: league.tournament_logo_url,
+      imageUrl: league.tournament_logo_url,
+      badgeUrl: league.tournament_logo_url,
+      sofascoreTournamentId: league.sofascore_tournament_id,
+      seasonName: league.season_name
+    };
+
     const compRes = await pool.query(`
-      INSERT INTO competitions (sport_id, country_id, slug, name, gender, level)
-      VALUES ($1, $2, $3, $4, 'men', 'tier_1')
-      ON CONFLICT (sport_id, slug) DO UPDATE SET name = EXCLUDED.name, country_id = EXCLUDED.country_id
+      INSERT INTO competitions (sport_id, country_id, slug, name, gender, level, metadata_json)
+      VALUES ($1, $2, $3, $4, 'men', 'tier_1', $5)
+      ON CONFLICT (sport_id, slug) DO UPDATE SET
+        name = EXCLUDED.name,
+        country_id = EXCLUDED.country_id,
+        metadata_json = EXCLUDED.metadata_json
       RETURNING id;
-    `, [sportId, countryId, item.compSlug, item.compName]);
+    `, [sportId, leagueCountryId, league.league_slug, league.league_name, JSON.stringify(compMetadata)]);
     const compId = compRes.rows[0].id;
 
     await pool.query(`
       INSERT INTO provider_mappings (provider, entity_type, provider_entity_id, internal_entity_id, internal_entity_type)
-      VALUES ('apifootball-com', 'competition', $1, $2, 'competition')
+      VALUES ('sofascore', 'competition', $1, $2, 'competition')
       ON CONFLICT (provider, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
-    `, [item.providerLeagueId, compId]);
+    `, [String(league.sofascore_tournament_id), compId]);
 
-    // 5. Ensure Season 2024/2025
+    // 6. Ensure Season
     const seasonRes = await pool.query(`
       INSERT INTO seasons (competition_id, name, is_current, start_date, end_date)
-      VALUES ($1, '2024/2025', true, '2024-08-01', '2025-05-31')
+      VALUES ($1, $2, true, '2026-08-01', '2027-05-31')
       ON CONFLICT (competition_id, name) DO UPDATE SET is_current = true
       RETURNING id;
-    `, [compId]);
+    `, [compId, league.season_name]);
     const seasonId = seasonRes.rows[0].id;
 
-    // 6. Ingest Real Teams for this League & Country
-    let pos = 1;
-    for (const teamName of item.teams) {
-      const teamSlug = slugify(teamName);
+    // 7. Ingest Teams and Standings for this League
+    for (const team of league.teams) {
+      let teamId = teamIdCache.get(team.sofascore_id);
 
-      const teamRes = await pool.query(`
-        INSERT INTO teams (sport_id, country_id, name, slug, type, gender)
-        VALUES ($1, $2, $3, $4, 'club', 'men')
-        ON CONFLICT (sport_id, slug) DO UPDATE
-        SET name = EXCLUDED.name, country_id = EXCLUDED.country_id
-        RETURNING id;
-      `, [sportId, countryId, teamName, teamSlug]);
-      const teamId = teamRes.rows[0].id;
+      if (!teamId) {
+        // Ensure team's home country
+        const teamCountryId = await getOrCreateCountry(
+          team.country_name || league.country,
+          team.country_code || league.country_code,
+          team.country_slug || league.country_slug
+        );
 
-      // Map team provider
-      await pool.query(`
-        INSERT INTO provider_mappings (provider, entity_type, provider_entity_id, internal_entity_id, internal_entity_type)
-        VALUES ('openfootball', 'team', $1, $2, 'team')
-        ON CONFLICT (provider, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
-      `, [`openfootball:${teamSlug}`, teamId]);
+        // Generate unique slug
+        let baseSlug = slugify(team.slug || team.name);
+        const currentCount = slugCountMap.get(baseSlug) || 0;
+        let uniqueSlug = baseSlug;
+        if (currentCount > 0) {
+          uniqueSlug = `${baseSlug}-${team.sofascore_id}`;
+        }
+        slugCountMap.set(baseSlug, currentCount + 1);
 
-      // Connect team to competition via standings
+        const teamMetadata = {
+          sofascoreId: team.sofascore_id,
+          nameCode: team.name_code,
+          teamColors: team.team_colors
+        };
+
+        const teamRes = await pool.query(`
+          INSERT INTO teams (sport_id, country_id, name, short_name, slug, type, gender, logo_url, metadata_json)
+          VALUES ($1, $2, $3, $4, $5, 'club', 'men', $6, $7)
+          ON CONFLICT (sport_id, slug) DO UPDATE SET
+            name = EXCLUDED.name,
+            short_name = EXCLUDED.short_name,
+            logo_url = EXCLUDED.logo_url,
+            country_id = EXCLUDED.country_id,
+            metadata_json = EXCLUDED.metadata_json
+          RETURNING id;
+        `, [
+          sportId,
+          teamCountryId,
+          team.name,
+          team.short_name,
+          uniqueSlug,
+          team.logo_url,
+          JSON.stringify(teamMetadata)
+        ]);
+
+        teamId = teamRes.rows[0].id;
+        teamIdCache.set(team.sofascore_id, teamId);
+        totalTeamsIngested++;
+
+        // Provider mapping
+        await pool.query(`
+          INSERT INTO provider_mappings (provider, entity_type, provider_entity_id, internal_entity_id, internal_entity_type)
+          VALUES ('sofascore', 'team', $1, $2, 'team')
+          ON CONFLICT (provider, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
+        `, [String(team.sofascore_id), teamId]);
+      }
+
+      // 8. Insert Standing Row
       await pool.query(`
         INSERT INTO football_standings (
           competition_id, season_id, team_id, position, played, wins, draws, losses,
-          goals_for, goals_against, goal_difference, points, status
+          goals_for, goals_against, goal_difference, points,
+          home_played, home_wins, home_draws, home_losses, home_goals_for, home_goals_against,
+          away_played, away_wins, away_draws, away_losses, away_goals_for, away_goals_against,
+          status
         )
-        VALUES ($1, $2, $3, $4, 0, 0, 0, 0, 0, 0, 0, 0, 'active')
-        ON CONFLICT (competition_id, season_id, team_id) DO UPDATE
-        SET position = EXCLUDED.position;
-      `, [compId, seasonId, teamId, pos]);
+        VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8,
+          $9, $10, $11, $12,
+          $13, $14, $15, $16, $17, $18,
+          $19, $20, $21, $22, $23, $24,
+          'active'
+        )
+        ON CONFLICT (competition_id, season_id, team_id) DO UPDATE SET
+          position = EXCLUDED.position,
+          played = EXCLUDED.played,
+          wins = EXCLUDED.wins,
+          draws = EXCLUDED.draws,
+          losses = EXCLUDED.losses,
+          goals_for = EXCLUDED.goals_for,
+          goals_against = EXCLUDED.goals_against,
+          goal_difference = EXCLUDED.goal_difference,
+          points = EXCLUDED.points,
+          home_played = EXCLUDED.home_played,
+          home_wins = EXCLUDED.home_wins,
+          home_draws = EXCLUDED.home_draws,
+          home_losses = EXCLUDED.home_losses,
+          home_goals_for = EXCLUDED.home_goals_for,
+          home_goals_against = EXCLUDED.home_goals_against,
+          away_played = EXCLUDED.away_played,
+          away_wins = EXCLUDED.away_wins,
+          away_draws = EXCLUDED.away_draws,
+          away_losses = EXCLUDED.away_losses,
+          away_goals_for = EXCLUDED.away_goals_for,
+          away_goals_against = EXCLUDED.away_goals_against,
+          status = 'active';
+      `, [
+        compId,
+        seasonId,
+        teamId,
+        team.position,
+        team.played,
+        team.wins,
+        team.draws,
+        team.losses,
+        team.goals_for,
+        team.goals_against,
+        team.goal_difference,
+        team.points,
+        team.home_played || 0,
+        team.home_wins || 0,
+        team.home_draws || 0,
+        team.home_losses || 0,
+        team.home_goals_for || 0,
+        team.home_goals_against || 0,
+        team.away_played || 0,
+        team.away_wins || 0,
+        team.away_draws || 0,
+        team.away_losses || 0,
+        team.away_goals_for || 0,
+        team.away_goals_against || 0
+      ]);
 
-      pos++;
-      totalTeamsIngested++;
+      totalStandingsIngested++;
     }
 
-    console.log(`Ingested ${item.teams.length} teams for ${item.country} (${item.compName}).`);
+    // 9. Ingest Recent Finished Matches
+    if (league.recent_matches && league.recent_matches.length > 0) {
+      for (const m of league.recent_matches) {
+        const homeTeamId = teamIdCache.get(m.home_team_id);
+        const awayTeamId = teamIdCache.get(m.away_team_id);
+
+        if (!homeTeamId || !awayTeamId || !m.scheduled_start_at) continue;
+
+        let winnerTeamId: string | null = null;
+        if (typeof m.home_score === "number" && typeof m.away_score === "number") {
+          if (m.home_score > m.away_score) winnerTeamId = homeTeamId;
+          else if (m.away_score > m.home_score) winnerTeamId = awayTeamId;
+        }
+
+        const matchMetadata = {
+          sofascoreId: m.sofascore_id,
+          homeScore: m.home_score,
+          awayScore: m.away_score,
+          round: m.round
+        };
+
+        const scheduledDate = new Date(m.scheduled_start_at * 1000);
+
+        await pool.query(`
+          INSERT INTO matches (
+            sport_id, competition_id, season_id, round, home_team_id, away_team_id,
+            scheduled_start_at, status, venue, winner_team_id, metadata_json
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, 'finished', $8, $9, $10)
+          ON CONFLICT (competition_id, season_id, home_team_id, away_team_id, scheduled_start_at)
+          DO UPDATE SET
+            status = 'finished',
+            winner_team_id = EXCLUDED.winner_team_id,
+            metadata_json = EXCLUDED.metadata_json;
+        `, [
+          sportId,
+          compId,
+          seasonId,
+          m.round || null,
+          homeTeamId,
+          awayTeamId,
+          scheduledDate,
+          m.venue || null,
+          winnerTeamId,
+          JSON.stringify(matchMetadata)
+        ]);
+
+        totalMatchesIngested++;
+      }
+    }
+
+    // 10. Ingest Upcoming Fixtures
+    if (league.upcoming_matches && league.upcoming_matches.length > 0) {
+      for (const m of league.upcoming_matches) {
+        const homeTeamId = teamIdCache.get(m.home_team_id);
+        const awayTeamId = teamIdCache.get(m.away_team_id);
+
+        if (!homeTeamId || !awayTeamId || !m.scheduled_start_at) continue;
+
+        const matchMetadata = {
+          sofascoreId: m.sofascore_id,
+          round: m.round
+        };
+
+        const scheduledDate = new Date(m.scheduled_start_at * 1000);
+
+        await pool.query(`
+          INSERT INTO matches (
+            sport_id, competition_id, season_id, round, home_team_id, away_team_id,
+            scheduled_start_at, status, venue, metadata_json
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', $8, $9)
+          ON CONFLICT (competition_id, season_id, home_team_id, away_team_id, scheduled_start_at)
+          DO UPDATE SET
+            status = 'scheduled',
+            metadata_json = EXCLUDED.metadata_json;
+        `, [
+          sportId,
+          compId,
+          seasonId,
+          m.round || null,
+          homeTeamId,
+          awayTeamId,
+          scheduledDate,
+          m.venue || null,
+          JSON.stringify(matchMetadata)
+        ]);
+
+        totalMatchesIngested++;
+      }
+    }
+
+    console.log(`[INGESTED] ${league.country}: ${league.league_name} (${league.teams.length} teams, ${league.recent_matches?.length || 0} finished, ${league.upcoming_matches?.length || 0} upcoming)`);
   }
 
-  console.log(`Total authentic teams ingested: ${totalTeamsIngested} across 7 countries and 7 leagues.`);
-
-  // 7. Ensure Admin User
+  // 11. Ensure Admin User
   const adminEmail = (process.env.ADMIN_EMAIL || "admin@skoriq.local").trim().toLowerCase();
   const adminPassword = process.env.ADMIN_PASSWORD || "AdminPassword123!";
   const passwordHash = await hashPassword(adminPassword);
@@ -360,7 +435,13 @@ export async function seedInitialData(pool: pg.Pool) {
   `, [adminEmail, passwordHash]);
   console.log(`Admin user verified: ${adminEmail}`);
 
-  console.log("Countries, leagues, and teams ingestion completed successfully!");
+  console.log("=================================================");
+  console.log("INGESTION SUMMARY:");
+  console.log(`  Total Competitions Ingested: ${catalog.length}`);
+  console.log(`  Total Authentic Teams Ingested: ${totalTeamsIngested}`);
+  console.log(`  Total Standings Rows Ingested: ${totalStandingsIngested}`);
+  console.log(`  Total Matches (Live & Fixtures) Ingested: ${totalMatchesIngested}`);
+  console.log("=================================================");
 }
 
 async function main() {
