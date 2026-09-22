@@ -5,33 +5,41 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { seedInitialData } from "./db-seed.js";
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  console.error("DATABASE_URL is required to run migrations.");
-  process.exit(1);
+async function main() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    console.error("DATABASE_URL is required to run migrations.");
+    process.exit(1);
+  }
+
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const migrationsFolder = path.resolve(__dirname, "../packages/database/migrations");
+
+  console.log(`Applying Drizzle migrations from: ${migrationsFolder}`);
+
+  const pool = new pg.Pool({
+    connectionString: databaseUrl,
+    max: 2
+  });
+
+  const db = drizzle(pool);
+
+  try {
+    await migrate(db, { migrationsFolder });
+    console.log("Migrations successfully applied to database.");
+
+    console.log("Ensuring initial football data seed and predictive features...");
+    try {
+      await seedInitialData(pool);
+    } catch (seedError) {
+      console.error("Non-fatal: Initial data seed encountered an issue:", seedError);
+    }
+  } catch (error) {
+    console.error("Migration failed:", error);
+    process.exitCode = 1;
+  } finally {
+    await pool.end();
+  }
 }
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const migrationsFolder = path.resolve(__dirname, "../packages/database/migrations");
-
-console.log(`Applying Drizzle migrations from: ${migrationsFolder}`);
-
-const pool = new pg.Pool({
-  connectionString: databaseUrl,
-  max: 2
-});
-
-const db = drizzle(pool);
-
-try {
-  await migrate(db, { migrationsFolder });
-  console.log("Migrations successfully applied to database.");
-
-  console.log("Ensuring initial football data seed and predictive features...");
-  await seedInitialData(pool);
-} catch (error) {
-  console.error("Migration/seed failed:", error);
-  process.exitCode = 1;
-} finally {
-  await pool.end();
-}
+main();
