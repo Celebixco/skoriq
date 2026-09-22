@@ -109,7 +109,7 @@ export async function seedInitialData(pool: pg.Pool) {
 
   // 2. Clean stale mock records
   await pool.query(`
-    TRUNCATE TABLE teams, matches CASCADE;
+    TRUNCATE TABLE football_standings, matches, teams CASCADE;
     DELETE FROM provider_mappings WHERE entity_type IN ('team', 'match', 'competition', 'country');
   `);
   console.log("Cleaned teams, matches, standings, and temporary provider mappings.");
@@ -129,7 +129,7 @@ export async function seedInitialData(pool: pg.Pool) {
   const teamIdCache = new Map<number, string>(); // sofascore_team_id -> team_id
   const slugCountMap = new Map<string, number>(); // slug tracking for uniqueness
 
-  // Helper to ensure country
+  // Helper to ensure country safely handling both slug and code uniqueness
   async function getOrCreateCountry(name: string, code: string, slug: string): Promise<string> {
     const cleanSlug = slugify(slug || name);
     if (countryIdCache.has(cleanSlug)) {
@@ -137,14 +137,25 @@ export async function seedInitialData(pool: pg.Pool) {
     }
 
     const cleanCode = (code || cleanSlug.substring(0, 3)).toUpperCase();
-    const res = await pool.query(`
-      INSERT INTO countries (code, slug, name)
-      VALUES ($1, $2, $3)
-      ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
-      RETURNING id;
-    `, [cleanCode, cleanSlug, name]);
 
-    const countryId = res.rows[0].id;
+    // Check by slug or code
+    const existing = await pool.query(`
+      SELECT id FROM countries WHERE slug = $1 OR (code = $2 AND code IS NOT NULL) LIMIT 1;
+    `, [cleanSlug, cleanCode]);
+
+    let countryId: string;
+    if (existing.rows.length > 0) {
+      countryId = existing.rows[0].id;
+      await pool.query(`UPDATE countries SET name = $1 WHERE id = $2;`, [name, countryId]);
+    } else {
+      const res = await pool.query(`
+        INSERT INTO countries (code, slug, name)
+        VALUES ($1, $2, $3)
+        RETURNING id;
+      `, [cleanCode, cleanSlug, name]);
+      countryId = res.rows[0].id;
+    }
+
     countryIdCache.set(cleanSlug, countryId);
 
     await pool.query(`
@@ -258,7 +269,7 @@ export async function seedInitialData(pool: pg.Pool) {
         `, [String(team.sofascore_id), teamId]);
       }
 
-      // 8. Insert Standing Row
+      // 8. Insert Standing Row using explicit ON CONSTRAINT
       await pool.query(`
         INSERT INTO football_standings (
           competition_id, season_id, team_id, position, played, wins, draws, losses,
@@ -274,7 +285,7 @@ export async function seedInitialData(pool: pg.Pool) {
           $19, $20, $21, $22, $23, $24,
           'active'
         )
-        ON CONFLICT (competition_id, season_id, team_id) DO UPDATE SET
+        ON CONFLICT ON CONSTRAINT "football_standings_competition_season_team_uidx" DO UPDATE SET
           position = EXCLUDED.position,
           played = EXCLUDED.played,
           wins = EXCLUDED.wins,
@@ -327,7 +338,7 @@ export async function seedInitialData(pool: pg.Pool) {
       totalStandingsIngested++;
     }
 
-    // 9. Ingest Recent Finished Matches
+    // 9. Ingest Recent Finished Matches using explicit ON CONSTRAINT
     if (league.recent_matches && league.recent_matches.length > 0) {
       for (const m of league.recent_matches) {
         const homeTeamId = teamIdCache.get(m.home_team_id);
@@ -350,35 +361,38 @@ export async function seedInitialData(pool: pg.Pool) {
 
         const scheduledDate = new Date(m.scheduled_start_at * 1000);
 
-        await pool.query(`
-          INSERT INTO matches (
-            sport_id, competition_id, season_id, round, home_team_id, away_team_id,
-            scheduled_start_at, status, venue, winner_team_id, metadata_json
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, 'finished', $8, $9, $10)
-          ON CONFLICT (competition_id, season_id, home_team_id, away_team_id, scheduled_start_at)
-          DO UPDATE SET
-            status = 'finished',
-            winner_team_id = EXCLUDED.winner_team_id,
-            metadata_json = EXCLUDED.metadata_json;
-        `, [
-          sportId,
-          compId,
-          seasonId,
-          m.round || null,
-          homeTeamId,
-          awayTeamId,
-          scheduledDate,
-          m.venue || null,
-          winnerTeamId,
-          JSON.stringify(matchMetadata)
-        ]);
-
-        totalMatchesIngested++;
+        try {
+          await pool.query(`
+            INSERT INTO matches (
+              sport_id, competition_id, season_id, round, home_team_id, away_team_id,
+              scheduled_start_at, status, venue, winner_team_id, metadata_json
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'finished', $8, $9, $10)
+            ON CONFLICT ON CONSTRAINT "matches_natural_uidx"
+            DO UPDATE SET
+              status = 'finished',
+              winner_team_id = EXCLUDED.winner_team_id,
+              metadata_json = EXCLUDED.metadata_json;
+          `, [
+            sportId,
+            compId,
+            seasonId,
+            m.round || null,
+            homeTeamId,
+            awayTeamId,
+            scheduledDate,
+            m.venue || null,
+            winnerTeamId,
+            JSON.stringify(matchMetadata)
+          ]);
+          totalMatchesIngested++;
+        } catch (matchErr) {
+          console.warn(`  Warning inserting finished match ${m.home_team_name} vs ${m.away_team_name}:`, matchErr);
+        }
       }
     }
 
-    // 10. Ingest Upcoming Fixtures
+    // 10. Ingest Upcoming Fixtures using explicit ON CONSTRAINT
     if (league.upcoming_matches && league.upcoming_matches.length > 0) {
       for (const m of league.upcoming_matches) {
         const homeTeamId = teamIdCache.get(m.home_team_id);
@@ -393,29 +407,32 @@ export async function seedInitialData(pool: pg.Pool) {
 
         const scheduledDate = new Date(m.scheduled_start_at * 1000);
 
-        await pool.query(`
-          INSERT INTO matches (
-            sport_id, competition_id, season_id, round, home_team_id, away_team_id,
-            scheduled_start_at, status, venue, metadata_json
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', $8, $9)
-          ON CONFLICT (competition_id, season_id, home_team_id, away_team_id, scheduled_start_at)
-          DO UPDATE SET
-            status = 'scheduled',
-            metadata_json = EXCLUDED.metadata_json;
-        `, [
-          sportId,
-          compId,
-          seasonId,
-          m.round || null,
-          homeTeamId,
-          awayTeamId,
-          scheduledDate,
-          m.venue || null,
-          JSON.stringify(matchMetadata)
-        ]);
-
-        totalMatchesIngested++;
+        try {
+          await pool.query(`
+            INSERT INTO matches (
+              sport_id, competition_id, season_id, round, home_team_id, away_team_id,
+              scheduled_start_at, status, venue, metadata_json
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', $8, $9)
+            ON CONFLICT ON CONSTRAINT "matches_natural_uidx"
+            DO UPDATE SET
+              status = 'scheduled',
+              metadata_json = EXCLUDED.metadata_json;
+          `, [
+            sportId,
+            compId,
+            seasonId,
+            m.round || null,
+            homeTeamId,
+            awayTeamId,
+            scheduledDate,
+            m.venue || null,
+            JSON.stringify(matchMetadata)
+          ]);
+          totalMatchesIngested++;
+        } catch (matchErr) {
+          console.warn(`  Warning inserting scheduled match ${m.home_team_name} vs ${m.away_team_name}:`, matchErr);
+        }
       }
     }
 
