@@ -3,7 +3,6 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { seedInitialData } from "./db-seed.js";
 
 async function main() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -28,18 +27,20 @@ async function main() {
     await migrate(db, { migrationsFolder });
     console.log("Migrations successfully applied to database.");
 
-    console.log("Ensuring initial football data seed and predictive features...");
-    try {
+    if (process.env.SEED_INITIAL_DATA === "true") {
+      console.log("SEED_INITIAL_DATA=true detected, running seed...");
+      const { seedInitialData } = await import("./db-seed.js");
       await seedInitialData(pool);
-    } catch (seedError) {
-      console.error("Non-fatal: Initial data seed encountered an issue:", seedError);
     }
   } catch (error) {
     console.error("Migration failed:", error);
-    process.exitCode = 1;
+    process.exit(1);
   } finally {
     await pool.end();
   }
 }
 
-main();
+main().catch((err) => {
+  console.error("Unhandled error in db-migrate:", err);
+  process.exit(1);
+});
