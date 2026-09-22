@@ -21,7 +21,9 @@ def run_sync():
     print("\nStep 2: Syncing into PostgreSQL database...")
     db_seed_path = os.path.join(os.path.dirname(__file__), "db-seed.ts")
     npx_cmd = "npx.cmd" if sys.platform == "win32" else "npx"
-    seed_result = subprocess.run([npx_cmd, "tsx", db_seed_path], capture_output=True, text=True)
+    sync_env = dict(os.environ)
+    sync_env["FORCE_SEED"] = "true"
+    seed_result = subprocess.run([npx_cmd, "tsx", db_seed_path], capture_output=True, text=True, env=sync_env)
     if seed_result.returncode != 0:
         print("Database sync error:", seed_result.stderr)
         return False
