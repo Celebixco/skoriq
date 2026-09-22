@@ -52,6 +52,8 @@
     "provider:football:player-availability-sync": "tsx scripts/provider-football-player-availability-sync.ts",
     "provider:football:upcoming-sync": "tsx scripts/provider-football-upcoming-sync.ts",
     "provider:raw-payload:reprocess": "tsx scripts/provider-raw-payload-reprocess.ts",
+    "sync:sofascore": "python scripts/sofascore_sync_daemon.py --once",
+    "sync:sofascore:daemon": "python scripts/sofascore_sync_daemon.py",
     "test": "vitest run",
     "test:integration": "npm run db:test:reset && npm run db:test:migrate && vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc -b"

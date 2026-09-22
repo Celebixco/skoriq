@@ -23,6 +23,52 @@ export function slugify(text: string): string {
     .replace(/(^-|-$)/g, "");
 }
 
+interface TeamStatsPayload {
+  is_home: boolean;
+  possession_percent?: number | null;
+  shots_total?: number | null;
+  shots_on_target?: number | null;
+  shots_off_target?: number | null;
+  blocked_shots?: number | null;
+  corners?: number | null;
+  fouls?: number | null;
+  yellow_cards?: number | null;
+  red_cards?: number | null;
+  offsides?: number | null;
+  goalkeeper_saves?: number | null;
+  passes?: number | null;
+  accurate_passes?: number | null;
+  big_chances?: number | null;
+  big_chances_missed?: number | null;
+  expected_goals?: number | null;
+  tackles?: number | null;
+  interceptions?: number | null;
+  clearances?: number | null;
+  hit_woodwork?: number | null;
+  average_rating?: number | null;
+  distance_covered?: string | null;
+  number_of_sprints?: number | null;
+}
+
+interface SofaScoreMatch {
+  sofascore_id: number;
+  home_team_id: number;
+  home_team_name: string;
+  away_team_id: number;
+  away_team_name: string;
+  scheduled_start_at: number;
+  status: string;
+  home_score?: number;
+  away_score?: number;
+  round?: string;
+  venue?: string;
+  statistics?: {
+    home: TeamStatsPayload;
+    away: TeamStatsPayload;
+    raw_items?: Record<string, unknown>;
+  };
+}
+
 interface SofaScoreTeam {
   sofascore_id: number;
   name: string;
@@ -38,6 +84,7 @@ interface SofaScoreTeam {
     secondary?: string;
     text?: string;
   };
+  season_statistics?: Record<string, unknown>;
   position: number;
   played: number;
   wins: number;
@@ -61,20 +108,6 @@ interface SofaScoreTeam {
   away_goals_against?: number;
 }
 
-interface SofaScoreMatch {
-  sofascore_id: number;
-  home_team_id: number;
-  home_team_name: string;
-  away_team_id: number;
-  away_team_name: string;
-  scheduled_start_at: number;
-  status: string;
-  home_score?: number;
-  away_score?: number;
-  round?: string;
-  venue?: string;
-}
-
 interface SofaScoreLeague {
   country: string;
   country_code: string;
@@ -93,7 +126,7 @@ interface SofaScoreLeague {
 
 export async function seedInitialData(pool: pg.Pool) {
   console.log("=================================================");
-  console.log("STARTING SOFASCORE AUTHENTIC DATA INGESTION");
+  console.log("STARTING SOFASCORE ADVANCED DATA & TELEMETRY INGESTION");
   console.log("=================================================");
 
   // 1. Load Scraped Catalog Data
@@ -109,10 +142,10 @@ export async function seedInitialData(pool: pg.Pool) {
 
   // 2. Clean stale mock records
   await pool.query(`
-    TRUNCATE TABLE football_standings, matches, teams CASCADE;
-    DELETE FROM provider_mappings WHERE entity_type IN ('team', 'match', 'competition', 'country');
+    TRUNCATE TABLE football_match_team_statistics, football_match_scores, football_standings, matches, teams CASCADE;
+    DELETE FROM provider_mappings WHERE entity_type IN ('team', 'match', 'competition', 'country', 'standing', 'football_match_team_statistics');
   `);
-  console.log("Cleaned teams, matches, standings, and temporary provider mappings.");
+  console.log("Cleaned teams, matches, standings, and telemetry statistics.");
 
   // 3. Ensure Sport: Football
   const sportRes = await pool.query(`
@@ -170,6 +203,7 @@ export async function seedInitialData(pool: pg.Pool) {
   let totalTeamsIngested = 0;
   let totalStandingsIngested = 0;
   let totalMatchesIngested = 0;
+  let totalStatsIngested = 0;
 
   for (const league of catalog) {
     // 4. Ensure League Country
@@ -210,7 +244,7 @@ export async function seedInitialData(pool: pg.Pool) {
     `, [compId, league.season_name]);
     const seasonId = seasonRes.rows[0].id;
 
-    // 7. Ingest Teams and Standings for this League
+    // 7. Ingest Teams, Standings, and Seasonal Telemetry for this League
     for (const team of league.teams) {
       let teamId = teamIdCache.get(team.sofascore_id);
 
@@ -234,7 +268,8 @@ export async function seedInitialData(pool: pg.Pool) {
         const teamMetadata = {
           sofascoreId: team.sofascore_id,
           nameCode: team.name_code,
-          teamColors: team.team_colors
+          teamColors: team.team_colors,
+          seasonStatistics: team.season_statistics || {}
         };
 
         const teamRes = await pool.query(`
@@ -338,7 +373,7 @@ export async function seedInitialData(pool: pg.Pool) {
       totalStandingsIngested++;
     }
 
-    // 9. Ingest Recent Finished Matches using explicit ON CONSTRAINT
+    // 9. Ingest Recent Finished Matches & Detailed Telemetry Statistics
     if (league.recent_matches && league.recent_matches.length > 0) {
       for (const m of league.recent_matches) {
         const homeTeamId = teamIdCache.get(m.home_team_id);
@@ -356,13 +391,14 @@ export async function seedInitialData(pool: pg.Pool) {
           sofascoreId: m.sofascore_id,
           homeScore: m.home_score,
           awayScore: m.away_score,
-          round: m.round
+          round: m.round,
+          statistics: m.statistics || null
         };
 
         const scheduledDate = new Date(m.scheduled_start_at * 1000);
 
         try {
-          await pool.query(`
+          const matchRes = await pool.query(`
             INSERT INTO matches (
               sport_id, competition_id, season_id, round, home_team_id, away_team_id,
               scheduled_start_at, status, venue, winner_team_id, metadata_json
@@ -372,7 +408,8 @@ export async function seedInitialData(pool: pg.Pool) {
             DO UPDATE SET
               status = 'finished',
               winner_team_id = EXCLUDED.winner_team_id,
-              metadata_json = EXCLUDED.metadata_json;
+              metadata_json = EXCLUDED.metadata_json
+            RETURNING id;
           `, [
             sportId,
             compId,
@@ -385,7 +422,128 @@ export async function seedInitialData(pool: pg.Pool) {
             winnerTeamId,
             JSON.stringify(matchMetadata)
           ]);
+
+          const matchId = matchRes.rows[0]?.id;
           totalMatchesIngested++;
+
+          // 9a. Insert into football_match_scores
+          if (matchId && typeof m.home_score === "number" && typeof m.away_score === "number") {
+            await pool.query(`
+              INSERT INTO football_match_scores (
+                match_id, home_team_id, away_team_id, winner_team_id,
+                home_score_current, away_score_current,
+                home_score_fulltime, away_score_fulltime,
+                status
+              )
+              VALUES ($1, $2, $3, $4, $5, $6, $5, $6, 'finished')
+              ON CONFLICT (match_id) DO UPDATE SET
+                home_score_current = EXCLUDED.home_score_current,
+                away_score_current = EXCLUDED.away_score_current,
+                home_score_fulltime = EXCLUDED.home_score_fulltime,
+                away_score_fulltime = EXCLUDED.away_score_fulltime,
+                winner_team_id = EXCLUDED.winner_team_id,
+                status = EXCLUDED.status;
+            `, [matchId, homeTeamId, awayTeamId, winnerTeamId, m.home_score, m.away_score]);
+          }
+
+          // 9b. Insert Home and Away Team Match Statistics into football_match_team_statistics
+          if (matchId && m.statistics) {
+            const stats = m.statistics;
+
+            // Helper to insert one team's stats
+            const insertTeamStats = async (tId: string, oppId: string, s: TeamStatsPayload) => {
+              const passAccuracy = (s.passes && s.accurate_passes)
+                ? Number(((s.accurate_passes / s.passes) * 100).toFixed(2))
+                : null;
+
+              const extraMeta = {
+                averageRating: s.average_rating,
+                distanceCovered: s.distance_covered,
+                numberOfSprints: s.number_of_sprints,
+                raw: stats.raw_items
+              };
+
+              await pool.query(`
+                INSERT INTO football_match_team_statistics (
+                  match_id, team_id, opponent_team_id, is_home,
+                  possession_percent, shots_total, shots_on_target, shots_off_target, blocked_shots,
+                  corners, fouls, yellow_cards, red_cards, offsides, goalkeeper_saves,
+                  passes, accurate_passes, pass_accuracy_percent,
+                  big_chances, big_chances_missed, expected_goals,
+                  tackles, interceptions, clearances, hit_woodwork,
+                  metadata_json
+                )
+                VALUES (
+                  $1, $2, $3, $4,
+                  $5, $6, $7, $8, $9,
+                  $10, $11, $12, $13, $14, $15,
+                  $16, $17, $18,
+                  $19, $20, $21,
+                  $22, $23, $24, $25,
+                  $26
+                )
+                ON CONFLICT (match_id, team_id) DO UPDATE SET
+                  possession_percent = EXCLUDED.possession_percent,
+                  shots_total = EXCLUDED.shots_total,
+                  shots_on_target = EXCLUDED.shots_on_target,
+                  shots_off_target = EXCLUDED.shots_off_target,
+                  blocked_shots = EXCLUDED.blocked_shots,
+                  corners = EXCLUDED.corners,
+                  fouls = EXCLUDED.fouls,
+                  yellow_cards = EXCLUDED.yellow_cards,
+                  red_cards = EXCLUDED.red_cards,
+                  offsides = EXCLUDED.offsides,
+                  goalkeeper_saves = EXCLUDED.goalkeeper_saves,
+                  passes = EXCLUDED.passes,
+                  accurate_passes = EXCLUDED.accurate_passes,
+                  pass_accuracy_percent = EXCLUDED.pass_accuracy_percent,
+                  big_chances = EXCLUDED.big_chances,
+                  big_chances_missed = EXCLUDED.big_chances_missed,
+                  expected_goals = EXCLUDED.expected_goals,
+                  tackles = EXCLUDED.tackles,
+                  interceptions = EXCLUDED.interceptions,
+                  clearances = EXCLUDED.clearances,
+                  hit_woodwork = EXCLUDED.hit_woodwork,
+                  metadata_json = EXCLUDED.metadata_json;
+              `, [
+                matchId,
+                tId,
+                oppId,
+                s.is_home,
+                s.possession_percent ?? null,
+                s.shots_total ?? null,
+                s.shots_on_target ?? null,
+                s.shots_off_target ?? null,
+                s.blocked_shots ?? null,
+                s.corners ?? null,
+                s.fouls ?? null,
+                s.yellow_cards ?? null,
+                s.red_cards ?? null,
+                s.offsides ?? null,
+                s.goalkeeper_saves ?? null,
+                s.passes ?? null,
+                s.accurate_passes ?? null,
+                passAccuracy,
+                s.big_chances ?? null,
+                s.big_chances_missed ?? null,
+                s.expected_goals ?? null,
+                s.tackles ?? null,
+                s.interceptions ?? null,
+                s.clearances ?? null,
+                s.hit_woodwork ?? null,
+                JSON.stringify(extraMeta)
+              ]);
+            };
+
+            if (stats.home) {
+              await insertTeamStats(homeTeamId, awayTeamId, stats.home);
+              totalStatsIngested++;
+            }
+            if (stats.away) {
+              await insertTeamStats(awayTeamId, homeTeamId, stats.away);
+              totalStatsIngested++;
+            }
+          }
         } catch (matchErr) {
           console.warn(`  Warning inserting finished match ${m.home_team_name} vs ${m.away_team_name}:`, matchErr);
         }
@@ -429,6 +587,7 @@ export async function seedInitialData(pool: pg.Pool) {
             m.venue || null,
             JSON.stringify(matchMetadata)
           ]);
+
           totalMatchesIngested++;
         } catch (matchErr) {
           console.warn(`  Warning inserting scheduled match ${m.home_team_name} vs ${m.away_team_name}:`, matchErr);
@@ -457,7 +616,8 @@ export async function seedInitialData(pool: pg.Pool) {
   console.log(`  Total Competitions Ingested: ${catalog.length}`);
   console.log(`  Total Authentic Teams Ingested: ${totalTeamsIngested}`);
   console.log(`  Total Standings Rows Ingested: ${totalStandingsIngested}`);
-  console.log(`  Total Matches (Live & Fixtures) Ingested: ${totalMatchesIngested}`);
+  console.log(`  Total Matches Ingested: ${totalMatchesIngested}`);
+  console.log(`  Total Team Match Telemetry Statistics Rows Ingested: ${totalStatsIngested}`);
   console.log("=================================================");
 }
 
