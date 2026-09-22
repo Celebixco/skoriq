@@ -47,6 +47,7 @@ services:
       MOCK_PROVIDER_ENABLED: "false"
       APIFOOTBALL_COM_ENABLED: ${APIFOOTBALL_COM_ENABLED:-false}
       APIFOOTBALL_COM_API_KEY: ${APIFOOTBALL_COM_API_KEY:-}
+      FORCE_SEED: ${FORCE_SEED:-false}
     expose:
       - "3000"
     ports:

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { seedInitialData } from "./db-seed.js";
 
 async function main() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -26,8 +27,12 @@ async function main() {
   try {
     await migrate(db, { migrationsFolder });
     console.log("Migrations successfully applied to database.");
+
+    console.log("Checking seed status...");
+    await seedInitialData(pool);
+    console.log("Database seed step successfully completed.");
   } catch (error) {
-    console.error("Migration failed:", error);
+    console.error("Migration/seed failed:", error);
     process.exit(1);
   } finally {
     await pool.end();

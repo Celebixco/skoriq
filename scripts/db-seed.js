@@ -924,7 +924,8 @@ async function main() {
     await pool.end();
   }
 }
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isDirectExecution = process.argv[1] && (process.argv[1].endsWith("db-seed.js") || process.argv[1].endsWith("db-seed.ts"));
+if (isDirectExecution) {
   main();
 }
 export {
