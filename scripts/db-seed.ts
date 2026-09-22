@@ -17,12 +17,7 @@ export async function seedInitialData(pool: pg.Pool) {
   // 1. Purge any static / synthetic data from previous seeds
   console.log("Purging all static matches, predictions, form features, standings, and teams...");
   await pool.query(`
-    DELETE FROM football_prediction_outputs;
-    DELETE FROM football_match_prediction_features;
-    DELETE FROM football_team_form_features;
-    DELETE FROM football_standings;
-    DELETE FROM matches;
-    DELETE FROM teams;
+    TRUNCATE TABLE teams, matches CASCADE;
     DELETE FROM provider_mappings WHERE entity_type IN ('team', 'match');
   `);
   console.log("All static match, team, and prediction rows successfully purged.");
