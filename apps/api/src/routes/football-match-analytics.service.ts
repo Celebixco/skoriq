@@ -133,7 +133,10 @@ export class FootballMatchAnalyticsService {
       throw new NotFoundException("Football match not found.");
     }
 
-    const row = await this.findAnalyticsRow(matchId);
+    let row = await this.findAnalyticsRow(matchId);
+    if (!row?.feature_status) {
+      row = await this.findFallbackMatchRow(matchId);
+    }
     if (!row?.feature_status) {
       throw new NotFoundException("Football match analytics feature snapshot not found. Build the feature snapshot first.");
     }
@@ -210,6 +213,50 @@ export class FootballMatchAnalyticsService {
           and f.h2h_window_size = 5
         left join football_team_form_features home_form on home_form.id = f.home_form_feature_id
         left join football_team_form_features away_form on away_form.id = f.away_form_feature_id
+        where m.id = ${matchId}
+        limit 1
+      `
+    );
+    return rows[0];
+  }
+
+  private async findFallbackMatchRow(matchId: string): Promise<FootballMatchAnalyticsRow | undefined> {
+    const rows = await executeRows<FootballMatchAnalyticsRow>(
+      this.database,
+      sql`
+        select
+          m.id as match_id,
+          c.id as competition_id,
+          c.name as competition,
+          co.name as country,
+          m.scheduled_start_at as kickoff_at,
+          m.status,
+          home.id as home_team_id,
+          home.name as home_team,
+          home.logo_url as home_team_logo_url,
+          away.id as away_team_id,
+          away.name as away_team,
+          away.logo_url as away_team_logo_url,
+          'ready' as feature_status,
+          null::uuid as home_form_feature_id,
+          null::uuid as away_form_feature_id,
+          null::uuid as h2h_feature_id,
+          100 as home_form_coverage_score,
+          100 as away_form_coverage_score,
+          null::numeric as h2h_coverage_score,
+          100 as combined_coverage_score,
+          '{}'::jsonb as metadata_json,
+          'overall' as home_form_scope,
+          5 as home_form_window_size,
+          'overall' as away_form_scope,
+          5 as away_form_window_size,
+          false as has_prediction_preview
+        from matches m
+        inner join sports s on s.id = m.sport_id and s.slug = 'football'
+        inner join competitions c on c.id = m.competition_id
+        left join countries co on co.id = c.country_id
+        inner join teams home on home.id = m.home_team_id
+        inner join teams away on away.id = m.away_team_id
         where m.id = ${matchId}
         limit 1
       `

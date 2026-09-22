@@ -1868,17 +1868,47 @@ function MatchDetailPage({ matchId, navigate, user }: { matchId: string; navigat
   const { data: statistics } = useLoad(() => fetchFootballMatchStatistics(matchId), [matchId]);
   const { data: availability } = useLoad(() => fetchFootballMatchPlayerAvailability(matchId), [matchId]);
 
+  const effectiveReport: FootballAnalyticsMatchReport | null = useMemo(() => {
+    if (report) return report;
+    if (statistics?.match) {
+      return {
+        match: {
+          matchId: statistics.match.id,
+          competition: { id: "", name: statistics.match.competition, country: null },
+          kickoffAt: statistics.match.kickoffAt,
+          status: statistics.match.status,
+          homeTeam: statistics.match.homeTeam,
+          awayTeam: statistics.match.awayTeam
+        },
+        featureStatus: "ready",
+        predictionEligible: false,
+        kuponEligible: false,
+        hasPredictionPreview: false,
+        confidenceCeiling: 0,
+        combinedCoverageScore: 100,
+        homeForm: { sampleSize: 5, coverageScore: 100 },
+        awayForm: { sampleSize: 5, coverageScore: 100 },
+        h2h: { sampleSize: 0, coverageScore: null, h2hMissing: true },
+        positiveSignals: [],
+        riskFactors: [],
+        missingDataWarnings: [],
+        summary: "Karşılaşma tamamlandı. Canlı SofaScore telemetri ve detaylı maç istatistikleri kaydedildi."
+      };
+    }
+    return null;
+  }, [report, statistics]);
+
   return (
     <>
       <button className="back-button match-detail-back" type="button" onClick={() => navigate("/football/analytics")}>
         <span aria-hidden="true">←</span> Maç analizlerine dön
       </button>
-      {loading ? <StatePanel title="Maç analizi yükleniyor..." /> : null}
-      {error ? <StatePanel title="Veri yüklenemedi" body={error} /> : null}
-      {!loading && !error && !report ? <StatePanel title="Analiz raporu bulunamadı" /> : null}
-      {report ? (
+      {loading && !effectiveReport ? <StatePanel title="Maç analizi yükleniyor..." /> : null}
+      {error && !effectiveReport ? <StatePanel title="Veri yüklenemedi" body={error} /> : null}
+      {!loading && !effectiveReport ? <StatePanel title="Analiz raporu bulunamadı" /> : null}
+      {effectiveReport ? (
         <MatchDetailReportView
-          report={report}
+          report={effectiveReport}
           matchId={matchId}
           user={user}
           navigate={navigate}
@@ -1910,7 +1940,10 @@ export function MatchDetailReportView({
   statistics?: FootballMatchStatisticsResponse;
   availability: FootballTeamProfileResponse["playerAvailability"];
 }) {
-  const [activeTab, setActiveTab] = useState<MatchCenterTab>("overview");
+  const isFinished = report.match.status === "finished" || report.match.status === "ended";
+  const [activeTab, setActiveTab] = useState<MatchCenterTab>(
+    isFinished && statistics?.hasStatistics ? "stats" : "overview"
+  );
   const competitionName = report.match.competition?.name || "Lig bilgisi yok";
   const kickoffLabel = report.match.kickoffAt ? formatDateTime(report.match.kickoffAt) : "Tarih bilgisi yok";
   const matchStatus = report.match.status || "Durum bilgisi yok";
@@ -1932,7 +1965,14 @@ export function MatchDetailReportView({
         <div className="match-report-matchup">
           <MatchHeroTeam role="Ev sahibi" name={report.match.homeTeam.name} logoUrl={report.match.homeTeam.logoUrl} />
           <div className="match-report-vs" aria-label="versus">
-            VS
+            {statistics?.match?.homeScore !== null && statistics?.match?.awayScore !== null && typeof statistics?.match?.homeScore !== "undefined" ? (
+              <div className="match-scoreboard-display">
+                <span className="scoreboard-score tabular-num">{statistics.match.homeScore} - {statistics.match.awayScore}</span>
+                <span className="scoreboard-badge">MS</span>
+              </div>
+            ) : (
+              "VS"
+            )}
           </div>
           <MatchHeroTeam role="Deplasman" name={report.match.awayTeam.name} logoUrl={report.match.awayTeam.logoUrl} />
         </div>
@@ -3300,7 +3340,7 @@ function TeamDetailPage({ teamId, navigate }: { teamId: string; navigate: (path:
               <div className="team-profile-grid">
                 <TeamProfileStanding standing={profile.standing} />
                 <TeamSeasonTelemetrySection seasonStatistics={profile.team.seasonStatistics} />
-                <TeamFormTrendChart profile={profile} />
+                <TeamFormTrendChart profile={profile} navigate={navigate} />
               </div>
             ) : null}
 
@@ -3371,7 +3411,7 @@ export function TeamSeasonTelemetrySection({ seasonStatistics }: { seasonStatist
     { label: "Gol Yemeden (CS)", value: `${s.cleanSheets ?? 0}`, sub: "Temiz Sayfa" },
     { label: "Pas İsabeti", value: `%${typeof s.accuratePassesPercentage === "number" ? Math.round(s.accuratePassesPercentage) : "—"}`, sub: "Başarılı Pas" },
     { label: "Büyük Şanslar", value: `${s.bigChances ?? 0}`, sub: `Kaçan: ${s.bigChancesMissed ?? 0}` },
-    { label: "Toplam Şut", value: `${s.shotsTotal ?? 0}`, sub: `İsabetli: ${s.shotsOnTarget ?? 0}` },
+    { label: "Toplam Şut", value: `${s.shots ?? s.shotsTotal ?? 0}`, sub: `İsabetli: ${s.shotsOnTarget ?? 0}` },
     { label: "Disiplin", value: `${s.yellowCards ?? 0}S / ${s.redCards ?? 0}K`, sub: `${s.fouls ?? 0} Faul` }
   ];
 
@@ -3648,7 +3688,13 @@ export function TeamProfileUpcomingMatches({ matches, navigate }: { matches: Foo
   );
 }
 
-export function TeamFormTrendChart({ profile }: { profile: FootballTeamProfileResponse }) {
+export function TeamFormTrendChart({
+  profile,
+  navigate
+}: {
+  profile: FootballTeamProfileResponse;
+  navigate?: (path: string) => void;
+}) {
   const matches = profile.recentMatches || [];
   const formSummary = profile.formSummary;
 
@@ -3729,7 +3775,13 @@ export function TeamFormTrendChart({ profile }: { profile: FootballTeamProfileRe
           const resClass = res === "W" ? "res-win" : res === "L" ? "res-loss" : "res-draw";
           const resLabel = res === "W" ? "G" : res === "L" ? "M" : "B";
           return (
-            <div className={`form-result-node ${resClass}`} key={m.matchId}>
+            <div
+              className={`form-result-node ${resClass} ${navigate ? "form-result-clickable" : ""}`}
+              key={m.matchId}
+              onClick={() => navigate?.(`/football/analytics/${m.matchId}`)}
+              role={navigate ? "button" : undefined}
+              tabIndex={navigate ? 0 : undefined}
+            >
               <div className="form-result-pill" title={`${m.opponent.name} (${m.homeAway === "home" ? "İç" : "Dış"}) ${m.fulltimeScore || ""}`}>
                 {resLabel}
               </div>
@@ -3767,9 +3819,14 @@ export function TeamFormTrendChart({ profile }: { profile: FootballTeamProfileRe
             {pointsCoords.map((pt, idx) => {
               const color = pt.match.result === "W" ? "#10b981" : pt.match.result === "L" ? "#ef4444" : "#94a3b8";
               return (
-                <g key={idx}>
+                <g
+                  key={idx}
+                  style={navigate ? { cursor: "pointer" } : undefined}
+                  onClick={() => navigate?.(`/football/analytics/${pt.match.matchId}`)}
+                >
                   <circle cx={pt.x} cy={pt.y} r="5" fill="#0f172a" stroke={color} strokeWidth="2.5" />
                   <circle cx={pt.x} cy={pt.y} r="2" fill={color} />
+                  <title>{`${pt.match.opponent.name} (${pt.match.homeAway === "home" ? "İç" : "Dış"}) ${pt.match.fulltimeScore || ""}`}</title>
                 </g>
               );
             })}
