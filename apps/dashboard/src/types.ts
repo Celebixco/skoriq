@@ -242,6 +242,7 @@ export interface FootballCompetitionListItem {
   competitionId: string;
   name: string;
   country: string | null;
+  logoUrl?: string | null;
   teamsCount: number;
   matchesCount: number;
   readyMatchesCount: number;

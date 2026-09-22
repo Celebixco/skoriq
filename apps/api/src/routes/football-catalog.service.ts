@@ -335,6 +335,7 @@ export interface FootballCompetitionSummary {
   competitionId: string;
   name: string;
   country: string | null;
+  logoUrl?: string | null;
   teamsCount: number;
   matchesCount: number;
   readyMatchesCount: number;
@@ -475,6 +476,7 @@ interface CompetitionRow {
   competition_id: string;
   name: string;
   country: string | null;
+  metadata_json?: unknown;
   teams_count: string | number | null;
   matches_count: string | number | null;
   ready_matches_count: string | number | null;
@@ -1095,6 +1097,7 @@ export class FootballCatalogService {
         select
           c.id as competition_id,
           c.name,
+          c.metadata_json as metadata_json,
           co.name as country,
           count(distinct case when m.id is not null then t.team_id end) as teams_count,
           count(distinct m.id) as matches_count,
@@ -1110,7 +1113,7 @@ export class FootballCatalogService {
         left join football_match_prediction_features f on f.match_id = m.id
           and f.form_window_size = 5
           and f.h2h_window_size = 5
-        group by c.id, c.name, co.name
+        group by c.id, c.name, c.metadata_json, co.name
         order by c.name asc
         limit ${filters.limit}
         offset ${filters.offset}
@@ -1904,6 +1907,7 @@ export function mapCompetitionRow(row: CompetitionRow): FootballCompetitionSumma
     competitionId: row.competition_id,
     name: row.name,
     country: row.country,
+    logoUrl: publicLogoUrlFromMetadata(row.metadata_json),
     teamsCount: integer(row.teams_count),
     matchesCount: integer(row.matches_count),
     readyMatchesCount: integer(row.ready_matches_count),
