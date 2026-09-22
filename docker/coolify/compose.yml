@@ -59,8 +59,10 @@ services:
       MOCK_PROVIDER_ENABLED: "false"
       APIFOOTBALL_COM_ENABLED: ${APIFOOTBALL_COM_ENABLED:-false}
       APIFOOTBALL_COM_API_KEY: ${APIFOOTBALL_COM_API_KEY:-}
+    expose:
+      - "3000"
     ports:
-      - "${API_PORT:-3000}:3000"
+      - "${API_PORT:-3001}:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,8 +78,10 @@ services:
       args:
         VITE_API_BASE_URL: /api
     restart: unless-stopped
+    expose:
+      - "80"
     ports:
-      - "${DASHBOARD_PORT:-80}:80"
+      - "${DASHBOARD_PORT:-3080}:80"
     depends_on:
       - api
 
