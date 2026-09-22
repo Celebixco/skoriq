@@ -2202,6 +2202,500 @@ p {
   line-height: 1.45;
 }
 
+/* Match Center Segmented Sub-Navigation */
+.match-center-tab-bar {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.match-center-tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.match-center-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.52rem 0.95rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--muted-strong);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.match-center-tab-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.match-center-tab-btn.active {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.08);
+  font-weight: 700;
+}
+
+.match-center-tab-btn .tab-icon {
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+
+/* Goal Expectancy Proxy Gauge */
+.telemetry-goal-split-gauge {
+  display: grid;
+  gap: 0.65rem;
+  margin-bottom: 1.1rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.5rem;
+}
+
+.goal-split-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+}
+
+.goal-split-team {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.goal-split-team.away {
+  text-align: right;
+}
+
+.goal-split-team-role {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.goal-split-val {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.goal-split-center {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  text-align: center;
+}
+
+.goal-split-center-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted-strong);
+}
+
+.goal-split-total {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+}
+
+/* SofaScore Telemetry Panel */
+.match-telemetry-panel {
+  display: grid;
+  gap: 1.25rem;
+  padding: clamp(1rem, 2vw, 1.35rem);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.match-telemetry-empty-panel {
+  display: grid;
+  gap: 0.85rem;
+  padding: clamp(1.2rem, 2.5vw, 1.6rem);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.5rem;
+  background: var(--surface);
+}
+
+.live-telemetry-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.22rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 999px;
+}
+
+.live-telemetry-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+.telemetry-key-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 0.85rem;
+}
+
+.telemetry-bar-item {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.75rem 0.9rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.45rem;
+}
+
+.telemetry-bar-item.highlight {
+  border-color: rgba(56, 189, 248, 0.25);
+  background: rgba(56, 189, 248, 0.03);
+}
+
+.telemetry-bar-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.telemetry-val-home {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
+.telemetry-bar-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted-strong);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.telemetry-val-away {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.telemetry-dual-track {
+  display: flex;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+  overflow: hidden;
+  gap: 2px;
+}
+
+.telemetry-track-home {
+  height: 100%;
+  background: #38bdf8;
+  border-radius: 999px 0 0 999px;
+  transition: width 0.3s ease;
+}
+
+.telemetry-track-away {
+  height: 100%;
+  background: #f59e0b;
+  border-radius: 0 999px 999px 0;
+  transition: width 0.3s ease;
+}
+
+.telemetry-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 1rem;
+}
+
+.telemetry-table-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.95rem;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.5rem;
+}
+
+.telemetry-table-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.telemetry-rows {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.telemetry-stat-row {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) 3rem;
+  align-items: center;
+  padding: 0.35rem 0.45rem;
+  border-radius: 0.25rem;
+  font-size: 0.82rem;
+}
+
+.telemetry-stat-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.telemetry-side-val {
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.telemetry-side-val:first-child {
+  text-align: left;
+}
+
+.telemetry-side-val:last-child {
+  text-align: right;
+}
+
+.telemetry-side-val.lead {
+  font-weight: 800;
+  color: var(--text);
+}
+
+.telemetry-stat-label {
+  text-align: center;
+  color: var(--muted-strong);
+  font-size: 0.8rem;
+}
+
+/* Tactical Lineups Board */
+.match-lineups-panel {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1rem, 2vw, 1.25rem);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.5rem;
+  background: var(--surface);
+}
+
+.tactical-lineups-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 1.25rem;
+}
+
+.lineup-team-column {
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.5rem;
+}
+
+.lineup-team-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.lineup-team-title h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.lineup-team-title p {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+}
+
+.lineup-group-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.lineup-players-grid {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.lineup-player-row {
+  display: grid;
+  grid-template-columns: 2.2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.55rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0.35rem;
+  font-size: 0.84rem;
+}
+
+.lineup-player-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.lineup-shirt-number {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted-strong);
+  text-align: center;
+}
+
+.lineup-player-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.lineup-pos-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.12rem 0.4rem;
+  border-radius: 0.25rem;
+  text-transform: uppercase;
+}
+
+.lineup-pos-badge.pos-gk {
+  background: rgba(234, 179, 8, 0.15);
+  color: #facc15;
+}
+
+.lineup-pos-badge.pos-df {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+}
+
+.lineup-pos-badge.pos-mf {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.lineup-pos-badge.pos-fw {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+}
+
+.lineup-substitutes-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.lineup-sub-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.78rem;
+  color: var(--muted-strong);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.35rem;
+}
+
+.lineup-sub-chip small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.lineup-sub-chip.unavailable {
+  opacity: 0.65;
+  text-decoration: line-through;
+}
+
+/* Player Availability Panel */
+.match-availability-panel {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1rem, 2vw, 1.25rem);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.5rem;
+  background: var(--surface);
+}
+
+.availability-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 0.65rem;
+}
+
+.availability-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.45rem;
+}
+
+.availability-status-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.availability-status-pill.status-injured {
+  background: rgba(244, 63, 94, 0.12);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
+.availability-status-pill.status-suspended {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.availability-status-pill.status-doubtful,
+.availability-status-pill.status-questionable {
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
 .analysis-kpi-grid,
 .analysis-form-grid,
 .analysis-lower-grid {

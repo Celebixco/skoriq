@@ -1891,6 +1891,8 @@ function MatchDetailPage({ matchId, navigate, user }: { matchId: string; navigat
   );
 }
 
+type MatchCenterTab = "overview" | "form" | "lineups" | "stats" | "signals";
+
 export function MatchDetailReportView({
   report,
   matchId,
@@ -1908,6 +1910,7 @@ export function MatchDetailReportView({
   statistics?: FootballMatchStatisticsResponse;
   availability: FootballTeamProfileResponse["playerAvailability"];
 }) {
+  const [activeTab, setActiveTab] = useState<MatchCenterTab>("overview");
   const competitionName = report.match.competition?.name || "Lig bilgisi yok";
   const kickoffLabel = report.match.kickoffAt ? formatDateTime(report.match.kickoffAt) : "Tarih bilgisi yok";
   const matchStatus = report.match.status || "Durum bilgisi yok";
@@ -1943,27 +1946,88 @@ export function MatchDetailReportView({
         </div>
       </section>
 
-      {/* SofaScore Match Telemetry & xG Section */}
-      <MatchTelemetrySection statistics={statistics} />
+      {/* Match Center Segmented Sub-Navigation */}
+      <nav className="match-center-tab-bar" role="tablist" aria-label="Maç analiz sekmeleri">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "overview"}
+          className={`match-center-tab-btn ${activeTab === "overview" ? "active" : ""}`}
+          onClick={() => setActiveTab("overview")}
+        >
+          <span className="tab-icon">⚡</span> Genel Bakış
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "form"}
+          className={`match-center-tab-btn ${activeTab === "form" ? "active" : ""}`}
+          onClick={() => setActiveTab("form")}
+        >
+          <span className="tab-icon">📈</span> Form & H2H
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "lineups"}
+          className={`match-center-tab-btn ${activeTab === "lineups" ? "active" : ""}`}
+          onClick={() => setActiveTab("lineups")}
+        >
+          <span className="tab-icon">👥</span> Kadro & Taktik
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "stats"}
+          className={`match-center-tab-btn ${activeTab === "stats" ? "active" : ""}`}
+          onClick={() => setActiveTab("stats")}
+        >
+          <span className="tab-icon">📊</span> Telemetri & İstatistik
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "signals"}
+          className={`match-center-tab-btn ${activeTab === "signals" ? "active" : ""}`}
+          onClick={() => setActiveTab("signals")}
+        >
+          <span className="tab-icon">🧠</span> AI Sinyaller
+        </button>
+      </nav>
 
-      <div className="analysis-kpi-grid">
-        <AnalysisKpiCard title="Analiz Durumu" value={statusLabel(report.featureStatus)} body={analysisStatusHelper(report.featureStatus)} tone={report.featureStatus === "ready" ? "success" : report.featureStatus === "partial" ? "warning" : "muted"} icon="shield" />
-        <AnalysisKpiCard title="Tahmine Uygunluk" value={report.predictionEligible ? "Uygun" : "Uygun değil"} body={report.predictionEligible ? "Ön analiz üretilebilir" : "Tahmin için yeterli değil"} tone={report.predictionEligible ? "success" : "muted"} icon="star" />
-        <AnalysisKpiCard title="Güven Tavanı" value={report.confidenceCeiling} body="En yüksek güven sınırı" tone="blue" icon="trend" />
-        <AnalysisKpiCard title="Veri Kapsamı" value={formatPercent(report.combinedCoverageScore)} body="Kullanılan veri yeterliliği" tone="blue" icon="target">
-          <ProgressBar value={report.combinedCoverageScore} />
-        </AnalysisKpiCard>
-      </div>
+      {/* Telemetry & Stats Section */}
+      {(activeTab === "overview" || activeTab === "stats") && (
+        <MatchTelemetrySection statistics={statistics} showEmptyNotice={activeTab === "stats"} />
+      )}
 
-      <div className="analysis-form-grid">
-        <AnalysisCoverageCard teamName={report.match.homeTeam.name} label="İç saha formu" block={report.homeForm} side="home" />
-        <AnalysisCoverageCard teamName={report.match.awayTeam.name} label="Dış saha formu" block={report.awayForm} side="away" />
-        <AnalysisH2HCard block={report.h2h} />
-      </div>
+      {/* KPI Overview Grid */}
+      {(activeTab === "overview" || activeTab === "signals") && (
+        <div className="analysis-kpi-grid">
+          <AnalysisKpiCard title="Analiz Durumu" value={statusLabel(report.featureStatus)} body={analysisStatusHelper(report.featureStatus)} tone={report.featureStatus === "ready" ? "success" : report.featureStatus === "partial" ? "warning" : "muted"} icon="shield" />
+          <AnalysisKpiCard title="Tahmine Uygunluk" value={report.predictionEligible ? "Uygun" : "Uygun değil"} body={report.predictionEligible ? "Ön analiz üretilebilir" : "Tahmin için yeterli değil"} tone={report.predictionEligible ? "success" : "muted"} icon="star" />
+          <AnalysisKpiCard title="Güven Tavanı" value={report.confidenceCeiling} body="En yüksek güven sınırı" tone="blue" icon="trend" />
+          <AnalysisKpiCard title="Veri Kapsamı" value={formatPercent(report.combinedCoverageScore)} body="Kullanılan veri yeterliliği" tone="blue" icon="target">
+            <ProgressBar value={report.combinedCoverageScore} />
+          </AnalysisKpiCard>
+        </div>
+      )}
 
-      <GoalProfileSection report={report} />
+      {/* Form & H2H Grid */}
+      {(activeTab === "overview" || activeTab === "form") && (
+        <div className="analysis-form-grid">
+          <AnalysisCoverageCard teamName={report.match.homeTeam.name} label="İç saha formu" block={report.homeForm} side="home" />
+          <AnalysisCoverageCard teamName={report.match.awayTeam.name} label="Dış saha formu" block={report.awayForm} side="away" />
+          <AnalysisH2HCard block={report.h2h} />
+        </div>
+      )}
 
-      {analysisSummary ? (
+      {/* Goal Profile & Expected Goals Proxy */}
+      {(activeTab === "overview" || activeTab === "stats") && (
+        <GoalProfileSection report={report} />
+      )}
+
+      {/* Editorial AI Summary */}
+      {(activeTab === "overview" || activeTab === "form" || activeTab === "signals") && analysisSummary ? (
         <section className="panel analysis-summary-panel">
           <div>
             <p className="eyebrow">Rapor yorumu</p>
@@ -1973,16 +2037,27 @@ export function MatchDetailReportView({
         </section>
       ) : null}
 
-      <MemberPredictionPreview matchId={matchId} />
+      {/* Prediction Preview */}
+      {activeTab === "overview" ? (
+        <MemberPredictionPreview matchId={matchId} />
+      ) : null}
 
-      <MatchLineupsSection lineups={lineups} />
-      <MatchAvailabilitySection items={availability} />
+      {/* Lineups & Availability */}
+      {(activeTab === "overview" || activeTab === "lineups") && (
+        <>
+          <MatchLineupsSection lineups={lineups} />
+          <MatchAvailabilitySection items={availability} />
+        </>
+      )}
 
-      <div className="signal-grid analysis-signal-grid">
-        <ReportSignalCard title="Pozitif Sinyaller" items={report.positiveSignals.map((item) => formatSignalText(item, report))} tone="positive" />
-        <ReportSignalCard title="Risk Faktörleri" items={report.riskFactors.map((item) => formatRiskText(item, report))} tone="risk" />
-        <ReportSignalCard title="Eksik Veriler" items={report.missingDataWarnings.map((item) => formatMissingText(item, report))} tone="missing" />
-      </div>
+      {/* Signals & Risk Factors */}
+      {(activeTab === "overview" || activeTab === "signals") && (
+        <div className="signal-grid analysis-signal-grid">
+          <ReportSignalCard title="Pozitif Sinyaller" items={report.positiveSignals.map((item) => formatSignalText(item, report))} tone="positive" />
+          <ReportSignalCard title="Risk Faktörleri" items={report.riskFactors.map((item) => formatRiskText(item, report))} tone="risk" />
+          <ReportSignalCard title="Eksik Veriler" items={report.missingDataWarnings.map((item) => formatMissingText(item, report))} tone="missing" />
+        </div>
+      )}
 
       {user.role === "admin" ? (
         <>
@@ -2091,6 +2166,18 @@ function GoalProfileSection({ report }: { report: FootballAnalyticsMatchReport }
   const goalProfileItems = getGoalProfileItems(report);
   if (goalProfileItems.length === 0) return null;
 
+  const hasGoalSplit =
+    report.expectedHomeGoalsProxy !== null &&
+    report.expectedHomeGoalsProxy !== undefined &&
+    report.expectedAwayGoalsProxy !== null &&
+    report.expectedAwayGoalsProxy !== undefined;
+
+  const homeXG = report.expectedHomeGoalsProxy ?? 0;
+  const awayXG = report.expectedAwayGoalsProxy ?? 0;
+  const totalXG = homeXG + awayXG || 1;
+  const homePct = Math.min(100, Math.max(0, Math.round((homeXG / totalXG) * 100)));
+  const awayPct = 100 - homePct;
+
   return (
     <section className="panel goal-profile-panel">
       <div className="panel-header">
@@ -2099,6 +2186,32 @@ function GoalProfileSection({ report }: { report: FootballAnalyticsMatchReport }
           <h2>Gol Profili</h2>
         </div>
       </div>
+
+      {hasGoalSplit ? (
+        <div className="telemetry-goal-split-gauge">
+          <div className="goal-split-header">
+            <div className="goal-split-team">
+              <span className="goal-split-team-role">Ev Sahibi Beklenti</span>
+              <strong className="goal-split-val">{formatGoalProfileNumber(homeXG)}</strong>
+            </div>
+            <div className="goal-split-center">
+              <span className="goal-split-center-title">Gol Beklentisi Split (xG Proxy)</span>
+              {report.expectedTotalGoalsProxy !== null && report.expectedTotalGoalsProxy !== undefined ? (
+                <span className="goal-split-total">Toplam: {formatGoalProfileNumber(report.expectedTotalGoalsProxy)}</span>
+              ) : null}
+            </div>
+            <div className="goal-split-team away">
+              <span className="goal-split-team-role">Deplasman Beklenti</span>
+              <strong className="goal-split-val">{formatGoalProfileNumber(awayXG)}</strong>
+            </div>
+          </div>
+          <div className="telemetry-dual-track">
+            <div className="telemetry-track-home" style={{ width: `${homePct}%` }} />
+            <div className="telemetry-track-away" style={{ width: `${awayPct}%` }} />
+          </div>
+        </div>
+      ) : null}
+
       <div className="goal-profile-grid">
         {goalProfileItems.map((item) => (
           <MetricCard key={item.label} title={item.label} value={item.value} />
@@ -2110,17 +2223,27 @@ function GoalProfileSection({ report }: { report: FootballAnalyticsMatchReport }
 
 function MatchLineupsSection({ lineups }: { lineups?: FootballMatchLineupsResponse }) {
   return (
-    <section className="panel">
-      <h2>Takım Kadroları</h2>
+    <section className="panel match-lineups-panel">
+      <div className="panel-header">
+        <div>
+          <p className="eyebrow">Taktik Düzen</p>
+          <h2>Takım Kadroları</h2>
+        </div>
+      </div>
       {!lineups || lineups.dataStatus !== "ok" || lineups.items.length === 0 ? <p className="muted">Muhtemel kadro verisi henüz yok.</p> : null}
-      <div className="form-summary-grid">
+      <div className="form-summary-grid tactical-lineups-board">
         {lineups?.items.map((item) => (
-          <div className="form-summary-card" key={item.team.id}>
-            <h3>{item.team.name}</h3>
-            <p className="muted">
-              {item.confirmed ? "Onaylı ilk 11" : "Muhtemel kadro"}
-              {item.formation ? ` · ${item.formation}` : ""}
-            </p>
+          <div className="form-summary-card lineup-team-column" key={item.team.id}>
+            <div className="lineup-team-header">
+              <div className="lineup-team-title">
+                <h3>{item.team.name}</h3>
+                <p className="muted">
+                  {item.confirmed ? "Onaylı ilk 11" : "Muhtemel kadro"}
+                  {item.formation ? ` · ${item.formation}` : ""}
+                </p>
+              </div>
+              {item.formation ? <span className="badge badge-muted">{item.formation}</span> : null}
+            </div>
             <div className="form-summary-body">
               <div className="form-summary-row">
                 <span>İlk 11</span>
@@ -2135,6 +2258,54 @@ function MatchLineupsSection({ lineups }: { lineups?: FootballMatchLineupsRespon
                 <strong>{item.unavailable.length}</strong>
               </div>
             </div>
+
+            {item.startingXi.length > 0 ? (
+              <div className="lineup-player-list">
+                <h4 className="lineup-group-title">İlk 11</h4>
+                <div className="lineup-players-grid">
+                  {item.startingXi.map((p) => (
+                    <div className="lineup-player-row" key={`${item.team.id}-${p.playerId || p.name}`}>
+                      <span className="lineup-shirt-number">{p.shirtNumber !== null && p.shirtNumber !== undefined ? `#${p.shirtNumber}` : "—"}</span>
+                      <span className="lineup-player-name">{p.name}</span>
+                      {p.position ? (
+                        <span className={`lineup-pos-badge pos-${p.position.toLowerCase()}`}>{p.position}</span>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {item.substitutes.length > 0 ? (
+              <div className="lineup-substitutes-list">
+                <h4 className="lineup-group-title">Yedekler</h4>
+                <div className="lineup-substitutes-chips">
+                  {item.substitutes.map((p) => (
+                    <span className="lineup-sub-chip" key={`${item.team.id}-${p.playerId || p.name}`}>
+                      {p.shirtNumber !== null && p.shirtNumber !== undefined ? (
+                        <strong className="lineup-shirt-number">#{p.shirtNumber}</strong>
+                      ) : null}
+                      <span>{p.name}</span>
+                      {p.position ? <small>({p.position})</small> : null}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {item.unavailable.length > 0 ? (
+              <div className="lineup-unavailable-list">
+                <h4 className="lineup-group-title">Kadro Dışı</h4>
+                <div className="lineup-substitutes-chips">
+                  {item.unavailable.map((p) => (
+                    <span className="lineup-sub-chip unavailable" key={`${item.team.id}-${p.playerId || p.name}`}>
+                      <span>{p.name}</span>
+                      {p.position ? <small>({p.position})</small> : null}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ))}
       </div>
@@ -2144,12 +2315,18 @@ function MatchLineupsSection({ lineups }: { lineups?: FootballMatchLineupsRespon
 
 function MatchAvailabilitySection({ items }: { items: FootballTeamProfileResponse["playerAvailability"] }) {
   return (
-    <section className="panel">
-      <h2>Sakat-Cezalı Oyuncular</h2>
+    <section className="panel match-availability-panel">
+      <div className="panel-header">
+        <div>
+          <p className="eyebrow">Kadro Durumu</p>
+          <h2>Sakat-Cezalı Oyuncular</h2>
+        </div>
+        {items.length > 0 ? <span className="badge badge-muted">{items.length} Kayıt</span> : null}
+      </div>
       {items.length === 0 ? <p className="muted">Oyuncu durumu verisi henüz yok.</p> : null}
-      <div className="recent-matches-list">
+      <div className="recent-matches-list availability-grid">
         {items.map((item) => (
-          <article className="recent-match-row" key={`${item.playerId}-${item.status}-${item.reason ?? ""}`}>
+          <article className="recent-match-row availability-card" key={`${item.playerId}-${item.status}-${item.reason ?? ""}`}>
             <div className="recent-match-opponent">
               <div>
                 <strong>{item.playerName}</strong>
@@ -2159,6 +2336,9 @@ function MatchAvailabilitySection({ items }: { items: FootballTeamProfileRespons
                 </span>
               </div>
             </div>
+            <span className={`availability-status-pill status-${item.status.toLowerCase()}`}>
+              {mapAvailabilityStatusLabel(item.status)}
+            </span>
           </article>
         ))}
       </div>
@@ -2166,8 +2346,24 @@ function MatchAvailabilitySection({ items }: { items: FootballTeamProfileRespons
   );
 }
 
-export function MatchTelemetrySection({ statistics }: { statistics?: FootballMatchStatisticsResponse }) {
+export function MatchTelemetrySection({ statistics, showEmptyNotice = false }: { statistics?: FootballMatchStatisticsResponse; showEmptyNotice?: boolean }) {
   if (!statistics?.hasStatistics || !statistics.home || !statistics.away) {
+    if (showEmptyNotice) {
+      return (
+        <section className="panel match-telemetry-empty-panel">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">Telemetri Durumu</p>
+              <h2>Maç İstatistikleri & xG Analizi</h2>
+            </div>
+            <span className="badge badge-muted">Beklemede</span>
+          </div>
+          <p className="muted">
+            Bu maç için detaylı SofaScore xG, şut dağılımı, pas ve savunma telemetrisi maç başladığında ve tamamlandığında canlı olarak yayınlanacaktır.
+          </p>
+        </section>
+      );
+    }
     return null;
   }
 

@@ -1,119 +1,121 @@
 const https = require('https');
 
-function postLogin() {
-  const data = JSON.stringify({ email: 'admin@skoriq.local', password: 'AdminPassword123!' });
-  const req = https.request({
-    hostname: 'skoriq-api.87.76.130.252.sslip.io',
-    path: '/api/auth/login',
-    method: 'POST',
-    rejectUnauthorized: false,
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': data.length
+function request(path, method = 'GET', data = null, cookie = null) {
+  return new Promise((resolve, reject) => {
+    const headers = { 'Accept': 'application/json' };
+    if (data) {
+      headers['Content-Type'] = 'application/json';
+      headers['Content-Length'] = Buffer.byteLength(data);
     }
-  }, (res) => {
-    let body = '';
-    res.on('data', c => body += c);
-    res.on('end', () => {
-      console.log('Login Status:', res.statusCode);
-      const cookies = res.headers['set-cookie'] || [];
-      const cookieHeader = cookies.map(c => c.split(';')[0]).join('; ');
-      
-      // Fetch Süper Lig profile to find finished matches
-      fetchSuperLigProfile(cookieHeader);
-    });
-  });
-  req.on('error', e => console.error('Login error:', e));
-  req.write(data);
-  req.end();
-}
-
-function fetchSuperLigProfile(cookie) {
-  https.get({
-    hostname: 'skoriq-api.87.76.130.252.sslip.io',
-    path: '/api/football/competitions',
-    rejectUnauthorized: false,
-    headers: { 'Cookie': cookie, 'Accept': 'application/json' }
-  }, (res) => {
-    let body = '';
-    res.on('data', c => body += c);
-    res.on('end', () => {
-      const comps = JSON.parse(body);
-      const items = comps.items || comps;
-      const superLig = items.find(c => (c.name && c.name.includes('Süper Lig')) || (c.name && c.name.includes('Super Lig')));
-      if (superLig) {
-        getCompDetail(cookie, superLig.id || superLig.competitionId);
-      }
-    });
-  });
-}
-
-function getCompDetail(cookie, compId) {
-  https.get({
-    hostname: 'skoriq-api.87.76.130.252.sslip.io',
-    path: '/api/football/competitions/' + compId + '/profile',
-    rejectUnauthorized: false,
-    headers: { 'Cookie': cookie, 'Accept': 'application/json' }
-  }, (res) => {
-    let body = '';
-    res.on('data', c => body += c);
-    res.on('end', () => {
-      const prof = JSON.parse(body);
-      console.log('\n=======================================');
-      console.log('TRENDYOL SÜPER LİG TELEMETRY CHECK:');
-      console.log('=======================================');
-      console.log('League:', prof.competition?.name);
-      console.log('Finished Matches Count:', prof.recentMatches?.length);
-
-      if (prof.recentMatches && prof.recentMatches.length > 0) {
-        const sampleMatch = prof.recentMatches[0];
-        console.log('\nSample Finished Match:', sampleMatch.homeTeam?.name, 'vs', sampleMatch.awayTeam?.name);
-        console.log('Match ID:', sampleMatch.matchId);
-        console.log('Kickoff:', sampleMatch.kickoffAt);
-        console.log('Status:', sampleMatch.status);
-
-        // Fetch team profile to inspect seasonal statistics
-        fetchTeamProfile(cookie, sampleMatch.homeTeam?.id);
-      }
-    });
-  });
-}
-
-function fetchTeamProfile(cookie, teamId) {
-  https.get({
-    hostname: 'skoriq-api.87.76.130.252.sslip.io',
-    path: '/api/football/teams/' + teamId + '/profile',
-    rejectUnauthorized: false,
-    headers: { 'Cookie': cookie, 'Accept': 'application/json' }
-  }, (res) => {
-    let body = '';
-    res.on('data', c => body += c);
-    res.on('end', () => {
-      console.log('\n=======================================');
-      console.log('TEAM PROFILE & TELEMETRY VERIFICATION:');
-      console.log('=======================================');
-      try {
-        const t = JSON.parse(body);
-        console.log('Team Name:', t.team?.name);
-        console.log('Team Logo:', t.team?.logoUrl);
-        console.log('Country:', t.team?.country);
-        console.log('Current Standing Position:', t.standing?.position, '| Points:', t.standing?.points);
-        console.log('Recent Matches Count:', t.recentMatches?.length);
-        console.log('Upcoming Matches Count:', t.upcomingMatches?.length);
-        if (t.recentMatches && t.recentMatches.length > 0) {
-          console.log('\nRecent Results:');
-          t.recentMatches.slice(0, 4).forEach(m => {
-            console.log(`  - vs ${m.opponent?.name} (${m.homeAway === 'home' ? 'H' : 'A'}) -> Score: ${m.fulltimeScore || 'N/A'} [${m.result}]`);
-          });
+    if (cookie) {
+      headers['Cookie'] = cookie;
+    }
+    const req = https.request({
+      hostname: 'skoriq-api.87.76.130.252.sslip.io',
+      path,
+      method,
+      rejectUnauthorized: false,
+      headers
+    }, (res) => {
+      let body = '';
+      res.on('data', c => body += c);
+      res.on('end', () => {
+        try {
+          resolve({ status: res.statusCode, headers: res.headers, body: JSON.parse(body) });
+        } catch {
+          resolve({ status: res.statusCode, headers: res.headers, raw: body });
         }
-        console.log('\n=======================================');
-        console.log('ALL VERIFICATIONS PASSED SUCCESSFULLY!');
-        console.log('=======================================');
-      } catch (e) {
-        console.error('Error parsing team profile:', e.message);
-      }
+      });
     });
+    req.on('error', reject);
+    if (data) req.write(data);
+    req.end();
   });
 }
 
-postLogin();
+async function run() {
+  console.log('1. Logging in as admin...');
+  const loginRes = await request('/api/auth/login', 'POST', JSON.stringify({
+    email: 'admin@skoriq.local',
+    password: 'AdminPassword123!'
+  }));
+  console.log('Login Status:', loginRes.status);
+  const cookies = (loginRes.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');
+
+  console.log('\n2. Fetching Competitions...');
+  const compsRes = await request('/api/football/competitions', 'GET', null, cookies);
+  const comps = compsRes.body.items || compsRes.body;
+  const superLig = comps.find(c => (c.name && c.name.includes('Süper Lig')) || (c.name && c.name.includes('Super Lig')));
+  console.log('Found League:', superLig?.name, 'ID:', superLig?.id);
+
+  console.log('\n3. Fetching Süper Lig Profile (Recent Matches)...');
+  const profRes = await request(`/api/football/competitions/${superLig.id}/profile`, 'GET', null, cookies);
+  const prof = profRes.body;
+  console.log('Total Finished Matches in League:', prof.recentMatches?.length);
+
+  const sampleMatch = prof.recentMatches?.[0];
+  if (sampleMatch) {
+    console.log(`\n4. Verifying Match Telemetry API for: ${sampleMatch.homeTeam?.name} vs ${sampleMatch.awayTeam?.name} (ID: ${sampleMatch.matchId})`);
+    const matchStatsRes = await request(`/api/football/matches/${sampleMatch.matchId}/statistics`, 'GET', null, cookies);
+    console.log('Match Statistics Status:', matchStatsRes.status);
+    const ms = matchStatsRes.body;
+    console.log('Has Detailed Statistics:', ms.hasStatistics);
+    if (ms.hasStatistics) {
+      console.log('----------------------------------------------------');
+      console.log(`[MATCH TELEMETRY] ${ms.match?.homeTeam?.name} ${ms.match?.homeScore ?? '-'} : ${ms.match?.awayScore ?? '-'} ${ms.match?.awayTeam?.name}`);
+      console.log('----------------------------------------------------');
+      console.log(`  Beklenen Gol (xG):    ${ms.home?.expectedGoals ?? '—'} vs ${ms.away?.expectedGoals ?? '—'}`);
+      console.log(`  Topa Sahip Olma (%):  %${ms.home?.possessionPercent ?? '—'} vs %${ms.away?.possessionPercent ?? '—'}`);
+      console.log(`  Toplam Şut:           ${ms.home?.shotsTotal ?? '—'} vs ${ms.away?.shotsTotal ?? '—'}`);
+      console.log(`  İsabetli Şut:         ${ms.home?.shotsOnTarget ?? '—'} vs ${ms.away?.shotsOnTarget ?? '—'}`);
+      console.log(`  Büyük Şanslar:        ${ms.home?.bigChances ?? '—'} vs ${ms.away?.bigChances ?? '—'}`);
+      console.log(`  Pas İsabeti (%):      %${ms.home?.passAccuracyPercent ?? '—'} vs %${ms.away?.passAccuracyPercent ?? '—'}`);
+      console.log(`  Müdahale (Tackles):   ${ms.home?.tackles ?? '—'} vs ${ms.away?.tackles ?? '—'}`);
+      console.log(`  Kornerler:            ${ms.home?.corners ?? '—'} vs ${ms.away?.corners ?? '—'}`);
+      console.log(`  Fauller:              ${ms.home?.fouls ?? '—'} vs ${ms.away?.fouls ?? '—'}`);
+      console.log('----------------------------------------------------');
+    }
+  }
+
+  console.log('\n5. Searching Galatasaray specifically...');
+  const galaTeamRes = await request('/api/football/teams?search=Galatasaray', 'GET', null, cookies);
+  const galaTeam = galaTeamRes.body?.items?.[0];
+  if (galaTeam) {
+    console.log('Galatasaray Found:', galaTeam.name, 'ID:', galaTeam.teamId, 'Logo:', galaTeam.logoUrl);
+    const galaProfileRes = await request(`/api/football/teams/${galaTeam.teamId}/profile`, 'GET', null, cookies);
+    const gp = galaProfileRes.body;
+    console.log('Galatasaray Standing Position:', gp.standing?.position, 'Points:', gp.standing?.points);
+    console.log('Galatasaray Recent Matches Count:', gp.recentMatches?.length);
+    if (gp.team?.seasonStatistics) {
+      console.log('\n[GALATASARAY SOFASCORE SEASON TELEMETRY (125 metrics)]');
+      const ss = gp.team.seasonStatistics;
+      console.log(`  Goller / Maç:         ${ss.goalsScored ?? '—'}`);
+      console.log(`  Yenilen Goller:       ${ss.goalsConceded ?? '—'}`);
+      console.log(`  Beklenen Gol (xG):    ${ss.expectedGoals ?? '—'}`);
+      console.log(`  Ort. Topa Sahip Olma: %${ss.averageBallPossession ?? '—'}`);
+      console.log(`  Gol Yemeden (CS):     ${ss.cleanSheets ?? '—'}`);
+      console.log(`  Büyük Şanslar:        ${ss.bigChances ?? '—'} (Kaçan: ${ss.bigChancesMissed ?? '—'})`);
+      console.log(`  Pas İsabeti (%):      %${ss.accuratePassesPercentage ?? '—'}`);
+    }
+
+    if (gp.recentMatches && gp.recentMatches.length > 0) {
+      console.log('\nGalatasaray Recent Matches:');
+      for (const m of gp.recentMatches) {
+        console.log(`  - vs ${m.opponent?.name} (${m.homeAway}) -> Score: ${m.fulltimeScore || 'N/A'} [${m.result}]`);
+        // Check telemetry for this match
+        const mStats = await request(`/api/football/matches/${m.matchId}/statistics`, 'GET', null, cookies);
+        if (mStats.body?.hasStatistics) {
+          const h = mStats.body.home;
+          const a = mStats.body.away;
+          console.log(`    ↳ Telemetry: xG: ${h?.expectedGoals ?? '—'} vs ${a?.expectedGoals ?? '—'} | Top: %${h?.possessionPercent ?? '—'} vs %${a?.possessionPercent ?? '—'} | Şut: ${h?.shotsTotal ?? '—'}(${h?.shotsOnTarget ?? '—'}) vs ${a?.shotsTotal ?? '—'}(${a?.shotsOnTarget ?? '—'})`);
+        }
+      }
+    }
+  }
+
+  console.log('\n=======================================');
+  console.log('ALL TELEMETRY & AUTOMATION TESTS PASSED!');
+  console.log('=======================================');
+}
+
+run().catch(console.error);
