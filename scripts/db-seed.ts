@@ -201,7 +201,31 @@ export async function seedInitialData(pool: pg.Pool) {
   }
   console.log("Standings ready.");
 
-  // 6. Historical Finished Matches (Past 4-6 weeks) for form & H2H computation
+  // 6. Ensure Team Form Features for all teams
+  const teamFormFeatureMap = new Map<string, string>();
+  for (const t of teamDefs) {
+    const compId = compMap.get(t.compSlug);
+    const seasonId = seasonMap.get(t.compSlug);
+    const teamId = teamMap.get(t.slug);
+    if (!compId || !seasonId || !teamId) continue;
+
+    const tfRes = await pool.query(`
+      INSERT INTO football_team_form_features (
+        team_id, competition_id, season_id, as_of_date, window_size, scope,
+        matches_played, wins, draws, losses, points, goals_for, goals_against, goal_difference,
+        avg_goals_for, avg_goals_against, clean_sheet_rate, failed_to_score_rate, both_teams_to_score_rate,
+        over_0_5_rate, over_1_5_rate, over_2_5_rate, under_2_5_rate, sample_size, coverage_score
+      )
+      VALUES ($1, $2, $3, now(), 5, 'overall', 5, 4, 1, 0, 13, 11, 4, 7, 2.200, 0.800, 0.40, 0.00, 0.60, 1.00, 0.80, 0.60, 0.40, 5, 1.00)
+      ON CONFLICT ON CONSTRAINT "football_team_form_features_uidx" DO UPDATE
+      SET points = EXCLUDED.points, coverage_score = EXCLUDED.coverage_score
+      RETURNING id;
+    `, [teamId, compId, seasonId]);
+    teamFormFeatureMap.set(t.slug, tfRes.rows[0].id);
+  }
+  console.log("Team form features ready.");
+
+  // 7. Historical Finished Matches (Past 4-6 weeks) for form & H2H computation
   interface MatchSeedDef {
     compSlug: string;
     homeTeamSlug: string;
@@ -240,7 +264,7 @@ export async function seedInitialData(pool: pg.Pool) {
     { compSlug: "premier-league", homeTeamSlug: "arsenal", awayTeamSlug: "aston-villa", round: "25", dateOffsetDays: -20, homeScore: 2, awayScore: 2, homeHt: 1, awayHt: 1, venue: "Emirates Stadium" },
     { compSlug: "premier-league", homeTeamSlug: "liverpool", awayTeamSlug: "tottenham", round: "25", dateOffsetDays: -19, homeScore: 4, awayScore: 2, homeHt: 2, awayHt: 1, venue: "Anfield" },
     { compSlug: "premier-league", homeTeamSlug: "chelsea", awayTeamSlug: "liverpool", round: "26", dateOffsetDays: -14, homeScore: 1, awayScore: 2, homeHt: 0, awayHt: 1, venue: "Stamford Bridge" },
-    { compSlug: "premier-league", homeTeamSlug: "manchester-city", awayTeamSlug: "arsenal", round: "26", dateOffsetDays: -13, homeScore: 1, awayScore: 1, homeHt: 1, awayHt: 1, venue: "Etihad Stadium" },
+    { compSlug: "premier-league", homeTeamSlug: "manchester-city", awayTeamSlug: "arsenal", round: "26", dateOffsetDays: -13, homeScore: 1, awayScore: 1, homeHt: 1, awayHt: 0, venue: "Etihad Stadium" },
     { compSlug: "premier-league", homeTeamSlug: "tottenham", awayTeamSlug: "chelsea", round: "27", dateOffsetDays: -7, homeScore: 1, awayScore: 2, homeHt: 1, awayHt: 0, venue: "Tottenham Hotspur Stadium" },
     { compSlug: "premier-league", homeTeamSlug: "liverpool", awayTeamSlug: "aston-villa", round: "27", dateOffsetDays: -6, homeScore: 2, awayScore: 0, homeHt: 1, awayHt: 0, venue: "Anfield" },
 
@@ -265,6 +289,7 @@ export async function seedInitialData(pool: pg.Pool) {
 
   const now = new Date();
   let matchesCreated = 0;
+  const upcomingMatchIds: Array<{ matchId: string; compId: string; homeTeamId: string; awayTeamId: string; homeSlug: string; awaySlug: string }> = [];
 
   for (const m of matchSeeds) {
     const compId = compMap.get(m.compSlug);
@@ -318,11 +343,64 @@ export async function seedInitialData(pool: pg.Pool) {
         VALUES ($1, 'fulltime', $2, $3)
         ON CONFLICT (match_id, period) DO UPDATE SET home_score = EXCLUDED.home_score, away_score = EXCLUDED.away_score;
       `, [matchId, m.homeScore, m.awayScore]);
+    } else {
+      upcomingMatchIds.push({ matchId, compId, homeTeamId, awayTeamId, homeSlug: m.homeTeamSlug, awaySlug: m.awayTeamSlug });
     }
   }
-  console.log(`Matches ready: ${matchesCreated} matches created/updated.`);
+  console.log(`Matches ready: ${matchesCreated} matches created/updated (${upcomingMatchIds.length} upcoming).`);
 
-  // 7. Ensure Admin User
+  // 8. Ensure Match Prediction Features & Prediction Drafts for upcoming matches
+  for (const up of upcomingMatchIds) {
+    const homeFormId = teamFormFeatureMap.get(up.homeSlug);
+    const awayFormId = teamFormFeatureMap.get(up.awaySlug);
+
+    const featRes = await pool.query(`
+      INSERT INTO football_match_prediction_features (
+        match_id, competition_id, home_team_id, away_team_id, as_of_date,
+        form_window_size, h2h_window_size, home_form_feature_id, away_form_feature_id,
+        home_form_coverage_score, away_form_coverage_score, h2h_coverage_score, combined_coverage_score,
+        home_recent_points, away_recent_points, home_avg_goals_for, home_avg_goals_against,
+        away_avg_goals_for, away_avg_goals_against, home_attack_strength_proxy, away_attack_strength_proxy,
+        expected_total_goals_proxy, home_goal_signal_score, away_goal_signal_score, btts_signal_score,
+        goal_profile, btts_profile, feature_status
+      )
+      VALUES (
+        $1, $2, $3, $4, now(),
+        5, 5, $5, $6,
+        95.00, 92.00, 85.00, 91.00,
+        13, 10, 2.200, 0.800,
+        1.600, 1.200, 1.450, 1.150,
+        2.850, 85.00, 72.00, 68.00,
+        'high_scoring', 'frequent', 'ready'
+      )
+      ON CONFLICT (match_id, form_window_size, h2h_window_size) DO UPDATE
+      SET feature_status = 'ready', combined_coverage_score = 91.00
+      RETURNING id;
+    `, [up.matchId, up.compId, up.homeTeamId, up.awayTeamId, homeFormId, awayFormId]);
+    const featId = featRes.rows[0].id;
+
+    // Seed 3 prediction picks per upcoming match
+    const dedupe1 = `${up.matchId}:match_result:1`;
+    const dedupe2 = `${up.matchId}:total_goals:over_2_5`;
+    const dedupe3 = `${up.matchId}:both_teams_to_score:yes`;
+
+    await pool.query(`
+      INSERT INTO football_prediction_outputs (
+        match_id, feature_snapshot_id, prediction_type, prediction_value, prediction_family,
+        recommendation_tier, display_label, reasoning_summary, confidence_score, confidence_ceiling,
+        risk_level, status, consistency_status, generated_at, dedupe_key
+      )
+      VALUES
+        ($1, $2, '1x2', '1', 'match_result', 'recommended', 'MS 1', 'Ev sahibi form ve gol beklentisinde üstün.', 78.50, 85.00, 'low', 'member_visible', 'passed', now(), $3),
+        ($1, $2, 'over_under_2_5', 'over_2_5', 'total_goals', 'recommended', '2.5 Üst', 'Takımların son maçlardaki gol ortalaması 2.85 xG seviyesinde.', 74.20, 82.00, 'low', 'member_visible', 'passed', now(), $4),
+        ($1, $2, 'both_teams_to_score', 'yes', 'both_teams_to_score', 'alternative', 'KG Var', 'İki takımın da son 5 maçta karşılıklı gol oranı %60 üzeri.', 70.80, 80.00, 'medium', 'member_visible', 'passed', now(), $5)
+      ON CONFLICT (dedupe_key) DO UPDATE
+      SET confidence_score = EXCLUDED.confidence_score, status = 'member_visible';
+    `, [up.matchId, featId, dedupe1, dedupe2, dedupe3]);
+  }
+  console.log(`Prediction features & drafts ready for ${upcomingMatchIds.length} upcoming matches.`);
+
+  // 9. Ensure Admin User
   const adminEmail = (process.env.ADMIN_EMAIL || "admin@skoriq.local").trim().toLowerCase();
   const adminPassword = process.env.ADMIN_PASSWORD || "AdminPassword123!";
   const passwordHash = await hashPassword(adminPassword);
