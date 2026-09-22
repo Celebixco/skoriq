@@ -52,11 +52,14 @@ interface TeamStatsPayload {
 
 interface SofaScoreMatch {
   sofascore_id: number;
+  tournament_id?: number;
+  tournament_name?: string;
   home_team_id: number;
   home_team_name: string;
   away_team_id: number;
   away_team_name: string;
-  scheduled_start_at: number;
+  scheduled_start_at?: number;
+  start_timestamp?: number;
   status: string;
   home_score?: number;
   away_score?: number;
@@ -321,11 +324,14 @@ export async function seedInitialData(pool: pg.Pool) {
   let totalStatsIngested = 0;
   let totalPlayersIngested = 0;
 
-  for (const league of catalog) {
-    // 4. Ensure League Country
-    const leagueCountryId = await getOrCreateCountry(league.country, league.country_code, league.country_slug);
+  const compIdByTournamentId = new Map<number, string>();
+  const seasonIdByTournamentId = new Map<number, string>();
+  const ingestedMatchIds = new Set<number>();
+  const ingestedMatchKeys = new Set<string>();
 
-    // 5. Ensure Competition with official SofaScore Tournament Logo
+  // Pass 1: Ensure all Competitions and Seasons first so matches can route to authentic tournaments
+  for (const league of catalog) {
+    const leagueCountryId = await getOrCreateCountry(league.country, league.country_code, league.country_slug);
     const compMetadata = {
       logoUrl: league.tournament_logo_url,
       imageUrl: league.tournament_logo_url,
@@ -351,7 +357,6 @@ export async function seedInitialData(pool: pg.Pool) {
       ON CONFLICT (provider, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
     `, [String(league.sofascore_tournament_id), compId]);
 
-    // 6. Ensure Season
     const seasonRes = await pool.query(`
       INSERT INTO seasons (competition_id, name, is_current, start_date, end_date)
       VALUES ($1, $2, true, '2026-08-01', '2027-05-31')
@@ -359,6 +364,15 @@ export async function seedInitialData(pool: pg.Pool) {
       RETURNING id;
     `, [compId, league.season_name]);
     const seasonId = seasonRes.rows[0].id;
+
+    compIdByTournamentId.set(league.sofascore_tournament_id, compId);
+    seasonIdByTournamentId.set(league.sofascore_tournament_id, seasonId);
+  }
+
+  // Pass 2: Ingest Teams, Standings, Squads, Matches and Telemetry
+  for (const league of catalog) {
+    const compId = compIdByTournamentId.get(league.sofascore_tournament_id)!;
+    const seasonId = seasonIdByTournamentId.get(league.sofascore_tournament_id)!;
 
     // 7. Ingest Teams, Standings, and Seasonal Telemetry for this League
     for (const team of league.teams) {
@@ -592,6 +606,10 @@ export async function seedInitialData(pool: pg.Pool) {
       if (team.recent_matches && Array.isArray(team.recent_matches)) {
         for (const rm of team.recent_matches) {
           try {
+            if (rm.sofascore_id && ingestedMatchIds.has(rm.sofascore_id)) {
+              continue;
+            }
+
             let hTeamId = teamIdCache.get(rm.home_team_id);
             let aTeamId = teamIdCache.get(rm.away_team_id);
 
@@ -615,29 +633,42 @@ export async function seedInitialData(pool: pg.Pool) {
               if (aTeamId) teamIdCache.set(rm.away_team_id, aTeamId);
             }
 
-            if (hTeamId && aTeamId && rm.start_timestamp) {
+            const matchTs = rm.start_timestamp || rm.scheduled_start_at;
+            if (hTeamId && aTeamId && matchTs) {
+              const matchDate = new Date(matchTs * 1000);
+              const dateKey = `${hTeamId}-${aTeamId}-${matchDate.toISOString().slice(0, 10)}`;
+              if (ingestedMatchKeys.has(dateKey)) {
+                continue;
+              }
+
+              // Route to authentic tournament/competition and season
+              const matchCompId = (rm.tournament_id && compIdByTournamentId.get(rm.tournament_id)) || compId;
+              const matchSeasonId = (rm.tournament_id && seasonIdByTournamentId.get(rm.tournament_id)) || seasonId;
+
               let winId: string | null = null;
               if (typeof rm.home_score === "number" && typeof rm.away_score === "number") {
                 if (rm.home_score > rm.away_score) winId = hTeamId;
                 else if (rm.away_score > rm.home_score) winId = aTeamId;
               }
-              const matchDate = new Date(rm.start_timestamp * 1000);
-              const mMeta = { sofascoreId: rm.sofascore_id, statistics: rm.statistics || null };
+              const mMeta = { sofascoreId: rm.sofascore_id, statistics: rm.statistics || null, round: rm.round || null };
 
               const mRes = await pool.query(`
                 INSERT INTO matches (
-                  sport_id, competition_id, season_id, home_team_id, away_team_id,
+                  sport_id, competition_id, season_id, round, home_team_id, away_team_id,
                   scheduled_start_at, status, winner_team_id, metadata_json
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, 'finished', $7, $8)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, 'finished', $8, $9)
                 ON CONFLICT ON CONSTRAINT "matches_natural_uidx" DO UPDATE SET
                   status = 'finished',
                   winner_team_id = EXCLUDED.winner_team_id,
                   metadata_json = EXCLUDED.metadata_json
                 RETURNING id;
-              `, [sportId, compId, seasonId, hTeamId, aTeamId, matchDate, winId, JSON.stringify(mMeta)]);
+              `, [sportId, matchCompId, matchSeasonId, rm.round || null, hTeamId, aTeamId, matchDate, winId, JSON.stringify(mMeta)]);
 
               const mId = mRes.rows[0]?.id;
+              if (rm.sofascore_id) ingestedMatchIds.add(rm.sofascore_id);
+              ingestedMatchKeys.add(dateKey);
+
               if (mId && typeof rm.home_score === "number" && typeof rm.away_score === "number") {
                 await pool.query(`
                   INSERT INTO football_match_scores (
@@ -674,10 +705,17 @@ export async function seedInitialData(pool: pg.Pool) {
     // 9. Ingest Recent Finished Matches & Detailed Telemetry Statistics
     if (league.recent_matches && league.recent_matches.length > 0) {
       for (const m of league.recent_matches) {
+        if (m.sofascore_id && ingestedMatchIds.has(m.sofascore_id)) continue;
+
         const homeTeamId = teamIdCache.get(m.home_team_id);
         const awayTeamId = teamIdCache.get(m.away_team_id);
 
-        if (!homeTeamId || !awayTeamId || !m.scheduled_start_at) continue;
+        const matchTs = m.scheduled_start_at || m.start_timestamp;
+        if (!homeTeamId || !awayTeamId || !matchTs) continue;
+
+        const scheduledDate = new Date(matchTs * 1000);
+        const dateKey = `${homeTeamId}-${awayTeamId}-${scheduledDate.toISOString().slice(0, 10)}`;
+        if (ingestedMatchKeys.has(dateKey)) continue;
 
         let winnerTeamId: string | null = null;
         if (typeof m.home_score === "number" && typeof m.away_score === "number") {
@@ -692,8 +730,6 @@ export async function seedInitialData(pool: pg.Pool) {
           round: m.round,
           statistics: m.statistics || null
         };
-
-        const scheduledDate = new Date(m.scheduled_start_at * 1000);
 
         try {
           const matchRes = await pool.query(`
@@ -722,6 +758,8 @@ export async function seedInitialData(pool: pg.Pool) {
           ]);
 
           const matchId = matchRes.rows[0]?.id;
+          if (m.sofascore_id) ingestedMatchIds.add(m.sofascore_id);
+          ingestedMatchKeys.add(dateKey);
           totalMatchesIngested++;
 
           // 9a. Insert into football_match_scores
@@ -766,17 +804,22 @@ export async function seedInitialData(pool: pg.Pool) {
     // 10. Ingest Upcoming Fixtures using explicit ON CONSTRAINT
     if (league.upcoming_matches && league.upcoming_matches.length > 0) {
       for (const m of league.upcoming_matches) {
+        if (m.sofascore_id && ingestedMatchIds.has(m.sofascore_id)) continue;
+
         const homeTeamId = teamIdCache.get(m.home_team_id);
         const awayTeamId = teamIdCache.get(m.away_team_id);
 
-        if (!homeTeamId || !awayTeamId || !m.scheduled_start_at) continue;
+        const matchTs = m.scheduled_start_at || m.start_timestamp;
+        if (!homeTeamId || !awayTeamId || !matchTs) continue;
+
+        const scheduledDate = new Date(matchTs * 1000);
+        const dateKey = `${homeTeamId}-${awayTeamId}-${scheduledDate.toISOString().slice(0, 10)}`;
+        if (ingestedMatchKeys.has(dateKey)) continue;
 
         const matchMetadata = {
           sofascoreId: m.sofascore_id,
           round: m.round
         };
-
-        const scheduledDate = new Date(m.scheduled_start_at * 1000);
 
         try {
           await pool.query(`
@@ -801,6 +844,8 @@ export async function seedInitialData(pool: pg.Pool) {
             JSON.stringify(matchMetadata)
           ]);
 
+          if (m.sofascore_id) ingestedMatchIds.add(m.sofascore_id);
+          ingestedMatchKeys.add(dateKey);
           totalMatchesIngested++;
         } catch (matchErr) {
           console.warn(`  Warning inserting scheduled match ${m.home_team_name} vs ${m.away_team_name}:`, matchErr);

@@ -4,6 +4,13 @@ import os
 import sys
 from curl_cffi import requests
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Accept": "application/json",
@@ -267,18 +274,28 @@ def main():
             continue
         
         seasons = seasons_data["seasons"]
-        active_season = seasons[0]
-        season_id = active_season["id"]
-        season_name = active_season["name"]
-
-        # 2. Fetch total standings
-        standings_total = fetch_json(session, f"https://api.sofascore.com/api/v1/unique-tournament/{tid}/season/{season_id}/standings/total")
+        active_season = None
+        season_id = None
+        season_name = None
         total_rows = []
-        if standings_total and standings_total.get("standings"):
-            total_rows = standings_total["standings"][0].get("rows", [])
-        
-        if not total_rows and len(seasons) > 1:
-            active_season = seasons[1]
+
+        # Find current active season with played matches
+        for s in seasons[:4]:
+            cand_id = s["id"]
+            standings_cand = fetch_json(session, f"https://api.sofascore.com/api/v1/unique-tournament/{tid}/season/{cand_id}/standings/total")
+            if standings_cand and standings_cand.get("standings"):
+                rows = standings_cand["standings"][0].get("rows", [])
+                if rows and len(rows) > 0:
+                    matches_played = sum(r.get("matches", 0) for r in rows)
+                    if matches_played > 0:
+                        active_season = s
+                        season_id = cand_id
+                        season_name = s["name"]
+                        total_rows = rows
+                        break
+
+        if not active_season:
+            active_season = seasons[0]
             season_id = active_season["id"]
             season_name = active_season["name"]
             standings_total = fetch_json(session, f"https://api.sofascore.com/api/v1/unique-tournament/{tid}/season/{season_id}/standings/total")
@@ -360,28 +377,29 @@ def main():
         recent_matches = []
         events_last = fetch_json(session, f"https://api.sofascore.com/api/v1/unique-tournament/{tid}/season/{season_id}/events/last/0")
         if events_last and events_last.get("events"):
-            for ev in events_last["events"][:15]:
-                status_type = ev.get("status", {}).get("type")
-                if status_type in ["finished", "ended"]:
-                    ev_id = ev.get("id")
-                    match_stats = fetch_match_statistics(session, ev_id)
-                    if match_stats:
-                        total_stats_matches += 1
+            finished_events = [ev for ev in events_last["events"] if ev.get("status", {}).get("type") in ["finished", "ended"]]
+            finished_events.sort(key=lambda x: x.get("startTimestamp", 0), reverse=True)
+            for ev in finished_events[:15]:
+                ev_id = ev.get("id")
+                match_stats = fetch_match_statistics(session, ev_id)
+                if match_stats:
+                    total_stats_matches += 1
 
-                    recent_matches.append({
-                        "sofascore_id": ev_id,
-                        "home_team_id": ev.get("homeTeam", {}).get("id"),
-                        "home_team_name": ev.get("homeTeam", {}).get("name"),
-                        "away_team_id": ev.get("awayTeam", {}).get("id"),
-                        "away_team_name": ev.get("awayTeam", {}).get("name"),
-                        "scheduled_start_at": ev.get("startTimestamp"),
-                        "status": "finished",
-                        "home_score": ev.get("homeScore", {}).get("current"),
-                        "away_score": ev.get("awayScore", {}).get("current"),
-                        "round": str(ev.get("roundInfo", {}).get("round", "")),
-                        "venue": ev.get("venue", {}).get("name", ""),
-                        "statistics": match_stats
-                    })
+                recent_matches.append({
+                    "sofascore_id": ev_id,
+                    "tournament_id": tid,
+                    "home_team_id": ev.get("homeTeam", {}).get("id"),
+                    "home_team_name": ev.get("homeTeam", {}).get("name"),
+                    "away_team_id": ev.get("awayTeam", {}).get("id"),
+                    "away_team_name": ev.get("awayTeam", {}).get("name"),
+                    "scheduled_start_at": ev.get("startTimestamp"),
+                    "status": "finished",
+                    "home_score": ev.get("homeScore", {}).get("current"),
+                    "away_score": ev.get("awayScore", {}).get("current"),
+                    "round": str(ev.get("roundInfo", {}).get("round", "")),
+                    "venue": ev.get("venue", {}).get("name", ""),
+                    "statistics": match_stats
+                })
         print(f"  Finished matches loaded: {len(recent_matches)} (Telemetry stats captured for {sum(1 for rm in recent_matches if rm.get('statistics'))} matches)")
 
         # 6. Fetch upcoming matches

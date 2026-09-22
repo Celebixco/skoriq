@@ -4,6 +4,13 @@ import os
 import sys
 from curl_cffi import requests
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Accept": "application/json",
@@ -158,56 +165,84 @@ def main():
                     total_players_found += len(parsed_players)
                     print(f"  [Squad] {team_name}: {len(parsed_players)} players")
 
-            # 2. Fetch Last Matches (Events) if not already captured
-            if "recent_matches" not in team or not team["recent_matches"]:
-                time.sleep(0.04)
-                ev_data = fetch_json(session, f"https://api.sofascore.com/api/v1/team/{team_id}/events/last/0")
-                if ev_data and "events" in ev_data:
-                    parsed_events = []
-                    for ev in ev_data["events"][:12]:
-                        ev_id = ev.get("id")
-                        st = ev.get("status", {}).get("type")
-                        if st not in ["finished", "ended"]:
-                            continue
-                        
-                        hs = ev.get("homeScore", {})
-                        as_ = ev.get("awayScore", {})
-                        home_t = ev.get("homeTeam", {})
-                        away_t = ev.get("awayTeam", {})
-                        
-                        match_item = {
-                            "sofascore_id": ev_id,
-                            "slug": ev.get("slug"),
-                            "start_timestamp": ev.get("startTimestamp"),
-                            "status": "finished",
-                            "home_team_id": home_t.get("id"),
-                            "home_team_name": home_t.get("name"),
-                            "home_team_slug": home_t.get("slug"),
-                            "home_team_logo": f"https://img.sofascore.com/api/v1/team/{home_t.get('id')}/image",
-                            "away_team_id": away_t.get("id"),
-                            "away_team_name": away_t.get("name"),
-                            "away_team_slug": away_t.get("slug"),
-                            "away_team_logo": f"https://img.sofascore.com/api/v1/team/{away_t.get('id')}/image",
-                            "home_score": hs.get("current"),
-                            "away_score": as_.get("current"),
-                            "home_score_halftime": hs.get("period1"),
-                            "away_score_halftime": as_.get("period1"),
-                            "winner_code": ev.get("winnerCode"),
-                            "has_xg": ev.get("hasXg", False),
-                            "statistics": None
-                        }
+            # 2. Fetch Last Matches (Events) - authentic current season, sorted newest first
+            time.sleep(0.04)
+            ev_data = fetch_json(session, f"https://api.sofascore.com/api/v1/team/{team_id}/events/last/0")
+            if ev_data and "events" in ev_data:
+                parsed_events = []
+                # Filter finished official competitive events (ignore friendlies)
+                eligible_events = []
+                for ev in ev_data["events"]:
+                    st = ev.get("status", {}).get("type")
+                    if st not in ["finished", "ended"]:
+                        continue
+                    t_name = ev.get("tournament", {}).get("name", "")
+                    t_slug = ev.get("tournament", {}).get("slug", "")
+                    if "friendly" in t_name.lower() or "friendly" in t_slug.lower():
+                        continue
+                    eligible_events.append(ev)
 
-                        if ev.get("hasXg") and len(parsed_events) < 3:
-                            time.sleep(0.04)
-                            m_stats = fetch_match_statistics(session, ev_id)
-                            if m_stats:
-                                match_item["statistics"] = m_stats
+                # Sort by startTimestamp descending (most recent first!)
+                eligible_events.sort(key=lambda x: x.get("startTimestamp", 0), reverse=True)
 
-                        parsed_events.append(match_item)
-                        total_new_matches += 1
+                # Prioritize current season (26/27 or startTimestamp >= July 2026)
+                current_season_events = [
+                    ev for ev in eligible_events
+                    if "26/27" in str(ev.get("season", {}).get("name", ""))
+                    or "26/27" in str(ev.get("season", {}).get("year", ""))
+                    or ev.get("startTimestamp", 0) >= 1782864000 # July 1, 2026
+                ]
+                selected_events = current_season_events if current_season_events else eligible_events
 
-                    team["recent_matches"] = parsed_events
-                    print(f"  [Events] {team_name}: {len(parsed_events)} recent matches")
+                for ev in selected_events[:10]:
+                    ev_id = ev.get("id")
+                    hs = ev.get("homeScore", {})
+                    as_ = ev.get("awayScore", {})
+                    home_t = ev.get("homeTeam", {})
+                    away_t = ev.get("awayTeam", {})
+                    ev_ut = ev.get("tournament", {}).get("uniqueTournament", {})
+                    t_id = ev_ut.get("id") or ev.get("tournament", {}).get("id")
+                    t_name = ev_ut.get("name") or ev.get("tournament", {}).get("name")
+
+                    match_item = {
+                        "sofascore_id": ev_id,
+                        "tournament_id": t_id,
+                        "tournament_name": t_name,
+                        "season_id": ev.get("season", {}).get("id"),
+                        "season_name": ev.get("season", {}).get("name"),
+                        "round": str(ev.get("roundInfo", {}).get("round", "")),
+                        "slug": ev.get("slug"),
+                        "start_timestamp": ev.get("startTimestamp"),
+                        "status": "finished",
+                        "home_team_id": home_t.get("id"),
+                        "home_team_name": home_t.get("name"),
+                        "home_team_slug": home_t.get("slug"),
+                        "home_team_logo": f"https://img.sofascore.com/api/v1/team/{home_t.get('id')}/image",
+                        "away_team_id": away_t.get("id"),
+                        "away_team_name": away_t.get("name"),
+                        "away_team_slug": away_t.get("slug"),
+                        "away_team_logo": f"https://img.sofascore.com/api/v1/team/{away_t.get('id')}/image",
+                        "home_score": hs.get("current"),
+                        "away_score": as_.get("current"),
+                        "home_score_halftime": hs.get("period1"),
+                        "away_score_halftime": as_.get("period1"),
+                        "winner_code": ev.get("winnerCode"),
+                        "has_xg": ev.get("hasXg", False),
+                        "statistics": None
+                    }
+
+                    if ev.get("hasXg") and len(parsed_events) < 3:
+                        time.sleep(0.04)
+                        m_stats = fetch_match_statistics(session, ev_id)
+                        if m_stats:
+                            match_item["statistics"] = m_stats
+
+                    parsed_events.append(match_item)
+                    total_new_matches += 1
+
+                team["recent_matches"] = parsed_events
+                latest_summary = f" (latest: {parsed_events[0]['home_team_name']} {parsed_events[0]['home_score']}-{parsed_events[0]['away_score']} {parsed_events[0]['away_team_name']})" if parsed_events else ""
+                print(f"  [Events] {team_name}: {len(parsed_events)} authentic 26/27 matches{latest_summary}")
 
             total_enriched_teams += 1
 

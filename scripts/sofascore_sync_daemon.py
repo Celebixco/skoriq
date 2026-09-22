@@ -17,6 +17,15 @@ def run_sync():
         return False
     print(result.stdout.strip().split("\n")[-6:])
 
+    # 1b. Enrich squads and team recent matches
+    print("\nStep 1b: Enriching squads, player profiles, and recent matches...")
+    enrichment_path = os.path.join(os.path.dirname(__file__), "scrape_enrichment.py")
+    enrich_result = subprocess.run([sys.executable, enrichment_path], capture_output=True, text=True)
+    if enrich_result.returncode != 0:
+        print("Enrichment error:", enrich_result.stderr)
+    else:
+        print(enrich_result.stdout.strip().split("\n")[-6:])
+
     # 2. Ingest into database
     print("\nStep 2: Syncing into PostgreSQL database...")
     db_seed_path = os.path.join(os.path.dirname(__file__), "db-seed.ts")

@@ -3225,9 +3225,10 @@ function TeamDetailPage({ teamId, navigate }: { teamId: string; navigate: (path:
   const { data: profile, loading, error } = useLoad(() => fetchFootballTeamProfile(teamId), [teamId]);
   const { data: players } = useLoad(() => fetchFootballTeamPlayers(teamId), [teamId]);
   const { data: availability } = useLoad(() => fetchFootballTeamAvailability(teamId), [teamId]);
+  const [activeTab, setActiveTab] = useState<"overview" | "form" | "matches" | "squad">("overview");
 
   return (
-    <>
+    <div className="team-detail-shell">
       {loading ? <StatePanel title="Takım profili yükleniyor..." /> : null}
       {error ? <StatePanel title="Takım profili yüklenemedi" body={error} /> : null}
       {!loading && !error && !profile ? <StatePanel title="Takım bulunamadı" /> : null}
@@ -3235,37 +3236,99 @@ function TeamDetailPage({ teamId, navigate }: { teamId: string; navigate: (path:
         <>
           <div className="explorer-breadcrumbs">
             <button type="button" onClick={() => navigate("/football")}>Futbol Keşfi</button>
+            <span className="breadcrumb-sep">/</span>
+            <button type="button" onClick={() => navigate("/football/teams")}>Takımlar</button>
             {(() => {
               const pc = profile.team.primaryCompetition;
               if (!pc) return null;
               return (
                 <>
-                  <span>/</span>
+                  <span className="breadcrumb-sep">/</span>
                   <button type="button" onClick={() => navigate(`/football/competitions/${pc.id}`)}>
                     {pc.name}
                   </button>
                 </>
               );
             })()}
-            <span>/</span>
+            <span className="breadcrumb-sep">/</span>
             <span className="breadcrumb-current">{profile.team.name}</span>
           </div>
-          <TeamProfileHero profile={profile} standing={profile.standing} />
-          <div className="team-profile-grid">
-            <TeamProfileStanding standing={profile.standing} />
-            <TeamSeasonTelemetrySection seasonStatistics={profile.team.seasonStatistics} />
-            <TeamFormTrendChart profile={profile} />
-            <TeamProfileFormSummary formSummary={profile.formSummary} />
-            <TeamProfileGoalProfile goalProfile={profile.goalProfile} />
-            <TeamProfileRecentMatches matches={profile.recentMatches} />
-            <TeamProfileUpcomingMatches matches={profile.upcomingMatches} navigate={navigate} />
-            <TeamSquadSection players={players?.items ?? []} />
-            <TeamProfileAvailability items={availability?.items ?? profile.playerAvailability ?? []} />
-            <TeamProfileDataCoverage coverage={profile.dataCoverage} />
+
+          <TeamProfileHero profile={profile} standing={profile.standing} navigate={navigate} />
+
+          <nav className="team-nav-tabs" aria-label="Takım Sekmeleri">
+            <button
+              type="button"
+              className={`team-nav-tab ${activeTab === "overview" ? "active" : ""}`}
+              onClick={() => setActiveTab("overview")}
+            >
+              <span>Genel Bakış</span>
+            </button>
+            <button
+              type="button"
+              className={`team-nav-tab ${activeTab === "form" ? "active" : ""}`}
+              onClick={() => setActiveTab("form")}
+            >
+              <span>Form & Gol Analizi</span>
+            </button>
+            <button
+              type="button"
+              className={`team-nav-tab ${activeTab === "matches" ? "active" : ""}`}
+              onClick={() => setActiveTab("matches")}
+            >
+              <span>Fikstür & Sonuçlar</span>
+              {(profile.upcomingMatches?.length ?? 0) + (profile.recentMatches?.length ?? 0) > 0 ? (
+                <span className="team-tab-badge">
+                  {(profile.upcomingMatches?.length ?? 0) + (profile.recentMatches?.length ?? 0)}
+                </span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              className={`team-nav-tab ${activeTab === "squad" ? "active" : ""}`}
+              onClick={() => setActiveTab("squad")}
+            >
+              <span>Kadro & Sakatlık</span>
+              {players?.items?.length ? (
+                <span className="team-tab-badge">{players.items.length}</span>
+              ) : null}
+            </button>
+          </nav>
+
+          <div className="team-tab-viewport">
+            {activeTab === "overview" ? (
+              <div className="team-profile-grid">
+                <TeamProfileStanding standing={profile.standing} />
+                <TeamSeasonTelemetrySection seasonStatistics={profile.team.seasonStatistics} />
+                <TeamFormTrendChart profile={profile} />
+              </div>
+            ) : null}
+
+            {activeTab === "form" ? (
+              <div className="team-profile-grid">
+                <TeamProfileFormSummary formSummary={profile.formSummary} />
+                <TeamProfileGoalProfile goalProfile={profile.goalProfile} />
+                <TeamProfileDataCoverage coverage={profile.dataCoverage} />
+              </div>
+            ) : null}
+
+            {activeTab === "matches" ? (
+              <div className="team-profile-grid">
+                <TeamProfileUpcomingMatches matches={profile.upcomingMatches} navigate={navigate} />
+                <TeamProfileRecentMatches matches={profile.recentMatches} navigate={navigate} />
+              </div>
+            ) : null}
+
+            {activeTab === "squad" ? (
+              <div className="team-profile-grid">
+                <TeamSquadSection players={players?.items ?? []} />
+                <TeamProfileAvailability items={availability?.items ?? profile.playerAvailability ?? []} />
+              </div>
+            ) : null}
           </div>
         </>
       ) : null}
-    </>
+    </div>
   );
 }
 
@@ -3334,16 +3397,69 @@ export function TeamSeasonTelemetrySection({ seasonStatistics }: { seasonStatist
   );
 }
 
-export function TeamProfileHero({ profile, standing }: { profile: FootballTeamProfileResponse; standing: FootballTeamProfileResponse["standing"] }) {
+export function TeamProfileHero({
+  profile,
+  standing,
+  navigate
+}: {
+  profile: FootballTeamProfileResponse;
+  standing: FootballTeamProfileResponse["standing"];
+  navigate?: (path: string) => void;
+}) {
   const team = profile.team;
+  const recent = profile.recentMatches || [];
+  const overall = profile.formSummary?.overall;
+
   return (
     <header className="hero detail-hero team-profile-hero">
-      <div className="entity-title">
+      <div className="entity-title team-hero-entity">
         <TeamLogo name={team.name} logoUrl={team.logoUrl} size="lg" />
-        <div>
-          <p className="eyebrow">{team.primaryCompetition?.name ?? "Futbol takımı"}</p>
-          <h1>{team.name}</h1>
-          <p className="muted">{team.country ?? "Ülke bilgisi yok"}</p>
+        <div className="team-hero-info">
+          <div className="team-hero-eyebrow-row">
+            {team.primaryCompetition ? (
+              <button
+                type="button"
+                className="team-hero-comp-pill"
+                onClick={() => navigate?.(`/football/competitions/${team.primaryCompetition!.id}`)}
+              >
+                <span>{team.primaryCompetition.name}</span>
+              </button>
+            ) : (
+              <span className="eyebrow">Futbol takımı</span>
+            )}
+            {team.country ? (
+              <span className="team-hero-country-pill">{team.country}</span>
+            ) : (
+              <span className="muted">Ülke bilgisi yok</span>
+            )}
+          </div>
+          <h1 className="team-hero-name">{team.name}</h1>
+          {recent.length > 0 ? (
+            <div className="team-hero-quick-strip">
+              <span className="quick-label">Son Seri:</span>
+              <div className="team-hero-streak-pills">
+                {recent.slice(0, 5).map((m) => {
+                  const res = m.result ?? "D";
+                  const resClass = res === "W" ? "streak-win" : res === "L" ? "streak-loss" : "streak-draw";
+                  const resLabel = res === "W" ? "G" : res === "L" ? "M" : "B";
+                  return (
+                    <span
+                      key={m.matchId}
+                      className={`streak-dot ${resClass}`}
+                      title={`${m.opponent.name} (${m.homeAway === "home" ? "İç" : "Dış"}) ${m.fulltimeScore || ""}`}
+                    >
+                      {resLabel}
+                    </span>
+                  );
+                })}
+              </div>
+              {overall?.avgGoalsFor !== null && overall?.avgGoalsFor !== undefined ? (
+                <span className="quick-metric">
+                  <small className="muted">Gol Ort:</small> <strong>{overall.avgGoalsFor.toFixed(2)}</strong>
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
       {standing ? (
@@ -3453,9 +3569,15 @@ export function TeamProfileGoalProfile({ goalProfile }: { goalProfile: FootballT
   );
 }
 
-export function TeamProfileRecentMatches({ matches }: { matches: FootballTeamProfileRecentMatch[] }) {
+export function TeamProfileRecentMatches({
+  matches,
+  navigate
+}: {
+  matches: FootballTeamProfileRecentMatch[];
+  navigate?: (path: string) => void;
+}) {
   return (
-    <section className="panel">
+    <section className="panel team-matches-panel">
       <h2>Son Maçlar</h2>
       {matches.length === 0 ? <p className="muted">Son maç kaydı bulunmuyor.</p> : null}
       <div className="recent-matches-list">
@@ -3473,8 +3595,17 @@ export function TeamProfileRecentMatches({ matches }: { matches: FootballTeamPro
             </div>
             <div className="recent-match-meta">
               <span className="recent-match-homeaway">{match.homeAway === "home" ? "İç saha" : "Deplasman"}</span>
-              {match.fulltimeScore ? <span className="recent-match-score">{match.fulltimeScore}</span> : null}
-              {match.halftimeScore ? <span className="recent-match-halftime">İY {match.halftimeScore}</span> : null}
+              {match.fulltimeScore ? <span className="recent-match-score tabular-num">{match.fulltimeScore}</span> : null}
+              {match.halftimeScore ? <span className="recent-match-halftime tabular-num">İY {match.halftimeScore}</span> : null}
+              {navigate ? (
+                <button
+                  type="button"
+                  className="upcoming-match-link"
+                  onClick={() => navigate(`/football/analytics/${match.matchId}`)}
+                >
+                  Analiz
+                </button>
+              ) : null}
             </div>
           </article>
         ))}

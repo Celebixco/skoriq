@@ -776,13 +776,33 @@ export class FootballCatalogService {
     ]);
     const formSummary = mapTeamProfileFormSummary(formRows);
 
+    const seenRecentKeys = new Set<string>();
+    const deduplicatedRecentRows = recentMatches.filter((row) => {
+      const oppId = row.home_team_id === teamId ? row.away_team_id : row.home_team_id;
+      const dateStr = row.kickoff_at ? new Date(row.kickoff_at).toISOString().slice(0, 10) : "";
+      const key = `${dateStr}-${oppId}`;
+      if (seenRecentKeys.has(key)) return false;
+      seenRecentKeys.add(key);
+      return true;
+    });
+
+    const seenUpcomingKeys = new Set<string>();
+    const deduplicatedUpcomingRows = upcomingMatches.filter((row) => {
+      const oppId = row.home_team_id === teamId ? row.away_team_id : row.home_team_id;
+      const dateStr = row.kickoff_at ? new Date(row.kickoff_at).toISOString().slice(0, 10) : "";
+      const key = `${dateStr}-${oppId}`;
+      if (seenUpcomingKeys.has(key)) return false;
+      seenUpcomingKeys.add(key);
+      return true;
+    });
+
     return {
       team: mapTeamProfileIdentityRow(identity),
       standing: standing ? mapTeamProfileStandingRow(standing) : null,
       formSummary,
       goalProfile: mapTeamProfileGoalProfile(formSummary.overall),
-      recentMatches: recentMatches.map((row) => mapTeamProfileRecentMatchRow(row, teamId)),
-      upcomingMatches: upcomingMatches.map((row) => mapTeamProfileUpcomingMatchRow(row, teamId)),
+      recentMatches: deduplicatedRecentRows.map((row) => mapTeamProfileRecentMatchRow(row, teamId)),
+      upcomingMatches: deduplicatedUpcomingRows.map((row) => mapTeamProfileUpcomingMatchRow(row, teamId)),
       playerAvailability,
       dataCoverage: mapTeamProfileCoverageRow({
         row: coverage,
@@ -1375,33 +1395,48 @@ export class FootballCatalogService {
     return executeRows<TeamProfileMatchRow>(
       this.database,
       sql`
-        select
-          m.id as match_id,
-          c.name as competition,
-          m.scheduled_start_at as kickoff_at,
-          m.status,
-          home.id as home_team_id,
-          home.name as home_team,
-          home.logo_url as home_team_logo_url,
-          away.id as away_team_id,
-          away.name as away_team,
-          away.logo_url as away_team_logo_url,
-          s.home_score_fulltime,
-          s.away_score_fulltime,
-          s.home_score_current,
-          s.away_score_current,
-          s.home_score_halftime,
-          s.away_score_halftime,
-          null::text as feature_status
-        from matches m
-        inner join sports sp on sp.id = m.sport_id and sp.slug = 'football'
-        inner join competitions c on c.id = m.competition_id
-        inner join teams home on home.id = m.home_team_id
-        inner join teams away on away.id = m.away_team_id
-        left join football_match_scores s on s.match_id = m.id
-        where (m.home_team_id = ${teamId} or m.away_team_id = ${teamId})
-          and m.status in ('finished', 'after_extra_time', 'after_penalties')
-        order by m.scheduled_start_at desc, m.id asc
+        with ranked_recent as (
+          select distinct on (
+            coalesce(
+              m.metadata_json->>'sofascoreId',
+              m.scheduled_start_at::date::text || '-' || (case when m.home_team_id = ${teamId} then m.away_team_id::text else m.home_team_id::text end)
+            )
+          )
+            m.id as match_id,
+            c.name as competition,
+            m.scheduled_start_at as kickoff_at,
+            m.status,
+            home.id as home_team_id,
+            home.name as home_team,
+            home.logo_url as home_team_logo_url,
+            away.id as away_team_id,
+            away.name as away_team,
+            away.logo_url as away_team_logo_url,
+            s.home_score_fulltime,
+            s.away_score_fulltime,
+            s.home_score_current,
+            s.away_score_current,
+            s.home_score_halftime,
+            s.away_score_halftime,
+            null::text as feature_status
+          from matches m
+          inner join sports sp on sp.id = m.sport_id and sp.slug = 'football'
+          inner join competitions c on c.id = m.competition_id
+          inner join teams home on home.id = m.home_team_id
+          inner join teams away on away.id = m.away_team_id
+          left join football_match_scores s on s.match_id = m.id
+          where (m.home_team_id = ${teamId} or m.away_team_id = ${teamId})
+            and m.status in ('finished', 'after_extra_time', 'after_penalties')
+          order by
+            coalesce(
+              m.metadata_json->>'sofascoreId',
+              m.scheduled_start_at::date::text || '-' || (case when m.home_team_id = ${teamId} then m.away_team_id::text else m.home_team_id::text end)
+            ),
+            m.scheduled_start_at desc,
+            m.id asc
+        )
+        select * from ranked_recent
+        order by kickoff_at desc
         limit ${limit}
       `
     );
@@ -1411,35 +1446,50 @@ export class FootballCatalogService {
     return executeRows<TeamProfileMatchRow>(
       this.database,
       sql`
-        select
-          m.id as match_id,
-          c.name as competition,
-          m.scheduled_start_at as kickoff_at,
-          m.status,
-          home.id as home_team_id,
-          home.name as home_team,
-          home.logo_url as home_team_logo_url,
-          away.id as away_team_id,
-          away.name as away_team,
-          away.logo_url as away_team_logo_url,
-          null::integer as home_score_fulltime,
-          null::integer as away_score_fulltime,
-          null::integer as home_score_current,
-          null::integer as away_score_current,
-          null::integer as home_score_halftime,
-          null::integer as away_score_halftime,
-          f.feature_status
-        from matches m
-        inner join sports sp on sp.id = m.sport_id and sp.slug = 'football'
-        inner join competitions c on c.id = m.competition_id
-        inner join teams home on home.id = m.home_team_id
-        inner join teams away on away.id = m.away_team_id
-        left join football_match_prediction_features f on f.match_id = m.id
-          and f.form_window_size = 5
-          and f.h2h_window_size = 5
-        where (m.home_team_id = ${teamId} or m.away_team_id = ${teamId})
-          and m.status in ('scheduled', 'not_started')
-        order by m.scheduled_start_at asc, m.id asc
+        with ranked_upcoming as (
+          select distinct on (
+            coalesce(
+              m.metadata_json->>'sofascoreId',
+              m.scheduled_start_at::date::text || '-' || (case when m.home_team_id = ${teamId} then m.away_team_id::text else m.home_team_id::text end)
+            )
+          )
+            m.id as match_id,
+            c.name as competition,
+            m.scheduled_start_at as kickoff_at,
+            m.status,
+            home.id as home_team_id,
+            home.name as home_team,
+            home.logo_url as home_team_logo_url,
+            away.id as away_team_id,
+            away.name as away_team,
+            away.logo_url as away_team_logo_url,
+            null::integer as home_score_fulltime,
+            null::integer as away_score_fulltime,
+            null::integer as home_score_current,
+            null::integer as away_score_current,
+            null::integer as home_score_halftime,
+            null::integer as away_score_halftime,
+            f.feature_status
+          from matches m
+          inner join sports sp on sp.id = m.sport_id and sp.slug = 'football'
+          inner join competitions c on c.id = m.competition_id
+          inner join teams home on home.id = m.home_team_id
+          inner join teams away on away.id = m.away_team_id
+          left join football_match_prediction_features f on f.match_id = m.id
+            and f.form_window_size = 5
+            and f.h2h_window_size = 5
+          where (m.home_team_id = ${teamId} or m.away_team_id = ${teamId})
+            and m.status in ('scheduled', 'not_started')
+          order by
+            coalesce(
+              m.metadata_json->>'sofascoreId',
+              m.scheduled_start_at::date::text || '-' || (case when m.home_team_id = ${teamId} then m.away_team_id::text else m.home_team_id::text end)
+            ),
+            m.scheduled_start_at asc,
+            m.id asc
+        )
+        select * from ranked_upcoming
+        order by kickoff_at asc
         limit ${limit}
       `
     );
