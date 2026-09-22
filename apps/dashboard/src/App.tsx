@@ -3254,11 +3254,12 @@ function TeamDetailPage({ teamId, navigate }: { teamId: string; navigate: (path:
           <div className="team-profile-grid">
             <TeamProfileStanding standing={profile.standing} />
             <TeamSeasonTelemetrySection seasonStatistics={profile.team.seasonStatistics} />
+            <TeamFormTrendChart profile={profile} />
             <TeamProfileFormSummary formSummary={profile.formSummary} />
             <TeamProfileGoalProfile goalProfile={profile.goalProfile} />
             <TeamProfileRecentMatches matches={profile.recentMatches} />
             <TeamProfileUpcomingMatches matches={profile.upcomingMatches} navigate={navigate} />
-            <TeamProfilePlayers players={players?.items ?? []} />
+            <TeamSquadSection players={players?.items ?? []} />
             <TeamProfileAvailability items={availability?.items ?? profile.playerAvailability ?? []} />
             <TeamProfileDataCoverage coverage={profile.dataCoverage} />
           </div>
@@ -3516,30 +3517,328 @@ export function TeamProfileUpcomingMatches({ matches, navigate }: { matches: Foo
   );
 }
 
-export function TeamProfilePlayers({ players }: { players: FootballTeamPlayersResponse["items"] }) {
+export function TeamFormTrendChart({ profile }: { profile: FootballTeamProfileResponse }) {
+  const matches = profile.recentMatches || [];
+  const formSummary = profile.formSummary;
+
+  if (matches.length === 0 && !formSummary?.overall) {
+    return null;
+  }
+
+  const chronological = [...matches].reverse();
+  const overall = formSummary?.overall;
+  const home = formSummary?.home;
+  const away = formSummary?.away;
+
+  let rollingPts = 0;
+  const trendPoints = chronological.map((m) => {
+    const pts = m.result === "W" ? 3 : m.result === "D" ? 1 : 0;
+    rollingPts += pts;
+    return {
+      match: m,
+      pts,
+      rollingPts
+    };
+  });
+
+  const svgWidth = 600;
+  const svgHeight = 160;
+  const paddingX = 35;
+  const paddingY = 25;
+  const chartW = svgWidth - paddingX * 2;
+  const chartH = svgHeight - paddingY * 2;
+
+  const maxPoints = Math.max(1, ...trendPoints.map((p) => p.rollingPts));
+  const pointsCoords = trendPoints.map((p, idx) => {
+    const x = trendPoints.length > 1 ? paddingX + (idx / (trendPoints.length - 1)) * chartW : svgWidth / 2;
+    const y = svgHeight - paddingY - (p.rollingPts / maxPoints) * chartH;
+    return { x, y, ...p };
+  });
+
+  let pathD = "";
+  if (pointsCoords.length > 0 && pointsCoords[0]) {
+    pathD = `M ${pointsCoords[0].x} ${pointsCoords[0].y}`;
+    for (let i = 1; i < pointsCoords.length; i++) {
+      const prev = pointsCoords[i - 1];
+      const curr = pointsCoords[i];
+      if (prev && curr) {
+        const midX = (prev.x + curr.x) / 2;
+        pathD += ` C ${midX} ${prev.y}, ${midX} ${curr.y}, ${curr.x} ${curr.y}`;
+      }
+    }
+  }
+
+  const firstPt = pointsCoords[0];
+  const lastPt = pointsCoords[pointsCoords.length - 1];
+  const areaD = pointsCoords.length > 0 && firstPt && lastPt
+    ? `${pathD} L ${lastPt.x} ${svgHeight - paddingY} L ${firstPt.x} ${svgHeight - paddingY} Z`
+    : "";
+
   return (
-    <section className="panel">
-      <h2>Oyuncular</h2>
-      {players.length === 0 ? <p className="muted">Kadro verisi yok.</p> : null}
-      <div className="recent-matches-list">
-        {players.map((player) => (
-          <article className="recent-match-row" key={player.playerId}>
-            <div className="recent-match-opponent">
-              <div>
-                <strong>{player.name}</strong>
-                <span className="muted">
-                  {player.position ?? "Pozisyon yok"}{player.shirtNumber !== null ? ` · #${player.shirtNumber}` : ""}
-                </span>
+    <section className="panel team-form-analytics-panel">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">Form Grafikleri & Telemetri</p>
+          <h2>Takım Formu & Momentum Trendi</h2>
+        </div>
+        {overall ? (
+          <div className="form-streak-badge">
+            <span>Son {overall.matchesPlayed} Maç: </span>
+            <strong className="text-emerald">{overall.wins}G</strong>
+            <strong className="text-muted">{overall.draws}B</strong>
+            <strong className="text-rose">{overall.losses}M</strong>
+            <span className="pill pill-cyan">{overall.points} Puan</span>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="form-results-strip">
+        {matches.map((m) => {
+          const res = m.result ?? "D";
+          const resClass = res === "W" ? "res-win" : res === "L" ? "res-loss" : "res-draw";
+          const resLabel = res === "W" ? "G" : res === "L" ? "M" : "B";
+          return (
+            <div className={`form-result-node ${resClass}`} key={m.matchId}>
+              <div className="form-result-pill" title={`${m.opponent.name} (${m.homeAway === "home" ? "İç" : "Dış"}) ${m.fulltimeScore || ""}`}>
+                {resLabel}
+              </div>
+              <div className="form-result-details">
+                <TeamLogo name={m.opponent.name} logoUrl={m.opponent.logoUrl} size="sm" />
+                <span className="form-opponent-name">{m.opponent.name}</span>
+                <span className="form-score">{m.fulltimeScore ?? "—"}</span>
+                <span className="form-venue">{m.homeAway === "home" ? "İç" : "Dış"}</span>
               </div>
             </div>
-            <div className="recent-match-meta">
-              <span className={`pill ${player.activeMembership ? "" : "pill-muted"}`}>{player.activeMembership ? "Aktif" : "Pasif"}</span>
-            </div>
-          </article>
-        ))}
+          );
+        })}
+      </div>
+
+      {trendPoints.length > 1 ? (
+        <div className="form-chart-wrapper">
+          <div className="form-chart-header">
+            <span>Kümülatif Puan Momentumu</span>
+            <small className="muted">Zaman Çizelgesi ({trendPoints.length} Karşılaşma)</small>
+          </div>
+          <svg className="form-momentum-svg" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="formMomentumGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
+            <line x1={paddingX} y1={paddingY} x2={svgWidth - paddingX} y2={paddingY} stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+            <line x1={paddingX} y1={svgHeight / 2} x2={svgWidth - paddingX} y2={svgHeight / 2} stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+            <line x1={paddingX} y1={svgHeight - paddingY} x2={svgWidth - paddingX} y2={svgHeight - paddingY} stroke="rgba(255,255,255,0.12)" />
+
+            <path d={areaD} fill="url(#formMomentumGrad)" />
+            <path d={pathD} fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+
+            {pointsCoords.map((pt, idx) => {
+              const color = pt.match.result === "W" ? "#10b981" : pt.match.result === "L" ? "#ef4444" : "#94a3b8";
+              return (
+                <g key={idx}>
+                  <circle cx={pt.x} cy={pt.y} r="5" fill="#0f172a" stroke={color} strokeWidth="2.5" />
+                  <circle cx={pt.x} cy={pt.y} r="2" fill={color} />
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      ) : null}
+
+      {home && away ? (
+        <div className="home-away-split-matrix">
+          <h3>İç Saha vs Dış Saha Form Ayrımı</h3>
+          <div className="split-grid">
+            <SplitMetricRow
+              label="Galibiyet Oranı"
+              homeVal={home.matchesPlayed > 0 ? (home.wins / home.matchesPlayed) * 100 : 0}
+              awayVal={away.matchesPlayed > 0 ? (away.wins / away.matchesPlayed) * 100 : 0}
+              unit="%"
+            />
+            <SplitMetricRow
+              label="Maç Başına Gol"
+              homeVal={home.avgGoalsFor ?? 0}
+              awayVal={away.avgGoalsFor ?? 0}
+              unit=""
+            />
+            <SplitMetricRow
+              label="Kalesini Kapatma (CS)"
+              homeVal={home.concededRate !== null ? Math.max(0, 100 - home.concededRate) : 0}
+              awayVal={away.concededRate !== null ? Math.max(0, 100 - away.concededRate) : 0}
+              unit="%"
+            />
+            <SplitMetricRow
+              label="2.5 Üst Oranı"
+              homeVal={home.over25Rate ?? 0}
+              awayVal={away.over25Rate ?? 0}
+              unit="%"
+            />
+            <SplitMetricRow
+              label="Karşılıklı Gol (KG)"
+              homeVal={home.bothTeamsToScoreRate ?? 0}
+              awayVal={away.bothTeamsToScoreRate ?? 0}
+              unit="%"
+            />
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function SplitMetricRow({ label, homeVal, awayVal, unit }: { label: string; homeVal: number; awayVal: number; unit: string }) {
+  const total = (homeVal + awayVal) || 1;
+  const homePercent = Math.round((homeVal / total) * 100);
+  const awayPercent = 100 - homePercent;
+
+  return (
+    <div className="split-metric-row">
+      <div className="split-metric-label">
+        <span>{label}</span>
+      </div>
+      <div className="split-metric-comparison">
+        <div className="split-val split-val-home">
+          <strong>{typeof homeVal === "number" ? homeVal.toFixed(unit ? 0 : 2) : "—"}{unit}</strong>
+          <small>İç Saha</small>
+        </div>
+        <div className="split-dual-bar">
+          <div className="split-bar-fill home-fill" style={{ width: `${homePercent}%` }} />
+          <div className="split-bar-fill away-fill" style={{ width: `${awayPercent}%` }} />
+        </div>
+        <div className="split-val split-val-away">
+          <strong>{typeof awayVal === "number" ? awayVal.toFixed(unit ? 0 : 2) : "—"}{unit}</strong>
+          <small>Dış Saha</small>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function TeamSquadSection({ players }: { players: FootballTeamPlayersResponse["items"] }) {
+  const [selectedPos, setSelectedPos] = useState<string>("ALL");
+
+  if (!players || players.length === 0) {
+    return (
+      <section className="panel">
+        <h2>Takım Kadrosu</h2>
+        <p className="muted">Kadro verisi bulunmuyor.</p>
+      </section>
+    );
+  }
+
+  const posMap: Record<string, string> = {
+    G: "Kaleci",
+    D: "Defans",
+    M: "Orta Saha",
+    F: "Forvet"
+  };
+
+  const filtered = selectedPos === "ALL"
+    ? players
+    : players.filter((p) => p.position === selectedPos);
+
+  const counts = {
+    ALL: players.length,
+    G: players.filter((p) => p.position === "G").length,
+    D: players.filter((p) => p.position === "D").length,
+    M: players.filter((p) => p.position === "M").length,
+    F: players.filter((p) => p.position === "F").length
+  };
+
+  return (
+    <section className="panel team-squad-panel">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">Resmi Kadro & Roster</p>
+          <h2>Takım Kadrosu</h2>
+        </div>
+        <span className="live-telemetry-badge">{players.length} Futbolcu</span>
+      </div>
+
+      <div className="squad-filter-tabs">
+        <button
+          type="button"
+          className={`squad-tab-btn ${selectedPos === "ALL" ? "active" : ""}`}
+          onClick={() => setSelectedPos("ALL")}
+        >
+          Tümü ({counts.ALL})
+        </button>
+        <button
+          type="button"
+          className={`squad-tab-btn ${selectedPos === "G" ? "active" : ""}`}
+          onClick={() => setSelectedPos("G")}
+        >
+          Kaleciler ({counts.G})
+        </button>
+        <button
+          type="button"
+          className={`squad-tab-btn ${selectedPos === "D" ? "active" : ""}`}
+          onClick={() => setSelectedPos("D")}
+        >
+          Defans ({counts.D})
+        </button>
+        <button
+          type="button"
+          className={`squad-tab-btn ${selectedPos === "M" ? "active" : ""}`}
+          onClick={() => setSelectedPos("M")}
+        >
+          Orta Saha ({counts.M})
+        </button>
+        <button
+          type="button"
+          className={`squad-tab-btn ${selectedPos === "F" ? "active" : ""}`}
+          onClick={() => setSelectedPos("F")}
+        >
+          Forvet ({counts.F})
+        </button>
+      </div>
+
+      <div className="squad-grid">
+        {filtered.map((player) => {
+          const initials = player.name
+            .split(" ")
+            .map((n) => n[0])
+            .slice(0, 2)
+            .join("")
+            .toUpperCase();
+          const posLabel = player.position ? posMap[player.position] || player.position : "Bilinmiyor";
+
+          return (
+            <article className="squad-player-card" key={player.playerId}>
+              <div className="squad-player-avatar-wrap">
+                {player.photoUrl ? (
+                  <img
+                    className="squad-player-avatar"
+                    src={player.photoUrl}
+                    alt={player.name}
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = "none";
+                    }}
+                  />
+                ) : null}
+                <div className="squad-player-initials">{initials}</div>
+                {player.shirtNumber !== null ? (
+                  <span className="squad-jersey-badge">#{player.shirtNumber}</span>
+                ) : null}
+              </div>
+              <div className="squad-player-info">
+                <strong>{player.name}</strong>
+                <span className={`squad-pos-tag pos-${player.position?.toLowerCase() || "unknown"}`}>
+                  {posLabel}
+                </span>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
+}
+
+export function TeamProfilePlayers({ players }: { players: FootballTeamPlayersResponse["items"] }) {
+  return <TeamSquadSection players={players} />;
 }
 
 export function TeamProfileAvailability({ items }: { items: FootballTeamProfileResponse["playerAvailability"] }) {

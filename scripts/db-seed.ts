@@ -766,10 +766,240 @@ export async function seedInitialData(pool: pg.Pool) {
   console.log("INGESTION SUMMARY:");
   console.log(`  Total Competitions Ingested: ${catalog.length}`);
   console.log(`  Total Authentic Teams Ingested: ${totalTeamsIngested}`);
+  console.log(`  Total Squad Players Ingested: ${totalPlayersIngested}`);
   console.log(`  Total Standings Rows Ingested: ${totalStandingsIngested}`);
   console.log(`  Total Matches Ingested: ${totalMatchesIngested}`);
   console.log(`  Total Team Match Telemetry Statistics Rows Ingested: ${totalStatsIngested}`);
   console.log("=================================================");
+}
+
+async function generateTeamFormFeatures(pool: pg.Pool) {
+  console.log("Generating rolling form features for all football teams...");
+  const teamsRes = await pool.query(`
+    SELECT DISTINCT t.id, t.name
+    FROM teams t
+    INNER JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
+    WHERE m.status IN ('finished', 'after_extra_time', 'after_penalties')
+  `);
+
+  let featuresCreated = 0;
+  for (const team of teamsRes.rows) {
+    const matchesRes = await pool.query(`
+      SELECT
+        m.id as match_id,
+        m.competition_id,
+        m.season_id,
+        m.scheduled_start_at,
+        (m.home_team_id = $1) as is_home,
+        CASE WHEN m.home_team_id = $1 THEN s.home_score_fulltime ELSE s.away_score_fulltime END as scored,
+        CASE WHEN m.home_team_id = $1 THEN s.away_score_fulltime ELSE s.home_score_fulltime END as conceded,
+        CASE WHEN m.home_team_id = $1 THEN s.home_score_halftime ELSE s.away_score_halftime END as ht_scored,
+        CASE WHEN m.home_team_id = $1 THEN s.away_score_halftime ELSE s.home_score_halftime END as ht_conceded,
+        stat.expected_goals,
+        stat.possession_percent,
+        stat.shots_total,
+        stat.shots_on_target,
+        stat.corners,
+        stat.fouls,
+        stat.yellow_cards,
+        stat.red_cards
+      FROM matches m
+      INNER JOIN football_match_scores s ON s.match_id = m.id
+      LEFT JOIN football_match_team_statistics stat ON stat.match_id = m.id AND stat.team_id = $1
+      WHERE (m.home_team_id = $1 OR m.away_team_id = $1)
+        AND m.status IN ('finished', 'after_extra_time', 'after_penalties')
+      ORDER BY m.scheduled_start_at DESC
+    `, [team.id]);
+
+    const allMatches = matchesRes.rows;
+    if (allMatches.length === 0) continue;
+
+    const scopes: Array<"overall" | "home" | "away"> = ["overall", "home", "away"];
+    const windows = [5, 10];
+
+    for (const scope of scopes) {
+      let filtered = allMatches;
+      if (scope === "home") filtered = allMatches.filter((m: any) => m.is_home);
+      else if (scope === "away") filtered = allMatches.filter((m: any) => !m.is_home);
+
+      if (filtered.length === 0) continue;
+
+      for (const w of windows) {
+        const slice = filtered.slice(0, w);
+        const count = slice.length;
+        if (count === 0) continue;
+
+        let wins = 0;
+        let draws = 0;
+        let losses = 0;
+        let goalsFor = 0;
+        let goalsAgainst = 0;
+        let cleanSheets = 0;
+        let failedToScore = 0;
+        let bothTeamsScored = 0;
+        let over05 = 0;
+        let over15 = 0;
+        let over25 = 0;
+        let under25 = 0;
+        let scoredMatches = 0;
+        let concededMatches = 0;
+        let teamOver05 = 0;
+        let teamOver15 = 0;
+        let fhOver05 = 0;
+        let fhGoalsFor = 0;
+        let fhGoalsAgainst = 0;
+
+        let totalShots = 0;
+        let shotsCount = 0;
+        let totalShotsOnTarget = 0;
+        let sotCount = 0;
+        let totalPossession = 0;
+        let possCount = 0;
+        let totalCorners = 0;
+        let cornCount = 0;
+        let totalXg = 0;
+        let xgCount = 0;
+
+        for (const m of slice) {
+          const sc = Number(m.scored ?? 0);
+          const con = Number(m.conceded ?? 0);
+          const totalMatchGoals = sc + con;
+
+          if (sc > con) wins++;
+          else if (sc === con) draws++;
+          else losses++;
+
+          goalsFor += sc;
+          goalsAgainst += con;
+
+          if (con === 0) cleanSheets++;
+          if (sc === 0) failedToScore++;
+          if (sc > 0 && con > 0) bothTeamsScored++;
+
+          if (totalMatchGoals > 0.5) over05++;
+          if (totalMatchGoals > 1.5) over15++;
+          if (totalMatchGoals > 2.5) over25++;
+          if (totalMatchGoals < 2.5) under25++;
+
+          if (sc > 0) { scoredMatches++; teamOver05++; }
+          if (sc > 1) teamOver15++;
+          if (con > 0) concededMatches++;
+
+          const htSc = Number(m.ht_scored ?? 0);
+          const htCon = Number(m.ht_conceded ?? 0);
+          if (htSc + htCon > 0.5) fhOver05++;
+          fhGoalsFor += htSc;
+          fhGoalsAgainst += htCon;
+
+          if (m.shots_total !== null && m.shots_total !== undefined) { totalShots += Number(m.shots_total); shotsCount++; }
+          if (m.shots_on_target !== null && m.shots_on_target !== undefined) { totalShotsOnTarget += Number(m.shots_on_target); sotCount++; }
+          if (m.possession_percent !== null && m.possession_percent !== undefined) { totalPossession += Number(m.possession_percent); possCount++; }
+          if (m.corners !== null && m.corners !== undefined) { totalCorners += Number(m.corners); cornCount++; }
+          if (m.expected_goals !== null && m.expected_goals !== undefined) { totalXg += Number(m.expected_goals); xgCount++; }
+        }
+
+        const points = wins * 3 + draws;
+        const avgGoalsFor = Number((goalsFor / count).toFixed(3));
+        const avgGoalsAgainst = Number((goalsAgainst / count).toFixed(3));
+        const cleanSheetRate = Number(((cleanSheets / count) * 100).toFixed(2));
+        const failedToScoreRate = Number(((failedToScore / count) * 100).toFixed(2));
+        const bothTeamsToScoreRate = Number(((bothTeamsScored / count) * 100).toFixed(2));
+        const over05Rate = Number(((over05 / count) * 100).toFixed(2));
+        const over15Rate = Number(((over15 / count) * 100).toFixed(2));
+        const over25Rate = Number(((over25 / count) * 100).toFixed(2));
+        const under25Rate = Number(((under25 / count) * 100).toFixed(2));
+        const scoredRate = Number(((scoredMatches / count) * 100).toFixed(2));
+        const concededRate = Number(((concededMatches / count) * 100).toFixed(2));
+        const teamOver05Rate = Number(((teamOver05 / count) * 100).toFixed(2));
+        const teamOver15Rate = Number(((teamOver15 / count) * 100).toFixed(2));
+        const firstHalfOver05Rate = Number(((fhOver05 / count) * 100).toFixed(2));
+        const firstHalfAvgGoalsFor = Number((fhGoalsFor / count).toFixed(3));
+        const firstHalfAvgGoalsAgainst = Number((fhGoalsAgainst / count).toFixed(3));
+
+        const avgShots = shotsCount > 0 ? Number((totalShots / shotsCount).toFixed(2)) : null;
+        const avgShotsOnTarget = sotCount > 0 ? Number((totalShotsOnTarget / sotCount).toFixed(2)) : null;
+        const avgPossessionPercent = possCount > 0 ? Number((totalPossession / possCount).toFixed(1)) : null;
+        const avgCorners = cornCount > 0 ? Number((totalCorners / cornCount).toFixed(2)) : null;
+        const avgExpectedGoals = xgCount > 0 ? Number((totalXg / xgCount).toFixed(3)) : null;
+
+        const latestMatch = slice[0];
+        const asOfDate = latestMatch.scheduled_start_at || new Date();
+        const asOfMatchId = null;
+        const compId = latestMatch.competition_id;
+        const seasonId = latestMatch.season_id;
+
+        await pool.query(`
+          INSERT INTO football_team_form_features (
+            team_id, competition_id, season_id, as_of_match_id, as_of_date,
+            window_size, scope, matches_played, wins, draws, losses, points,
+            goals_for, goals_against, goal_difference,
+            avg_goals_for, avg_goals_against, clean_sheet_rate, failed_to_score_rate,
+            both_teams_to_score_rate, over_0_5_rate, over_1_5_rate, over_2_5_rate, under_2_5_rate,
+            scored_rate, conceded_rate, team_over_0_5_rate, team_over_1_5_rate,
+            first_half_over_0_5_rate, first_half_avg_goals_for, first_half_avg_goals_against,
+            avg_shots, avg_shots_on_target, avg_possession_percent, avg_corners, avg_expected_goals,
+            sample_size, coverage_score, metadata_json
+          )
+          VALUES (
+            $1, $2, $3, $4, $5,
+            $6, $7, $8, $9, $10, $11, $12,
+            $13, $14, $15,
+            $16, $17, $18, $19,
+            $20, $21, $22, $23, $24,
+            $25, $26, $27, $28,
+            $29, $30, $31,
+            $32, $33, $34, $35, $36,
+            $37, 100, '{}'
+          )
+          ON CONFLICT ON CONSTRAINT "football_team_form_features_uidx" DO UPDATE SET
+            matches_played = EXCLUDED.matches_played,
+            wins = EXCLUDED.wins,
+            draws = EXCLUDED.draws,
+            losses = EXCLUDED.losses,
+            points = EXCLUDED.points,
+            goals_for = EXCLUDED.goals_for,
+            goals_against = EXCLUDED.goals_against,
+            goal_difference = EXCLUDED.goal_difference,
+            avg_goals_for = EXCLUDED.avg_goals_for,
+            avg_goals_against = EXCLUDED.avg_goals_against,
+            clean_sheet_rate = EXCLUDED.clean_sheet_rate,
+            failed_to_score_rate = EXCLUDED.failed_to_score_rate,
+            both_teams_to_score_rate = EXCLUDED.both_teams_to_score_rate,
+            over_0_5_rate = EXCLUDED.over_0_5_rate,
+            over_1_5_rate = EXCLUDED.over_1_5_rate,
+            over_2_5_rate = EXCLUDED.over_2_5_rate,
+            under_2_5_rate = EXCLUDED.under_2_5_rate,
+            scored_rate = EXCLUDED.scored_rate,
+            conceded_rate = EXCLUDED.conceded_rate,
+            team_over_0_5_rate = EXCLUDED.team_over_0_5_rate,
+            team_over_1_5_rate = EXCLUDED.team_over_1_5_rate,
+            first_half_over_0_5_rate = EXCLUDED.first_half_over_0_5_rate,
+            first_half_avg_goals_for = EXCLUDED.first_half_avg_goals_for,
+            first_half_avg_goals_against = EXCLUDED.first_half_avg_goals_against,
+            avg_shots = EXCLUDED.avg_shots,
+            avg_shots_on_target = EXCLUDED.avg_shots_on_target,
+            avg_possession_percent = EXCLUDED.avg_possession_percent,
+            avg_corners = EXCLUDED.avg_corners,
+            avg_expected_goals = EXCLUDED.avg_expected_goals,
+            sample_size = EXCLUDED.sample_size,
+            coverage_score = 100,
+            updated_at = NOW();
+        `, [
+          team.id, compId, seasonId, asOfMatchId, asOfDate,
+          w, scope, count, wins, draws, losses, points,
+          goalsFor, goalsAgainst, goalsFor - goalsAgainst,
+          avgGoalsFor, avgGoalsAgainst, cleanSheetRate, failedToScoreRate,
+          bothTeamsToScoreRate, over05Rate, over15Rate, over25Rate, under25Rate,
+          scoredRate, concededRate, teamOver05Rate, teamOver15Rate,
+          firstHalfOver05Rate, firstHalfAvgGoalsFor, firstHalfAvgGoalsAgainst,
+          avgShots, avgShotsOnTarget, avgPossessionPercent, avgCorners, avgExpectedGoals,
+          count
+        ]);
+        featuresCreated++;
+      }
+    }
+  }
+  console.log(`Team form features generation complete! (${featuresCreated} feature rows written)`);
 }
 
 async function main() {

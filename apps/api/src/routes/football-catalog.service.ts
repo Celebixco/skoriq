@@ -1366,8 +1366,7 @@ export class FootballCatalogService {
         from football_team_form_features f
         where f.team_id = ${teamId}
           and f.window_size = 5
-          and f.as_of_match_id is null
-        order by f.scope, ${competitionPreference}, f.as_of_date desc, f.updated_at desc
+        order by f.scope, ${competitionPreference}, (f.as_of_match_id is null) desc, f.as_of_date desc, f.updated_at desc
       `
     );
   }
