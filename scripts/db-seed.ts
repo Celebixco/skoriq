@@ -45,9 +45,9 @@ export async function seedInitialData(pool: pg.Pool) {
     countryMap.set(c.code, cid);
 
     await pool.query(`
-      INSERT INTO provider_mappings (entity_type, provider_name, provider_entity_id, internal_entity_id)
-      VALUES ('country', 'apifootball-com', $1, $2)
-      ON CONFLICT (provider_name, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
+      INSERT INTO provider_mappings (provider, entity_type, provider_entity_id, internal_entity_id, internal_entity_type)
+      VALUES ('apifootball-com', 'country', $1, $2, 'country')
+      ON CONFLICT (provider, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
     `, [c.providerId, cid]);
   }
   console.log("Countries & provider mappings ready.");
@@ -76,9 +76,9 @@ export async function seedInitialData(pool: pg.Pool) {
     compMap.set(comp.slug, compId);
 
     await pool.query(`
-      INSERT INTO provider_mappings (entity_type, provider_name, provider_entity_id, internal_entity_id)
-      VALUES ('competition', 'apifootball-com', $1, $2)
-      ON CONFLICT (provider_name, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
+      INSERT INTO provider_mappings (provider, entity_type, provider_entity_id, internal_entity_id, internal_entity_type)
+      VALUES ('apifootball-com', 'competition', $1, $2, 'competition')
+      ON CONFLICT (provider, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
     `, [comp.providerId, compId]);
 
     // Ensure Season 2025/2026
@@ -154,9 +154,9 @@ export async function seedInitialData(pool: pg.Pool) {
     teamMap.set(t.slug, tid);
 
     await pool.query(`
-      INSERT INTO provider_mappings (entity_type, provider_name, provider_entity_id, internal_entity_id)
-      VALUES ('team', 'apifootball-com', $1, $2)
-      ON CONFLICT (provider_name, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
+      INSERT INTO provider_mappings (provider, entity_type, provider_entity_id, internal_entity_id, internal_entity_type)
+      VALUES ('apifootball-com', 'team', $1, $2, 'team')
+      ON CONFLICT (provider, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
     `, [t.providerTeamId, tid]);
   }
   console.log("Teams & provider mappings ready.");
@@ -192,7 +192,7 @@ export async function seedInitialData(pool: pg.Pool) {
         goals_for, goals_against, goal_difference, points, form_string, status
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'active')
-      ON CONFLICT (competition_id, season_id, team_id) DO UPDATE
+      ON CONFLICT ON CONSTRAINT "football_standings_competition_season_team_uidx" DO UPDATE
       SET position = EXCLUDED.position, played = EXCLUDED.played, wins = EXCLUDED.wins,
           draws = EXCLUDED.draws, losses = EXCLUDED.losses, goals_for = EXCLUDED.goals_for,
           goals_against = EXCLUDED.goals_against, goal_difference = EXCLUDED.goal_difference,
@@ -207,7 +207,7 @@ export async function seedInitialData(pool: pg.Pool) {
     homeTeamSlug: string;
     awayTeamSlug: string;
     round: string;
-    dateOffsetDays: number; // negative = past (finished), positive = future (scheduled)
+    dateOffsetDays: number;
     homeScore?: number;
     awayScore?: number;
     homeHt?: number;
@@ -274,6 +274,7 @@ export async function seedInitialData(pool: pg.Pool) {
     if (!compId || !seasonId || !homeTeamId || !awayTeamId) continue;
 
     const matchDate = new Date(now.getTime() + m.dateOffsetDays * 24 * 60 * 60 * 1000);
+    matchDate.setMinutes(0, 0, 0);
     const isFinished = m.dateOffsetDays < 0;
     const status = isFinished ? "finished" : "scheduled";
 
@@ -289,7 +290,7 @@ export async function seedInitialData(pool: pg.Pool) {
         scheduled_start_at, status, venue, winner_team_id
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      ON CONFLICT (competition_id, season_id, home_team_id, away_team_id, scheduled_start_at) DO UPDATE
+      ON CONFLICT ON CONSTRAINT "matches_natural_uidx" DO UPDATE
       SET status = EXCLUDED.status, venue = EXCLUDED.venue, winner_team_id = EXCLUDED.winner_team_id
       RETURNING id;
     `, [sportId, compId, seasonId, m.round, homeTeamId, awayTeamId, matchDate, status, m.venue, winnerTeamId]);
