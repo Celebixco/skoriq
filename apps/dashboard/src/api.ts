@@ -12,6 +12,7 @@ import type {
   FootballCountrySummary,
   FootballMatchPredictionDraftsResponse,
   FootballMatchLineupsResponse,
+  FootballMatchStatisticsResponse,
   FootballMemberPredictionPreviewResponse,
   FootballMatchPublicEligibilityResponse,
   FootballMatchPredictionSettlementsResponse,
@@ -194,6 +195,10 @@ export async function fetchFootballMemberPredictionPreview(matchId: string): Pro
 
 export async function fetchFootballMatchLineups(matchId: string): Promise<FootballMatchLineupsResponse> {
   return requestJson<FootballMatchLineupsResponse>(`/football/matches/${encodeURIComponent(matchId)}/lineups`);
+}
+
+export async function fetchFootballMatchStatistics(matchId: string): Promise<FootballMatchStatisticsResponse> {
+  return requestJson<FootballMatchStatisticsResponse>(`/football/matches/${encodeURIComponent(matchId)}/statistics`);
 }
 
 export async function fetchFootballMatchPlayerAvailability(matchId: string): Promise<{ match: { id: string }; items: FootballTeamProfileResponse["playerAvailability"] }> {

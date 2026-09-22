@@ -678,6 +678,7 @@ export interface FootballTeamProfileResponse {
       name: string;
       country: string | null;
     } | null;
+    seasonStatistics?: Record<string, unknown> | null;
   };
   standing: FootballTeamProfileStanding | null;
   formSummary: {
@@ -732,6 +733,55 @@ export interface FootballMatchLineupsResponse {
     substitutes: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
     unavailable: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
   }>;
+}
+
+export interface FootballMatchTeamTelemetryItem {
+  teamId: string;
+  teamName: string;
+  logoUrl: string | null;
+  isHome: boolean;
+  possessionPercent: number | null;
+  shotsTotal: number | null;
+  shotsOnTarget: number | null;
+  shotsOffTarget: number | null;
+  blockedShots: number | null;
+  corners: number | null;
+  fouls: number | null;
+  yellowCards: number | null;
+  redCards: number | null;
+  offsides: number | null;
+  goalkeeperSaves: number | null;
+  passes: number | null;
+  accuratePasses: number | null;
+  passAccuracyPercent: number | null;
+  bigChances: number | null;
+  bigChancesMissed: number | null;
+  expectedGoals: number | null;
+  expectedAssists: number | null;
+  attacks: number | null;
+  dangerousAttacks: number | null;
+  hitWoodwork: number | null;
+  tackles: number | null;
+  interceptions: number | null;
+  clearances: number | null;
+  duelsWon: number | null;
+  aerialDuelsWon: number | null;
+}
+
+export interface FootballMatchStatisticsResponse {
+  match: {
+    id: string;
+    competition: string;
+    kickoffAt: string;
+    status: string;
+    homeScore: number | null;
+    awayScore: number | null;
+    homeTeam: TeamSummary;
+    awayTeam: TeamSummary;
+  };
+  hasStatistics: boolean;
+  home: FootballMatchTeamTelemetryItem | null;
+  away: FootballMatchTeamTelemetryItem | null;
 }
 
 export interface FootballTeamProfileStanding {

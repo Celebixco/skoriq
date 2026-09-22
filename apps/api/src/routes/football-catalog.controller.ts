@@ -93,6 +93,12 @@ export class FootballCatalogController {
     validateUuid("matchId", matchId);
     return this.catalogService.getMatchLineups(matchId);
   }
+
+  @Get("matches/:matchId/statistics")
+  async getFootballMatchStatistics(@Param("matchId") matchId: string) {
+    validateUuid("matchId", matchId);
+    return this.catalogService.getMatchStatistics(matchId);
+  }
 }
 
 export function parseTeamsQuery(query: FootballTeamsQuery): FootballTeamsFilters {

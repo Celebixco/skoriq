@@ -26,24 +26,12 @@ services:
       timeout: 5s
       retries: 5
 
-  db-migrate:
-    build:
-      context: ../..
-      dockerfile: Dockerfile
-    restart: "no"
-    command: ["npx", "tsx", "scripts/db-migrate.ts"]
-    environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres_secure_password}@postgres:5432/${POSTGRES_DB:-sports_data}
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   api:
     build:
       context: ../..
       dockerfile: Dockerfile
     restart: unless-stopped
-    command: ["node", "apps/api/dist/main.js"]
+    command: ["sh", "-c", "npx tsx scripts/db-migrate.ts && node apps/api/dist/main.js"]
     environment:
       NODE_ENV: production
       API_PORT: 3000
@@ -68,8 +56,6 @@ services:
         condition: service_healthy
       dragonfly:
         condition: service_healthy
-      db-migrate:
-        condition: service_completed_successfully
 
   dashboard:
     build:
@@ -103,8 +89,6 @@ services:
         condition: service_healthy
       dragonfly:
         condition: service_healthy
-      db-migrate:
-        condition: service_completed_successfully
 
   scheduler:
     build:
@@ -125,8 +109,6 @@ services:
         condition: service_healthy
       dragonfly:
         condition: service_healthy
-      db-migrate:
-        condition: service_completed_successfully
 
 volumes:
   postgres_data:

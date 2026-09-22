@@ -7708,3 +7708,191 @@ p {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   SofaScore Telemetry & Match Statistics Styling
+   ========================================================================== */
+
+.match-telemetry-panel {
+  margin-top: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.75rem;
+  padding: clamp(1.2rem, 2.5vw, 1.75rem);
+}
+
+.live-telemetry-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--green);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.telemetry-key-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin: 1.5rem 0 2rem;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.6rem;
+}
+
+.telemetry-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.telemetry-bar-item.highlight {
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.5rem;
+  background: rgba(56, 189, 248, 0.05);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+}
+
+.telemetry-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.telemetry-bar-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.telemetry-val-home {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--cyan, #38bdf8);
+}
+
+.telemetry-val-away {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--amber, #f59e0b);
+}
+
+.telemetry-dual-track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  width: 100%;
+}
+
+.telemetry-track-home {
+  height: 100%;
+  background: linear-gradient(90deg, #0284c7, #38bdf8);
+  transition: width 0.4s ease;
+}
+
+.telemetry-track-away {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+  transition: width 0.4s ease;
+}
+
+.telemetry-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.telemetry-table-card {
+  background: rgba(15, 23, 42, 0.25);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.6rem;
+  padding: 1.1rem;
+}
+
+.telemetry-table-card h3 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--line-subtle);
+  letter-spacing: 0.02em;
+}
+
+.telemetry-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.telemetry-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.telemetry-stat-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.telemetry-stat-label {
+  color: var(--muted-strong);
+  font-size: 0.82rem;
+  text-align: center;
+  flex: 1;
+}
+
+.telemetry-side-val {
+  font-family: var(--font-mono, monospace);
+  font-weight: 600;
+  width: 3.5rem;
+  color: var(--muted);
+}
+
+.telemetry-side-val:first-child {
+  text-align: left;
+}
+
+.telemetry-side-val:last-child {
+  text-align: right;
+}
+
+.telemetry-side-val.lead {
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.season-telemetry-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+}
+
+.season-telemetry-grid .standing-stat {
+  display: flex;
+  flex-direction: column;
+  padding: 0.85rem;
+  background: rgba(15, 23, 42, 0.3);
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.5rem;
+}
+
+.season-telemetry-grid .standing-stat small {
+  font-size: 0.72rem;
+  margin-top: 0.3rem;
+}
+

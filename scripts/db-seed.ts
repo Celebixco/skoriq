@@ -205,6 +205,15 @@ export async function seedInitialData(pool: pg.Pool) {
   let totalMatchesIngested = 0;
   let totalStatsIngested = 0;
 
+  const existingStatsCountRes = await pool.query('SELECT count(*) FROM football_match_team_statistics');
+  const existingStatsCount = parseInt(existingStatsCountRes.rows[0]?.count || '0', 10);
+  const forceSeed = process.env.FORCE_SEED === 'true';
+
+  if (existingStatsCount >= 200 && !forceSeed) {
+    console.log(`Initial seed already applied (${existingStatsCount} match statistics found). Skipping seed. Use FORCE_SEED=true to override.`);
+    return;
+  }
+
   for (const league of catalog) {
     // 4. Ensure League Country
     const leagueCountryId = await getOrCreateCountry(league.country, league.country_code, league.country_slug);

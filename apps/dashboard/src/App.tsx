@@ -9,6 +9,7 @@ import {
   fetchFootballCountryCompetitions,
   fetchFootballCompetitionProfile,
   fetchFootballMatchLineups,
+  fetchFootballMatchStatistics,
   fetchFootballMatchPlayerAvailability,
   fetchFootballMemberPredictionPreview,
   fetchFootballMatchPredictionDrafts,
@@ -48,6 +49,8 @@ import type {
   FootballCompetitionsListResponse,
   FootballMatchPredictionDraftsResponse,
   FootballMatchLineupsResponse,
+  FootballMatchStatisticsResponse,
+  FootballMatchTeamTelemetryItem,
   FootballMemberPredictionPreviewResponse,
   FootballMatchPredictionSettlementsResponse,
   FootballPredictionDraftDetail,
@@ -1862,6 +1865,7 @@ function getMatchAnalyticsStats(items: FootballAnalyticsMatchListResponse["items
 function MatchDetailPage({ matchId, navigate, user }: { matchId: string; navigate: (path: string) => void; user: AuthUser }) {
   const { data: report, loading, error } = useLoad(() => fetchFootballAnalyticsMatch(matchId), [matchId]);
   const { data: lineups } = useLoad(() => fetchFootballMatchLineups(matchId), [matchId]);
+  const { data: statistics } = useLoad(() => fetchFootballMatchStatistics(matchId), [matchId]);
   const { data: availability } = useLoad(() => fetchFootballMatchPlayerAvailability(matchId), [matchId]);
 
   return (
@@ -1873,7 +1877,15 @@ function MatchDetailPage({ matchId, navigate, user }: { matchId: string; navigat
       {error ? <StatePanel title="Veri yüklenemedi" body={error} /> : null}
       {!loading && !error && !report ? <StatePanel title="Analiz raporu bulunamadı" /> : null}
       {report ? (
-        <MatchDetailReportView report={report} matchId={matchId} user={user} navigate={navigate} lineups={lineups ?? undefined} availability={availability?.items ?? []} />
+        <MatchDetailReportView
+          report={report}
+          matchId={matchId}
+          user={user}
+          navigate={navigate}
+          lineups={lineups ?? undefined}
+          statistics={statistics ?? undefined}
+          availability={availability?.items ?? []}
+        />
       ) : null}
     </>
   );
@@ -1885,6 +1897,7 @@ export function MatchDetailReportView({
   user,
   navigate,
   lineups,
+  statistics,
   availability
 }: {
   report: FootballAnalyticsMatchReport;
@@ -1892,6 +1905,7 @@ export function MatchDetailReportView({
   user: AuthUser;
   navigate: (path: string) => void;
   lineups?: FootballMatchLineupsResponse;
+  statistics?: FootballMatchStatisticsResponse;
   availability: FootballTeamProfileResponse["playerAvailability"];
 }) {
   const competitionName = report.match.competition?.name || "Lig bilgisi yok";
@@ -1928,6 +1942,9 @@ export function MatchDetailReportView({
           <p>Güven skoru kazanma olasılığı değildir. Tahmin üretimi ve public yayın ayrı kontrollü süreçlerdir.</p>
         </div>
       </section>
+
+      {/* SofaScore Match Telemetry & xG Section */}
+      <MatchTelemetrySection statistics={statistics} />
 
       <div className="analysis-kpi-grid">
         <AnalysisKpiCard title="Analiz Durumu" value={statusLabel(report.featureStatus)} body={analysisStatusHelper(report.featureStatus)} tone={report.featureStatus === "ready" ? "success" : report.featureStatus === "partial" ? "warning" : "muted"} icon="shield" />
@@ -2146,6 +2163,156 @@ function MatchAvailabilitySection({ items }: { items: FootballTeamProfileRespons
         ))}
       </div>
     </section>
+  );
+}
+
+export function MatchTelemetrySection({ statistics }: { statistics?: FootballMatchStatisticsResponse }) {
+  if (!statistics?.hasStatistics || !statistics.home || !statistics.away) {
+    return null;
+  }
+
+  const h = statistics.home;
+  const a = statistics.away;
+
+  return (
+    <section className="panel match-telemetry-panel">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">SofaScore Telemetrisi</p>
+          <h2>Maç İstatistikleri & xG Analizi</h2>
+        </div>
+        <span className="live-telemetry-badge">Doğrulanmış Maç Verisi</span>
+      </div>
+
+      <div className="telemetry-key-metrics">
+        <TelemetryComparisonBar
+          label="Beklenen Gol (xG)"
+          homeValue={h.expectedGoals !== null ? h.expectedGoals.toFixed(2) : "—"}
+          awayValue={a.expectedGoals !== null ? a.expectedGoals.toFixed(2) : "—"}
+          homeNum={h.expectedGoals ?? 0}
+          awayNum={a.expectedGoals ?? 0}
+          highlight
+        />
+
+        <TelemetryComparisonBar
+          label="Topa Sahip Olma"
+          homeValue={h.possessionPercent !== null ? `%${Math.round(h.possessionPercent)}` : "—"}
+          awayValue={a.possessionPercent !== null ? `%${Math.round(a.possessionPercent)}` : "—"}
+          homeNum={h.possessionPercent ?? 50}
+          awayNum={a.possessionPercent ?? 50}
+        />
+
+        <TelemetryComparisonBar
+          label="Toplam Şut"
+          homeValue={h.shotsTotal !== null ? String(h.shotsTotal) : "—"}
+          awayValue={a.shotsTotal !== null ? String(a.shotsTotal) : "—"}
+          homeNum={h.shotsTotal ?? 0}
+          awayNum={a.shotsTotal ?? 0}
+        />
+
+        <TelemetryComparisonBar
+          label="İsabetli Şut"
+          homeValue={h.shotsOnTarget !== null ? String(h.shotsOnTarget) : "—"}
+          awayValue={a.shotsOnTarget !== null ? String(a.shotsOnTarget) : "—"}
+          homeNum={h.shotsOnTarget ?? 0}
+          awayNum={a.shotsOnTarget ?? 0}
+        />
+
+        <TelemetryComparisonBar
+          label="Büyük Şanslar"
+          homeValue={h.bigChances !== null ? String(h.bigChances) : "—"}
+          awayValue={a.bigChances !== null ? String(a.bigChances) : "—"}
+          homeNum={h.bigChances ?? 0}
+          awayNum={a.bigChances ?? 0}
+        />
+
+        <TelemetryComparisonBar
+          label="Pas İsabeti"
+          homeValue={h.passAccuracyPercent !== null ? `%${Math.round(h.passAccuracyPercent)}` : h.accuratePasses ? `${h.accuratePasses}/${h.passes}` : "—"}
+          awayValue={a.passAccuracyPercent !== null ? `%${Math.round(a.passAccuracyPercent)}` : a.accuratePasses ? `${a.accuratePasses}/${a.passes}` : "—"}
+          homeNum={h.passAccuracyPercent ?? (h.accuratePasses && h.passes ? (h.accuratePasses / h.passes) * 100 : 50)}
+          awayNum={a.passAccuracyPercent ?? (a.accuratePasses && a.passes ? (a.accuratePasses / a.passes) * 100 : 50)}
+        />
+      </div>
+
+      <div className="telemetry-details-grid">
+        <div className="telemetry-table-card">
+          <h3>Hücum & Son Vuruş</h3>
+          <div className="telemetry-rows">
+            <TelemetryRow label="İsabetli Şut" home={h.shotsOnTarget} away={a.shotsOnTarget} />
+            <TelemetryRow label="İsabetsiz Şut" home={h.shotsOffTarget} away={a.shotsOffTarget} />
+            <TelemetryRow label="Engellenen Şut" home={h.blockedShots} away={a.blockedShots} />
+            <TelemetryRow label="Direkten Dönen" home={h.hitWoodwork} away={a.hitWoodwork} />
+            <TelemetryRow label="Kaçan Büyük Şans" home={h.bigChancesMissed} away={a.bigChancesMissed} />
+            <TelemetryRow label="Korner" home={h.corners} away={a.corners} />
+            <TelemetryRow label="Ofsayt" home={h.offsides} away={a.offsides} />
+          </div>
+        </div>
+
+        <div className="telemetry-table-card">
+          <h3>Savunma & Mücadele</h3>
+          <div className="telemetry-rows">
+            <TelemetryRow label="Başarılı Müdahale" home={h.tackles} away={a.tackles} />
+            <TelemetryRow label="Pas Arası" home={h.interceptions} away={a.interceptions} />
+            <TelemetryRow label="Tehlike Uzaklaştırma" home={h.clearances} away={a.clearances} />
+            <TelemetryRow label="Kaleci Kurtarışı" home={h.goalkeeperSaves} away={a.goalkeeperSaves} />
+            <TelemetryRow label="Kazanılan İkili Mücadele" home={h.duelsWon} away={a.duelsWon} />
+            <TelemetryRow label="Fauller" home={h.fouls} away={a.fouls} />
+            <TelemetryRow label="Sarı Kart" home={h.yellowCards} away={a.yellowCards} />
+            <TelemetryRow label="Kırmızı Kart" home={h.redCards} away={a.redCards} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TelemetryComparisonBar({
+  label,
+  homeValue,
+  awayValue,
+  homeNum,
+  awayNum,
+  highlight = false
+}: {
+  label: string;
+  homeValue: string;
+  awayValue: string;
+  homeNum: number;
+  awayNum: number;
+  highlight?: boolean;
+}) {
+  const total = homeNum + awayNum || 1;
+  const homePct = Math.min(100, Math.max(0, Math.round((homeNum / total) * 100)));
+  const awayPct = 100 - homePct;
+
+  return (
+    <div className={`telemetry-bar-item ${highlight ? "highlight" : ""}`}>
+      <div className="telemetry-bar-header">
+        <strong className="telemetry-val-home">{homeValue}</strong>
+        <span className="telemetry-bar-label">{label}</span>
+        <strong className="telemetry-val-away">{awayValue}</strong>
+      </div>
+      <div className="telemetry-dual-track">
+        <div className="telemetry-track-home" style={{ width: `${homePct}%` }} />
+        <div className="telemetry-track-away" style={{ width: `${awayPct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function TelemetryRow({ label, home, away }: { label: string; home: number | null | undefined; away: number | null | undefined }) {
+  const hVal = home ?? 0;
+  const aVal = away ?? 0;
+  const homeLeads = hVal > aVal;
+  const awayLeads = aVal > hVal;
+
+  return (
+    <div className="telemetry-stat-row">
+      <span className={`telemetry-side-val ${homeLeads ? "lead" : ""}`}>{home ?? "—"}</span>
+      <span className="telemetry-stat-label">{label}</span>
+      <span className={`telemetry-side-val ${awayLeads ? "lead" : ""}`}>{away ?? "—"}</span>
+    </div>
   );
 }
 
@@ -2890,6 +3057,7 @@ function TeamDetailPage({ teamId, navigate }: { teamId: string; navigate: (path:
           <TeamProfileHero profile={profile} standing={profile.standing} />
           <div className="team-profile-grid">
             <TeamProfileStanding standing={profile.standing} />
+            <TeamSeasonTelemetrySection seasonStatistics={profile.team.seasonStatistics} />
             <TeamProfileFormSummary formSummary={profile.formSummary} />
             <TeamProfileGoalProfile goalProfile={profile.goalProfile} />
             <TeamProfileRecentMatches matches={profile.recentMatches} />
@@ -2923,6 +3091,45 @@ export function TeamProfileStanding({ standing }: { standing: FootballTeamProfil
           <div className="standing-stat" key={s.label}>
             <span>{s.label}</span>
             <strong>{s.value}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function TeamSeasonTelemetrySection({ seasonStatistics }: { seasonStatistics?: Record<string, unknown> | null }) {
+  if (!seasonStatistics || Object.keys(seasonStatistics).length === 0) {
+    return null;
+  }
+
+  const s = seasonStatistics as Record<string, number | undefined>;
+  const stats = [
+    { label: "Gol / xG", value: `${s.goalsScored ?? 0} / ${typeof s.expectedGoals === "number" ? s.expectedGoals.toFixed(1) : "—"}`, sub: "Atılan Gol / xG" },
+    { label: "Yenilen Gol", value: `${s.goalsConceded ?? 0}`, sub: "Kalede Görülen" },
+    { label: "Topa Sahip Olma", value: `%${typeof s.averageBallPossession === "number" ? Math.round(s.averageBallPossession) : "—"}`, sub: "Ortalama" },
+    { label: "Gol Yemeden (CS)", value: `${s.cleanSheets ?? 0}`, sub: "Temiz Sayfa" },
+    { label: "Pas İsabeti", value: `%${typeof s.accuratePassesPercentage === "number" ? Math.round(s.accuratePassesPercentage) : "—"}`, sub: "Başarılı Pas" },
+    { label: "Büyük Şanslar", value: `${s.bigChances ?? 0}`, sub: `Kaçan: ${s.bigChancesMissed ?? 0}` },
+    { label: "Toplam Şut", value: `${s.shotsTotal ?? 0}`, sub: `İsabetli: ${s.shotsOnTarget ?? 0}` },
+    { label: "Disiplin", value: `${s.yellowCards ?? 0}S / ${s.redCards ?? 0}K`, sub: `${s.fouls ?? 0} Faul` }
+  ];
+
+  return (
+    <section className="panel team-season-telemetry">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">SofaScore Sezon Metrikleri</p>
+          <h2>Takım Sezon İstatistikleri & Telemetrisi</h2>
+        </div>
+        <span className="live-telemetry-badge">125 Veri Noktası</span>
+      </div>
+      <div className="standing-stats season-telemetry-grid">
+        {stats.map((item) => (
+          <div className="standing-stat" key={item.label}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <small className="muted">{item.sub}</small>
           </div>
         ))}
       </div>

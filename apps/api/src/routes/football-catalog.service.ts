@@ -79,6 +79,7 @@ export interface FootballTeamProfile {
       name: string;
       country: string | null;
     } | null;
+    seasonStatistics?: Record<string, unknown> | null;
   };
   standing: FootballTeamProfileStanding | null;
   formSummary: {
@@ -180,6 +181,63 @@ export interface FootballMatchLineupsResponse {
     substitutes: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
     unavailable: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
   }>;
+}
+
+export interface FootballMatchTeamTelemetryItem {
+  teamId: string;
+  teamName: string;
+  logoUrl: string | null;
+  isHome: boolean;
+  possessionPercent: number | null;
+  shotsTotal: number | null;
+  shotsOnTarget: number | null;
+  shotsOffTarget: number | null;
+  blockedShots: number | null;
+  corners: number | null;
+  fouls: number | null;
+  yellowCards: number | null;
+  redCards: number | null;
+  offsides: number | null;
+  goalkeeperSaves: number | null;
+  passes: number | null;
+  accuratePasses: number | null;
+  passAccuracyPercent: number | null;
+  bigChances: number | null;
+  bigChancesMissed: number | null;
+  expectedGoals: number | null;
+  expectedAssists: number | null;
+  attacks: number | null;
+  dangerousAttacks: number | null;
+  hitWoodwork: number | null;
+  tackles: number | null;
+  interceptions: number | null;
+  clearances: number | null;
+  duelsWon: number | null;
+  aerialDuelsWon: number | null;
+}
+
+export interface FootballMatchStatisticsResponse {
+  match: {
+    id: string;
+    competition: string;
+    kickoffAt: string;
+    status: string;
+    homeScore: number | null;
+    awayScore: number | null;
+    homeTeam: {
+      id: string;
+      name: string;
+      logoUrl: string | null;
+    };
+    awayTeam: {
+      id: string;
+      name: string;
+      logoUrl: string | null;
+    };
+  };
+  hasStatistics: boolean;
+  home: FootballMatchTeamTelemetryItem | null;
+  away: FootballMatchTeamTelemetryItem | null;
 }
 
 export interface FootballTeamProfileStanding {
@@ -410,6 +468,7 @@ export interface TeamProfileIdentityRow {
   primary_competition_id: string | null;
   primary_competition_name: string | null;
   primary_competition_country: string | null;
+  metadata_json?: Record<string, unknown> | null;
 }
 
 interface CompetitionRow {
@@ -858,6 +917,157 @@ export class FootballCatalogService {
     };
   }
 
+  async getMatchStatistics(matchId: string): Promise<FootballMatchStatisticsResponse> {
+    const matchRows = await executeRows<{
+      match_id: string;
+      competition: string;
+      kickoff_at: Date | string;
+      status: string;
+      home_team_id: string;
+      home_team_name: string;
+      home_team_logo_url: string | null;
+      away_team_id: string;
+      away_team_name: string;
+      away_team_logo_url: string | null;
+      home_score_fulltime: string | number | null;
+      away_score_fulltime: string | number | null;
+    }>(
+      this.database,
+      sql`
+        select
+          m.id as match_id,
+          c.name as competition,
+          m.scheduled_start_at as kickoff_at,
+          m.status,
+          m.home_team_id,
+          home.name as home_team_name,
+          home.logo_url as home_team_logo_url,
+          m.away_team_id,
+          away.name as away_team_name,
+          away.logo_url as away_team_logo_url,
+          coalesce(ms.home_score_fulltime, ms.home_score_current) as home_score_fulltime,
+          coalesce(ms.away_score_fulltime, ms.away_score_current) as away_score_fulltime
+        from matches m
+        inner join sports s on s.id = m.sport_id and s.slug = 'football'
+        inner join competitions c on c.id = m.competition_id
+        inner join teams home on home.id = m.home_team_id
+        inner join teams away on away.id = m.away_team_id
+        left join football_match_scores ms on ms.match_id = m.id
+        where m.id = ${matchId}
+        limit 1
+      `
+    );
+
+    const match = matchRows[0];
+    if (!match) {
+      throw new NotFoundException("Football match not found.");
+    }
+
+    const statRows = await executeRows<{
+      team_id: string;
+      team_name: string;
+      team_logo_url: string | null;
+      is_home: boolean;
+      possession_percent: string | number | null;
+      shots_total: string | number | null;
+      shots_on_target: string | number | null;
+      shots_off_target: string | number | null;
+      blocked_shots: string | number | null;
+      corners: string | number | null;
+      fouls: string | number | null;
+      yellow_cards: string | number | null;
+      red_cards: string | number | null;
+      offsides: string | number | null;
+      goalkeeper_saves: string | number | null;
+      passes: string | number | null;
+      accurate_passes: string | number | null;
+      pass_accuracy_percent: string | number | null;
+      big_chances: string | number | null;
+      big_chances_missed: string | number | null;
+      expected_goals: string | number | null;
+      expected_assists: string | number | null;
+      attacks: string | number | null;
+      dangerous_attacks: string | number | null;
+      hit_woodwork: string | number | null;
+      tackles: string | number | null;
+      interceptions: string | number | null;
+      clearances: string | number | null;
+      duels_won: string | number | null;
+      aerial_duels_won: string | number | null;
+    }>(
+      this.database,
+      sql`
+        select
+          s.*,
+          t.name as team_name,
+          t.logo_url as team_logo_url
+        from football_match_team_statistics s
+        inner join teams t on t.id = s.team_id
+        where s.match_id = ${matchId}
+      `
+    );
+
+    const mapTelemetry = (r: (typeof statRows)[0]): FootballMatchTeamTelemetryItem => ({
+      teamId: r.team_id,
+      teamName: r.team_name,
+      logoUrl: r.team_logo_url,
+      isHome: r.is_home,
+      possessionPercent: numberOrNull(r.possession_percent),
+      shotsTotal: integerOrNull(r.shots_total),
+      shotsOnTarget: integerOrNull(r.shots_on_target),
+      shotsOffTarget: integerOrNull(r.shots_off_target),
+      blockedShots: integerOrNull(r.blocked_shots),
+      corners: integerOrNull(r.corners),
+      fouls: integerOrNull(r.fouls),
+      yellowCards: integerOrNull(r.yellow_cards),
+      redCards: integerOrNull(r.red_cards),
+      offsides: integerOrNull(r.offsides),
+      goalkeeperSaves: integerOrNull(r.goalkeeper_saves),
+      passes: integerOrNull(r.passes),
+      accuratePasses: integerOrNull(r.accurate_passes),
+      passAccuracyPercent: numberOrNull(r.pass_accuracy_percent),
+      bigChances: integerOrNull(r.big_chances),
+      bigChancesMissed: integerOrNull(r.big_chances_missed),
+      expectedGoals: numberOrNull(r.expected_goals),
+      expectedAssists: numberOrNull(r.expected_assists),
+      attacks: integerOrNull(r.attacks),
+      dangerousAttacks: integerOrNull(r.dangerous_attacks),
+      hitWoodwork: integerOrNull(r.hit_woodwork),
+      tackles: integerOrNull(r.tackles),
+      interceptions: integerOrNull(r.interceptions),
+      clearances: integerOrNull(r.clearances),
+      duelsWon: integerOrNull(r.duels_won),
+      aerialDuelsWon: integerOrNull(r.aerial_duels_won)
+    });
+
+    const homeStats = statRows.find((r) => r.team_id === match.home_team_id || r.is_home);
+    const awayStats = statRows.find((r) => r.team_id === match.away_team_id || !r.is_home);
+
+    return {
+      match: {
+        id: match.match_id,
+        competition: match.competition,
+        kickoffAt: toIso(match.kickoff_at),
+        status: match.status,
+        homeScore: numberOrNull(match.home_score_fulltime),
+        awayScore: numberOrNull(match.away_score_fulltime),
+        homeTeam: {
+          id: match.home_team_id,
+          name: match.home_team_name,
+          logoUrl: match.home_team_logo_url
+        },
+        awayTeam: {
+          id: match.away_team_id,
+          name: match.away_team_name,
+          logoUrl: match.away_team_logo_url
+        }
+      },
+      hasStatistics: statRows.length > 0,
+      home: homeStats ? mapTelemetry(homeStats) : null,
+      away: awayStats ? mapTelemetry(awayStats) : null
+    };
+  }
+
   async listCompetitions(filters: FootballCompetitionsFilters): Promise<FootballCatalogListResponse<FootballCompetitionSummary>> {
     const rows = await executeRows<CompetitionRow>(
       this.database,
@@ -1058,6 +1268,7 @@ export class FootballCatalogService {
           t.id as team_id,
           t.name,
           t.logo_url,
+          t.metadata_json,
           co.name as country,
           pc.competition_id as primary_competition_id,
           pc.competition_name as primary_competition_name,
@@ -1825,7 +2036,8 @@ export function mapTeamProfileIdentityRow(row: TeamProfileIdentityRow): Football
             name: row.primary_competition_name,
             country: row.primary_competition_country
           }
-        : null
+        : null,
+    seasonStatistics: (row.metadata_json?.seasonStatistics as Record<string, unknown>) ?? null
   };
 }
 
@@ -2075,7 +2287,13 @@ function integer(value: string | number | null | undefined): number {
 }
 
 function numberOrNull(value: string | number | null): number | null {
-  if (value === null) return null;
+  if (value === null || value === undefined) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function integerOrNull(value: string | number | null | undefined): number | null {
+  if (value === undefined || value === null) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
 }
