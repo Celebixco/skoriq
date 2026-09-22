@@ -653,6 +653,7 @@ async function generateTeamFormFeatures(pool) {
     WHERE m.status IN ('finished', 'after_extra_time', 'after_penalties')
   `);
   let featuresCreated = 0;
+  const featureRows = [];
   for (const team of teamsRes.rows) {
     const matchesRes = await pool.query(`
       SELECT

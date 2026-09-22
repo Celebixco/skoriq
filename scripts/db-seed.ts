@@ -893,6 +893,7 @@ async function generateTeamFormFeatures(pool: pg.Pool) {
   `);
 
   let featuresCreated = 0;
+  const featureRows: any[][] = [];
   for (const team of teamsRes.rows) {
     const matchesRes = await pool.query(`
       SELECT
