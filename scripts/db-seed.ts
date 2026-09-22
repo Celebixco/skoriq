@@ -220,6 +220,20 @@ export async function seedInitialData(pool: pg.Pool) {
   console.log("STARTING SOFASCORE ADVANCED DATA & TELEMETRY INGESTION");
   console.log("=================================================");
 
+  // Fast-path: check if authentic data and players are already seeded
+  const forceSeed = process.env.FORCE_SEED === "true";
+  try {
+    const existingPlayersCountRes = await pool.query("SELECT count(*) FROM players");
+    const existingPlayersCount = parseInt(existingPlayersCountRes.rows[0]?.count || "0", 10);
+
+    if (existingPlayersCount >= 500 && !forceSeed) {
+      console.log(`Initial seed already applied (${existingPlayersCount} players found). Skipping seed. Use FORCE_SEED=true to override.`);
+      return;
+    }
+  } catch (checkErr) {
+    // If table doesn't exist yet, proceed with migration/seed
+  }
+
   // 1. Load Scraped Catalog Data
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const catalogPath = path.resolve(__dirname, "sofascore_catalog.json");
@@ -252,6 +266,16 @@ export async function seedInitialData(pool: pg.Pool) {
   const countryIdCache = new Map<string, string>(); // slug -> country_id
   const teamIdCache = new Map<number, string>(); // sofascore_team_id -> team_id
   const slugCountMap = new Map<string, number>(); // slug tracking for uniqueness
+
+  try {
+    const existingCountriesRes = await pool.query("SELECT id, code, slug FROM countries");
+    for (const c of existingCountriesRes.rows) {
+      if (c.slug) countryIdCache.set(c.slug, c.id);
+      if (c.code) countryIdCache.set(c.code.toUpperCase(), c.id);
+    }
+  } catch (err) {
+    // Ignore cache load failure
+  }
 
   // Helper to ensure country safely handling both slug and code uniqueness
   async function getOrCreateCountry(name: string, code: string, slug: string): Promise<string> {
@@ -296,15 +320,6 @@ export async function seedInitialData(pool: pg.Pool) {
   let totalMatchesIngested = 0;
   let totalStatsIngested = 0;
   let totalPlayersIngested = 0;
-
-  const existingPlayersCountRes = await pool.query('SELECT count(*) FROM players');
-  const existingPlayersCount = parseInt(existingPlayersCountRes.rows[0]?.count || '0', 10);
-  const forceSeed = process.env.FORCE_SEED === 'true';
-
-  if (existingPlayersCount >= 500 && !forceSeed) {
-    console.log(`Initial seed already applied (${existingPlayersCount} players found). Skipping seed. Use FORCE_SEED=true to override.`);
-    return;
-  }
 
   for (const league of catalog) {
     // 4. Ensure League Country
@@ -473,59 +488,103 @@ export async function seedInitialData(pool: pg.Pool) {
 
       totalStandingsIngested++;
 
-      // 8a. Ingest Squad Players for Team
-      if (team.players && Array.isArray(team.players)) {
-        for (const p of team.players) {
-          try {
+      // 8a. Ingest Squad Players for Team in Batch
+      if (team.players && Array.isArray(team.players) && team.players.length > 0) {
+        try {
+          const playerRows: Array<{
+            countryId: string;
+            name: string;
+            shortName: string;
+            slug: string;
+            position: string | null;
+            jerseyNumber: number | null;
+            height: number | null;
+            photoUrl: string | null;
+            dob: string | null;
+            metadata: string;
+          }> = [];
+
+          for (const p of team.players) {
             const playerCountryId = p.country_name ? await getOrCreateCountry(p.country_name, p.country_code, p.country_code?.toLowerCase() || p.slug) : teamCountryId;
             const playerSlug = `${slugify(p.name)}-${p.sofascore_id}`;
             const dob = p.date_of_birth_timestamp ? new Date(p.date_of_birth_timestamp * 1000).toISOString().split("T")[0] : null;
+
+            playerRows.push({
+              countryId: playerCountryId,
+              name: p.name,
+              shortName: p.short_name || p.name,
+              slug: playerSlug,
+              position: p.position || null,
+              jerseyNumber: p.jersey_number || null,
+              height: p.height || null,
+              photoUrl: p.photo_url || null,
+              dob,
+              metadata: JSON.stringify({
+                sofascoreId: p.sofascore_id,
+                marketValue: p.proposed_market_value,
+                preferredFoot: p.preferred_foot
+              })
+            });
+          }
+
+          if (playerRows.length > 0) {
+            const pValues: any[] = [];
+            const pPlaceholders: string[] = [];
+            let pIdx = 1;
+
+            for (const r of playerRows) {
+              pPlaceholders.push(`($${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++})`);
+              pValues.push(
+                sportId,
+                r.countryId,
+                teamId,
+                r.name,
+                r.shortName,
+                r.slug,
+                r.position,
+                r.jerseyNumber,
+                r.height,
+                r.photoUrl,
+                r.dob,
+                r.metadata
+              );
+            }
 
             const playerRes = await pool.query(`
               INSERT INTO players (
                 sport_id, country_id, current_team_id, name, short_name, slug,
                 position, jersey_number, height_cm, photo_url, date_of_birth, metadata_json
               )
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-              ON CONFLICT (id) DO UPDATE SET
-                current_team_id = EXCLUDED.current_team_id,
-                position = EXCLUDED.position,
-                jersey_number = EXCLUDED.jersey_number,
-                photo_url = EXCLUDED.photo_url
+              VALUES ${pPlaceholders.join(", ")}
               RETURNING id;
-            `, [
-              sportId,
-              playerCountryId,
-              teamId,
-              p.name,
-              p.short_name,
-              playerSlug,
-              p.position || null,
-              p.jersey_number || null,
-              p.height || null,
-              p.photo_url || null,
-              dob,
-              JSON.stringify({
-                sofascoreId: p.sofascore_id,
-                marketValue: p.proposed_market_value,
-                preferredFoot: p.preferred_foot
-              })
-            ]);
+            `, pValues);
 
-            const pid = playerRes.rows[0]?.id;
-            if (pid) {
+            const mValues: any[] = [];
+            const mPlaceholders: string[] = [];
+            let mIdx = 1;
+
+            for (let i = 0; i < playerRes.rows.length; i++) {
+              const pid = playerRes.rows[i]?.id;
+              const r = playerRows[i];
+              if (pid && r) {
+                mPlaceholders.push(`($${mIdx++}, $${mIdx++}, $${mIdx++}, $${mIdx++}, $${mIdx++}, $${mIdx++}, true)`);
+                mValues.push(pid, teamId, compId, seasonId, r.position, r.jerseyNumber);
+                totalPlayersIngested++;
+              }
+            }
+
+            if (mPlaceholders.length > 0) {
               await pool.query(`
                 INSERT INTO football_player_team_memberships (
                   player_id, team_id, competition_id, season_id, position, shirt_number, active
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, true)
+                VALUES ${mPlaceholders.join(", ")}
                 ON CONFLICT DO NOTHING;
-              `, [pid, teamId, compId, seasonId, p.position || null, p.jersey_number || null]);
-              totalPlayersIngested++;
+              `, mValues);
             }
-          } catch (playerErr) {
-            // Ignore duplicate/parse error for single player
           }
+        } catch (playerErr) {
+          // Ignore player batch error
         }
       }
 
@@ -934,81 +993,92 @@ async function generateTeamFormFeatures(pool: pg.Pool) {
         const compId = latestMatch.competition_id;
         const seasonId = latestMatch.season_id;
 
-        try {
-          await pool.query(`
-            INSERT INTO football_team_form_features (
-              team_id, competition_id, season_id, as_of_match_id, as_of_date,
-              window_size, scope, matches_played, wins, draws, losses, points,
-              goals_for, goals_against, goal_difference,
-              avg_goals_for, avg_goals_against, clean_sheet_rate, failed_to_score_rate,
-              both_teams_to_score_rate, over_0_5_rate, over_1_5_rate, over_2_5_rate, under_2_5_rate,
-              scored_rate, conceded_rate, team_over_0_5_rate, team_over_1_5_rate,
-              first_half_over_0_5_rate, first_half_avg_goals_for, first_half_avg_goals_against,
-              avg_shots, avg_shots_on_target, avg_possession_percent, avg_corners, avg_expected_goals,
-              sample_size, coverage_score, metadata_json
-            )
-            VALUES (
-              $1, $2, $3, $4, $5,
-              $6, $7, $8, $9, $10, $11, $12,
-              $13, $14, $15,
-              $16, $17, $18, $19,
-              $20, $21, $22, $23, $24,
-              $25, $26, $27, $28,
-              $29, $30, $31,
-              $32, $33, $34, $35, $36,
-              $37, 100, '{}'
-            )
-            ON CONFLICT ON CONSTRAINT "football_team_form_features_uidx" DO UPDATE SET
-              matches_played = EXCLUDED.matches_played,
-              wins = EXCLUDED.wins,
-              draws = EXCLUDED.draws,
-              losses = EXCLUDED.losses,
-              points = EXCLUDED.points,
-              goals_for = EXCLUDED.goals_for,
-              goals_against = EXCLUDED.goals_against,
-              goal_difference = EXCLUDED.goal_difference,
-              avg_goals_for = EXCLUDED.avg_goals_for,
-              avg_goals_against = EXCLUDED.avg_goals_against,
-              clean_sheet_rate = EXCLUDED.clean_sheet_rate,
-              failed_to_score_rate = EXCLUDED.failed_to_score_rate,
-              both_teams_to_score_rate = EXCLUDED.both_teams_to_score_rate,
-              over_0_5_rate = EXCLUDED.over_0_5_rate,
-              over_1_5_rate = EXCLUDED.over_1_5_rate,
-              over_2_5_rate = EXCLUDED.over_2_5_rate,
-              under_2_5_rate = EXCLUDED.under_2_5_rate,
-              scored_rate = EXCLUDED.scored_rate,
-              conceded_rate = EXCLUDED.conceded_rate,
-              team_over_0_5_rate = EXCLUDED.team_over_0_5_rate,
-              team_over_1_5_rate = EXCLUDED.team_over_1_5_rate,
-              first_half_over_0_5_rate = EXCLUDED.first_half_over_0_5_rate,
-              first_half_avg_goals_for = EXCLUDED.first_half_avg_goals_for,
-              first_half_avg_goals_against = EXCLUDED.first_half_avg_goals_against,
-              avg_shots = EXCLUDED.avg_shots,
-              avg_shots_on_target = EXCLUDED.avg_shots_on_target,
-              avg_possession_percent = EXCLUDED.avg_possession_percent,
-              avg_corners = EXCLUDED.avg_corners,
-              avg_expected_goals = EXCLUDED.avg_expected_goals,
-              sample_size = EXCLUDED.sample_size,
-              coverage_score = 100,
-              updated_at = NOW();
-          `, [
-            team.id, compId, seasonId, asOfMatchId, asOfDate,
-            w, scope, count, wins, draws, losses, points,
-            goalsFor, goalsAgainst, goalsFor - goalsAgainst,
-            avgGoalsFor, avgGoalsAgainst, cleanSheetRate, failedToScoreRate,
-            bothTeamsToScoreRate, over05Rate, over15Rate, over25Rate, under25Rate,
-            scoredRate, concededRate, teamOver05Rate, teamOver15Rate,
-            firstHalfOver05Rate, firstHalfAvgGoalsFor, firstHalfAvgGoalsAgainst,
-            avgShots, avgShotsOnTarget, avgPossessionPercent, avgCorners, avgExpectedGoals,
-            count
-          ]);
-          featuresCreated++;
-        } catch (featErr) {
-          // Continue on individual feature error
-        }
+        featureRows.push([
+          team.id, compId, seasonId, asOfMatchId, asOfDate,
+          w, scope, count, wins, draws, losses, points,
+          goalsFor, goalsAgainst, goalsFor - goalsAgainst,
+          avgGoalsFor, avgGoalsAgainst, cleanSheetRate, failedToScoreRate,
+          bothTeamsToScoreRate, over05Rate, over15Rate, over25Rate, under25Rate,
+          scoredRate, concededRate, teamOver05Rate, teamOver15Rate,
+          firstHalfOver05Rate, firstHalfAvgGoalsFor, firstHalfAvgGoalsAgainst,
+          avgShots, avgShotsOnTarget, avgPossessionPercent, avgCorners, avgExpectedGoals,
+          count
+        ]);
       }
     }
   }
+
+  let featuresCreated = 0;
+  const batchSize = 50;
+  for (let i = 0; i < featureRows.length; i += batchSize) {
+    const chunk = featureRows.slice(i, i + batchSize);
+    const placeholders: string[] = [];
+    const values: any[] = [];
+    let pIdx = 1;
+
+    for (const row of chunk) {
+      const rowPh: string[] = [];
+      for (const val of row) {
+        rowPh.push(`$${pIdx++}`);
+        values.push(val);
+      }
+      placeholders.push(`(${rowPh.join(", ")}, 100, '{}')`);
+    }
+
+    try {
+      await pool.query(`
+        INSERT INTO football_team_form_features (
+          team_id, competition_id, season_id, as_of_match_id, as_of_date,
+          window_size, scope, matches_played, wins, draws, losses, points,
+          goals_for, goals_against, goal_difference,
+          avg_goals_for, avg_goals_against, clean_sheet_rate, failed_to_score_rate,
+          both_teams_to_score_rate, over_0_5_rate, over_1_5_rate, over_2_5_rate, under_2_5_rate,
+          scored_rate, conceded_rate, team_over_0_5_rate, team_over_1_5_rate,
+          first_half_over_0_5_rate, first_half_avg_goals_for, first_half_avg_goals_against,
+          avg_shots, avg_shots_on_target, avg_possession_percent, avg_corners, avg_expected_goals,
+          sample_size, coverage_score, metadata_json
+        )
+        VALUES ${placeholders.join(", ")}
+        ON CONFLICT ON CONSTRAINT "football_team_form_features_uidx" DO UPDATE SET
+          matches_played = EXCLUDED.matches_played,
+          wins = EXCLUDED.wins,
+          draws = EXCLUDED.draws,
+          losses = EXCLUDED.losses,
+          points = EXCLUDED.points,
+          goals_for = EXCLUDED.goals_for,
+          goals_against = EXCLUDED.goals_against,
+          goal_difference = EXCLUDED.goal_difference,
+          avg_goals_for = EXCLUDED.avg_goals_for,
+          avg_goals_against = EXCLUDED.avg_goals_against,
+          clean_sheet_rate = EXCLUDED.clean_sheet_rate,
+          failed_to_score_rate = EXCLUDED.failed_to_score_rate,
+          both_teams_to_score_rate = EXCLUDED.both_teams_to_score_rate,
+          over_0_5_rate = EXCLUDED.over_0_5_rate,
+          over_1_5_rate = EXCLUDED.over_1_5_rate,
+          over_2_5_rate = EXCLUDED.over_2_5_rate,
+          under_2_5_rate = EXCLUDED.under_2_5_rate,
+          scored_rate = EXCLUDED.scored_rate,
+          conceded_rate = EXCLUDED.conceded_rate,
+          team_over_0_5_rate = EXCLUDED.team_over_0_5_rate,
+          team_over_1_5_rate = EXCLUDED.team_over_1_5_rate,
+          first_half_over_0_5_rate = EXCLUDED.first_half_over_0_5_rate,
+          first_half_avg_goals_for = EXCLUDED.first_half_avg_goals_for,
+          first_half_avg_goals_against = EXCLUDED.first_half_avg_goals_against,
+          avg_shots = EXCLUDED.avg_shots,
+          avg_shots_on_target = EXCLUDED.avg_shots_on_target,
+          avg_possession_percent = EXCLUDED.avg_possession_percent,
+          avg_corners = EXCLUDED.avg_corners,
+          avg_expected_goals = EXCLUDED.avg_expected_goals,
+          sample_size = EXCLUDED.sample_size,
+          coverage_score = 100,
+          updated_at = NOW();
+      `, values);
+      featuresCreated += chunk.length;
+    } catch (batchErr) {
+      // Continue on chunk error
+    }
+  }
+
   console.log(`Team form features generation complete! (${featuresCreated} feature rows written)`);
 }
 
