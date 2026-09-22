@@ -27,11 +27,8 @@ async function main() {
     await migrate(db, { migrationsFolder });
     console.log("Migrations successfully applied to database.");
 
-    if (process.env.SEED_INITIAL_DATA === "true") {
-      console.log("SEED_INITIAL_DATA=true detected, running seed...");
-      const { seedInitialData } = await import("./db-seed.js");
-      await seedInitialData(pool);
-    }
+    const { seedInitialData } = await import("./db-seed.js");
+    await seedInitialData(pool);
   } catch (error) {
     console.error("Migration failed:", error);
     process.exit(1);

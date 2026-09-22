@@ -1,151 +1,28 @@
+// scripts/db-seed.ts
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomBytes, scrypt as scryptCallback } from "node:crypto";
 import { promisify } from "node:util";
 import pg from "pg";
-
-const scrypt = promisify(scryptCallback);
-const keyLength = 64;
-
-export async function hashPassword(password: string): Promise<string> {
+var scrypt = promisify(scryptCallback);
+var keyLength = 64;
+async function hashPassword(password) {
   const salt = randomBytes(16).toString("base64url");
-  const derived = (await scrypt(password, salt, keyLength)) as Buffer;
+  const derived = await scrypt(password, salt, keyLength);
   return `scrypt$${salt}$${derived.toString("base64url")}`;
 }
-
-export function slugify(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+function slugify(text) {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
-
-interface TeamStatsPayload {
-  is_home: boolean;
-  possession_percent?: number | null;
-  shots_total?: number | null;
-  shots_on_target?: number | null;
-  shots_off_target?: number | null;
-  blocked_shots?: number | null;
-  corners?: number | null;
-  fouls?: number | null;
-  yellow_cards?: number | null;
-  red_cards?: number | null;
-  offsides?: number | null;
-  goalkeeper_saves?: number | null;
-  passes?: number | null;
-  accurate_passes?: number | null;
-  big_chances?: number | null;
-  big_chances_missed?: number | null;
-  expected_goals?: number | null;
-  tackles?: number | null;
-  interceptions?: number | null;
-  clearances?: number | null;
-  hit_woodwork?: number | null;
-  average_rating?: number | null;
-  distance_covered?: string | null;
-  number_of_sprints?: number | null;
-}
-
-interface SofaScoreMatch {
-  sofascore_id: number;
-  tournament_id?: number;
-  tournament_name?: string;
-  home_team_id: number;
-  home_team_name: string;
-  away_team_id: number;
-  away_team_name: string;
-  scheduled_start_at?: number;
-  start_timestamp?: number;
-  status: string;
-  home_score?: number;
-  away_score?: number;
-  round?: string;
-  venue?: string;
-  statistics?: {
-    home: TeamStatsPayload;
-    away: TeamStatsPayload;
-    raw_items?: Record<string, unknown>;
-  };
-}
-
-interface SofaScoreTeam {
-  sofascore_id: number;
-  name: string;
-  short_name: string;
-  name_code: string;
-  slug: string;
-  logo_url: string;
-  country_name: string;
-  country_code: string;
-  country_slug: string;
-  team_colors?: {
-    primary?: string;
-    secondary?: string;
-    text?: string;
-  };
-  season_statistics?: Record<string, unknown>;
-  position: number;
-  played: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  goals_for: number;
-  goals_against: number;
-  goal_difference: number;
-  points: number;
-  home_played?: number;
-  home_wins?: number;
-  home_draws?: number;
-  home_losses?: number;
-  home_goals_for?: number;
-  home_goals_against?: number;
-  away_played?: number;
-  away_wins?: number;
-  away_draws?: number;
-  away_losses?: number;
-  away_goals_for?: number;
-  away_goals_against?: number;
-}
-
-interface SofaScoreLeague {
-  country: string;
-  country_code: string;
-  country_slug: string;
-  league_name: string;
-  league_slug: string;
-  sofascore_tournament_id: number;
-  tournament_logo_url: string;
-  season_id: number;
-  season_name: string;
-  teams_count: number;
-  teams: SofaScoreTeam[];
-  recent_matches?: SofaScoreMatch[];
-  upcoming_matches?: SofaScoreMatch[];
-}
-
-export async function insertTeamStats(
-  pool: pg.Pool,
-  matchId: string,
-  tId: string,
-  oppId: string,
-  s: TeamStatsPayload,
-  rawItems?: Record<string, unknown>
-) {
-  const passAccuracy = (s.passes && s.accurate_passes)
-    ? Number(((s.accurate_passes / s.passes) * 100).toFixed(2))
-    : null;
-
+async function insertTeamStats(pool, matchId, tId, oppId, s, rawItems) {
+  const passAccuracy = s.passes && s.accurate_passes ? Number((s.accurate_passes / s.passes * 100).toFixed(2)) : null;
   const extraMeta = {
     averageRating: s.average_rating,
     distanceCovered: s.distance_covered,
     numberOfSprints: s.number_of_sprints,
     raw: rawItems
   };
-
   await pool.query(`
     INSERT INTO football_match_team_statistics (
       match_id, team_id, opponent_team_id, is_home,
@@ -217,45 +94,32 @@ export async function insertTeamStats(
     JSON.stringify(extraMeta)
   ]);
 }
-
-export async function seedInitialData(pool: pg.Pool) {
+async function seedInitialData(pool) {
   console.log("=================================================");
   console.log("STARTING SOFASCORE ADVANCED DATA & TELEMETRY INGESTION");
   console.log("=================================================");
-
-  // Fast-path: check if authentic current season 26/27 matches are already seeded
   const forceSeed = process.env.FORCE_SEED === "true";
   try {
     const currentSeasonMatchesRes = await pool.query("SELECT count(*) FROM matches WHERE scheduled_start_at >= '2026-08-01'");
     const currentSeasonMatchesCount = parseInt(currentSeasonMatchesRes.rows[0]?.count || "0", 10);
-
     if (currentSeasonMatchesCount >= 50 && !forceSeed) {
       console.log(`Current season 26/27 matches already seeded (${currentSeasonMatchesCount} matches found). Skipping seed. Use FORCE_SEED=true to override.`);
       return;
     }
   } catch (checkErr) {
-    // If table doesn't exist yet, proceed with migration/seed
   }
-
-  // 1. Load Scraped Catalog Data
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const catalogPath = path.resolve(__dirname, "sofascore_catalog.json");
-  
   if (!fs.existsSync(catalogPath)) {
     throw new Error(`Catalog data file not found at: ${catalogPath}. Please run scripts/scrape_sofascore.py first.`);
   }
-
-  const catalog: SofaScoreLeague[] = JSON.parse(fs.readFileSync(catalogPath, "utf-8"));
+  const catalog = JSON.parse(fs.readFileSync(catalogPath, "utf-8"));
   console.log(`Loaded catalog with ${catalog.length} leagues.`);
-
-  // 2. Clean stale mock records
   await pool.query(`
     TRUNCATE TABLE football_match_team_statistics, football_match_scores, football_standings, matches, teams CASCADE;
     DELETE FROM provider_mappings WHERE entity_type IN ('team', 'match', 'competition', 'country', 'standing', 'football_match_team_statistics');
   `);
   console.log("Cleaned teams, matches, standings, and telemetry statistics.");
-
-  // 3. Ensure Sport: Football
   const sportRes = await pool.query(`
     INSERT INTO sports (slug, name)
     VALUES ('football', 'Football')
@@ -264,12 +128,9 @@ export async function seedInitialData(pool: pg.Pool) {
   `);
   const sportId = sportRes.rows[0].id;
   console.log(`Sport 'football' verified with ID: ${sportId}`);
-
-  // In-memory caches to prevent duplicates across competitions
-  const countryIdCache = new Map<string, string>(); // slug -> country_id
-  const teamIdCache = new Map<number, string>(); // sofascore_team_id -> team_id
-  const slugCountMap = new Map<string, number>(); // slug tracking for uniqueness
-
+  const countryIdCache = /* @__PURE__ */ new Map();
+  const teamIdCache = /* @__PURE__ */ new Map();
+  const slugCountMap = /* @__PURE__ */ new Map();
   try {
     const existingCountriesRes = await pool.query("SELECT id, code, slug FROM countries");
     for (const c of existingCountriesRes.rows) {
@@ -277,24 +138,17 @@ export async function seedInitialData(pool: pg.Pool) {
       if (c.code) countryIdCache.set(c.code.toUpperCase(), c.id);
     }
   } catch (err) {
-    // Ignore cache load failure
   }
-
-  // Helper to ensure country safely handling both slug and code uniqueness
-  async function getOrCreateCountry(name: string, code: string, slug: string): Promise<string> {
+  async function getOrCreateCountry(name, code, slug) {
     const cleanSlug = slugify(slug || name);
     if (countryIdCache.has(cleanSlug)) {
-      return countryIdCache.get(cleanSlug)!;
+      return countryIdCache.get(cleanSlug);
     }
-
     const cleanCode = (code || cleanSlug.substring(0, 3)).toUpperCase();
-
-    // Check by slug or code
     const existing = await pool.query(`
       SELECT id FROM countries WHERE slug = $1 OR (code = $2 AND code IS NOT NULL) LIMIT 1;
     `, [cleanSlug, cleanCode]);
-
-    let countryId: string;
+    let countryId;
     if (existing.rows.length > 0) {
       countryId = existing.rows[0].id;
       await pool.query(`UPDATE countries SET name = $1 WHERE id = $2;`, [name, countryId]);
@@ -306,30 +160,23 @@ export async function seedInitialData(pool: pg.Pool) {
       `, [cleanCode, cleanSlug, name]);
       countryId = res.rows[0].id;
     }
-
     countryIdCache.set(cleanSlug, countryId);
-
     await pool.query(`
       INSERT INTO provider_mappings (provider, entity_type, provider_entity_id, internal_entity_id, internal_entity_type)
       VALUES ('sofascore', 'country', $1, $2, 'country')
       ON CONFLICT (provider, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
     `, [cleanSlug, countryId]);
-
     return countryId;
   }
-
   let totalTeamsIngested = 0;
   let totalStandingsIngested = 0;
   let totalMatchesIngested = 0;
   let totalStatsIngested = 0;
   let totalPlayersIngested = 0;
-
-  const compIdByTournamentId = new Map<number, string>();
-  const seasonIdByTournamentId = new Map<number, string>();
-  const ingestedMatchIds = new Set<number>();
-  const ingestedMatchKeys = new Set<string>();
-
-  // Pass 1: Ensure all Competitions and Seasons first so matches can route to authentic tournaments
+  const compIdByTournamentId = /* @__PURE__ */ new Map();
+  const seasonIdByTournamentId = /* @__PURE__ */ new Map();
+  const ingestedMatchIds = /* @__PURE__ */ new Set();
+  const ingestedMatchKeys = /* @__PURE__ */ new Set();
   for (const league of catalog) {
     const leagueCountryId = await getOrCreateCountry(league.country, league.country_code, league.country_slug);
     const compMetadata = {
@@ -339,7 +186,6 @@ export async function seedInitialData(pool: pg.Pool) {
       sofascoreTournamentId: league.sofascore_tournament_id,
       seasonName: league.season_name
     };
-
     const compRes = await pool.query(`
       INSERT INTO competitions (sport_id, country_id, slug, name, gender, level, metadata_json)
       VALUES ($1, $2, $3, $4, 'men', 'tier_1', $5)
@@ -350,13 +196,11 @@ export async function seedInitialData(pool: pg.Pool) {
       RETURNING id;
     `, [sportId, leagueCountryId, league.league_slug, league.league_name, JSON.stringify(compMetadata)]);
     const compId = compRes.rows[0].id;
-
     await pool.query(`
       INSERT INTO provider_mappings (provider, entity_type, provider_entity_id, internal_entity_id, internal_entity_type)
       VALUES ('sofascore', 'competition', $1, $2, 'competition')
       ON CONFLICT (provider, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
     `, [String(league.sofascore_tournament_id), compId]);
-
     const seasonRes = await pool.query(`
       INSERT INTO seasons (competition_id, name, is_current, start_date, end_date)
       VALUES ($1, $2, true, '2026-08-01', '2027-05-31')
@@ -364,29 +208,20 @@ export async function seedInitialData(pool: pg.Pool) {
       RETURNING id;
     `, [compId, league.season_name]);
     const seasonId = seasonRes.rows[0].id;
-
     compIdByTournamentId.set(league.sofascore_tournament_id, compId);
     seasonIdByTournamentId.set(league.sofascore_tournament_id, seasonId);
   }
-
-  // Pass 2: Ingest Teams, Standings, Squads, Matches and Telemetry
   for (const league of catalog) {
-    const compId = compIdByTournamentId.get(league.sofascore_tournament_id)!;
-    const seasonId = seasonIdByTournamentId.get(league.sofascore_tournament_id)!;
-
-    // 7. Ingest Teams, Standings, and Seasonal Telemetry for this League
+    const compId = compIdByTournamentId.get(league.sofascore_tournament_id);
+    const seasonId = seasonIdByTournamentId.get(league.sofascore_tournament_id);
     for (const team of league.teams) {
       let teamId = teamIdCache.get(team.sofascore_id);
-
       if (!teamId) {
-        // Ensure team's home country
-        const teamCountryId = await getOrCreateCountry(
+        const teamCountryId2 = await getOrCreateCountry(
           team.country_name || league.country,
           team.country_code || league.country_code,
           team.country_slug || league.country_slug
         );
-
-        // Generate unique slug
         let baseSlug = slugify(team.slug || team.name);
         const currentCount = slugCountMap.get(baseSlug) || 0;
         let uniqueSlug = baseSlug;
@@ -394,14 +229,12 @@ export async function seedInitialData(pool: pg.Pool) {
           uniqueSlug = `${baseSlug}-${team.sofascore_id}`;
         }
         slugCountMap.set(baseSlug, currentCount + 1);
-
         const teamMetadata = {
           sofascoreId: team.sofascore_id,
           nameCode: team.name_code,
           teamColors: team.team_colors,
           seasonStatistics: team.season_statistics || {}
         };
-
         const teamRes = await pool.query(`
           INSERT INTO teams (sport_id, country_id, name, short_name, slug, type, gender, logo_url, metadata_json)
           VALUES ($1, $2, $3, $4, $5, 'club', 'men', $6, $7)
@@ -414,27 +247,22 @@ export async function seedInitialData(pool: pg.Pool) {
           RETURNING id;
         `, [
           sportId,
-          teamCountryId,
+          teamCountryId2,
           team.name,
           team.short_name,
           uniqueSlug,
           team.logo_url,
           JSON.stringify(teamMetadata)
         ]);
-
         teamId = teamRes.rows[0].id;
         teamIdCache.set(team.sofascore_id, teamId);
         totalTeamsIngested++;
-
-        // Provider mapping
         await pool.query(`
           INSERT INTO provider_mappings (provider, entity_type, provider_entity_id, internal_entity_id, internal_entity_type)
           VALUES ('sofascore', 'team', $1, $2, 'team')
           ON CONFLICT (provider, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
         `, [String(team.sofascore_id), teamId]);
       }
-
-      // 8. Insert Standing Row using explicit ON CONSTRAINT
       await pool.query(`
         INSERT INTO football_standings (
           competition_id, season_id, team_id, position, played, wins, draws, losses,
@@ -499,30 +327,14 @@ export async function seedInitialData(pool: pg.Pool) {
         team.away_goals_for || 0,
         team.away_goals_against || 0
       ]);
-
       totalStandingsIngested++;
-
-      // 8a. Ingest Squad Players for Team in Batch
       if (team.players && Array.isArray(team.players) && team.players.length > 0) {
         try {
-          const playerRows: Array<{
-            countryId: string;
-            name: string;
-            shortName: string;
-            slug: string;
-            position: string | null;
-            jerseyNumber: number | null;
-            height: number | null;
-            photoUrl: string | null;
-            dob: string | null;
-            metadata: string;
-          }> = [];
-
+          const playerRows = [];
           for (const p of team.players) {
             const playerCountryId = p.country_name ? await getOrCreateCountry(p.country_name, p.country_code, p.country_code?.toLowerCase() || p.slug) : teamCountryId;
             const playerSlug = `${slugify(p.name)}-${p.sofascore_id}`;
-            const dob = p.date_of_birth_timestamp ? new Date(p.date_of_birth_timestamp * 1000).toISOString().split("T")[0] : null;
-
+            const dob = p.date_of_birth_timestamp ? new Date(p.date_of_birth_timestamp * 1e3).toISOString().split("T")[0] : null;
             playerRows.push({
               countryId: playerCountryId,
               name: p.name,
@@ -540,12 +352,10 @@ export async function seedInitialData(pool: pg.Pool) {
               })
             });
           }
-
           if (playerRows.length > 0) {
-            const pValues: any[] = [];
-            const pPlaceholders: string[] = [];
+            const pValues = [];
+            const pPlaceholders = [];
             let pIdx = 1;
-
             for (const r of playerRows) {
               pPlaceholders.push(`($${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++})`);
               pValues.push(
@@ -563,7 +373,6 @@ export async function seedInitialData(pool: pg.Pool) {
                 r.metadata
               );
             }
-
             const playerRes = await pool.query(`
               INSERT INTO players (
                 sport_id, country_id, current_team_id, name, short_name, slug,
@@ -572,11 +381,9 @@ export async function seedInitialData(pool: pg.Pool) {
               VALUES ${pPlaceholders.join(", ")}
               RETURNING id;
             `, pValues);
-
-            const mValues: any[] = [];
-            const mPlaceholders: string[] = [];
+            const mValues = [];
+            const mPlaceholders = [];
             let mIdx = 1;
-
             for (let i = 0; i < playerRes.rows.length; i++) {
               const pid = playerRes.rows[i]?.id;
               const r = playerRows[i];
@@ -586,7 +393,6 @@ export async function seedInitialData(pool: pg.Pool) {
                 totalPlayersIngested++;
               }
             }
-
             if (mPlaceholders.length > 0) {
               await pool.query(`
                 INSERT INTO football_player_team_memberships (
@@ -598,21 +404,16 @@ export async function seedInitialData(pool: pg.Pool) {
             }
           }
         } catch (playerErr) {
-          // Ignore player batch error
         }
       }
-
-      // 8b. Ingest Team Recent Matches
       if (team.recent_matches && Array.isArray(team.recent_matches)) {
         for (const rm of team.recent_matches) {
           try {
             if (rm.sofascore_id && ingestedMatchIds.has(rm.sofascore_id)) {
               continue;
             }
-
             let hTeamId = teamIdCache.get(rm.home_team_id);
             let aTeamId = teamIdCache.get(rm.away_team_id);
-
             if (!hTeamId) {
               const hRes = await pool.query(`
                 INSERT INTO teams (sport_id, name, short_name, slug, type, gender, logo_url, metadata_json)
@@ -622,7 +423,6 @@ export async function seedInitialData(pool: pg.Pool) {
               hTeamId = hRes.rows[0]?.id;
               if (hTeamId) teamIdCache.set(rm.home_team_id, hTeamId);
             }
-
             if (!aTeamId) {
               const aRes = await pool.query(`
                 INSERT INTO teams (sport_id, name, short_name, slug, type, gender, logo_url, metadata_json)
@@ -632,26 +432,21 @@ export async function seedInitialData(pool: pg.Pool) {
               aTeamId = aRes.rows[0]?.id;
               if (aTeamId) teamIdCache.set(rm.away_team_id, aTeamId);
             }
-
             const matchTs = rm.start_timestamp || rm.scheduled_start_at;
             if (hTeamId && aTeamId && matchTs) {
-              const matchDate = new Date(matchTs * 1000);
+              const matchDate = new Date(matchTs * 1e3);
               const dateKey = `${hTeamId}-${aTeamId}-${matchDate.toISOString().slice(0, 10)}`;
               if (ingestedMatchKeys.has(dateKey)) {
                 continue;
               }
-
-              // Route to authentic tournament/competition and season
-              const matchCompId = (rm.tournament_id && compIdByTournamentId.get(rm.tournament_id)) || compId;
-              const matchSeasonId = (rm.tournament_id && seasonIdByTournamentId.get(rm.tournament_id)) || seasonId;
-
-              let winId: string | null = null;
+              const matchCompId = rm.tournament_id && compIdByTournamentId.get(rm.tournament_id) || compId;
+              const matchSeasonId = rm.tournament_id && seasonIdByTournamentId.get(rm.tournament_id) || seasonId;
+              let winId = null;
               if (typeof rm.home_score === "number" && typeof rm.away_score === "number") {
                 if (rm.home_score > rm.away_score) winId = hTeamId;
                 else if (rm.away_score > rm.home_score) winId = aTeamId;
               }
               const mMeta = { sofascoreId: rm.sofascore_id, statistics: rm.statistics || null, round: rm.round || null };
-
               const mRes = await pool.query(`
                 INSERT INTO matches (
                   sport_id, competition_id, season_id, round, home_team_id, away_team_id,
@@ -664,11 +459,9 @@ export async function seedInitialData(pool: pg.Pool) {
                   metadata_json = EXCLUDED.metadata_json
                 RETURNING id;
               `, [sportId, matchCompId, matchSeasonId, rm.round || null, hTeamId, aTeamId, matchDate, winId, JSON.stringify(mMeta)]);
-
               const mId = mRes.rows[0]?.id;
               if (rm.sofascore_id) ingestedMatchIds.add(rm.sofascore_id);
               ingestedMatchKeys.add(dateKey);
-
               if (mId && typeof rm.home_score === "number" && typeof rm.away_score === "number") {
                 await pool.query(`
                   INSERT INTO football_match_scores (
@@ -686,7 +479,6 @@ export async function seedInitialData(pool: pg.Pool) {
                     away_score_halftime = EXCLUDED.away_score_halftime,
                     winner_team_id = EXCLUDED.winner_team_id;
                 `, [mId, hTeamId, aTeamId, winId, rm.home_score, rm.away_score, rm.home_score_halftime ?? null, rm.away_score_halftime ?? null]);
-
                 if (rm.statistics) {
                   await insertTeamStats(pool, mId, hTeamId, aTeamId, rm.statistics.home);
                   await insertTeamStats(pool, mId, aTeamId, hTeamId, rm.statistics.away);
@@ -696,33 +488,25 @@ export async function seedInitialData(pool: pg.Pool) {
               }
             }
           } catch (rmErr) {
-            // Ignore single match error
           }
         }
       }
     }
-
-    // 9. Ingest Recent Finished Matches & Detailed Telemetry Statistics
     if (league.recent_matches && league.recent_matches.length > 0) {
       for (const m of league.recent_matches) {
         if (m.sofascore_id && ingestedMatchIds.has(m.sofascore_id)) continue;
-
         const homeTeamId = teamIdCache.get(m.home_team_id);
         const awayTeamId = teamIdCache.get(m.away_team_id);
-
         const matchTs = m.scheduled_start_at || m.start_timestamp;
         if (!homeTeamId || !awayTeamId || !matchTs) continue;
-
-        const scheduledDate = new Date(matchTs * 1000);
+        const scheduledDate = new Date(matchTs * 1e3);
         const dateKey = `${homeTeamId}-${awayTeamId}-${scheduledDate.toISOString().slice(0, 10)}`;
         if (ingestedMatchKeys.has(dateKey)) continue;
-
-        let winnerTeamId: string | null = null;
+        let winnerTeamId = null;
         if (typeof m.home_score === "number" && typeof m.away_score === "number") {
           if (m.home_score > m.away_score) winnerTeamId = homeTeamId;
           else if (m.away_score > m.home_score) winnerTeamId = awayTeamId;
         }
-
         const matchMetadata = {
           sofascoreId: m.sofascore_id,
           homeScore: m.home_score,
@@ -730,7 +514,6 @@ export async function seedInitialData(pool: pg.Pool) {
           round: m.round,
           statistics: m.statistics || null
         };
-
         try {
           const matchRes = await pool.query(`
             INSERT INTO matches (
@@ -756,13 +539,10 @@ export async function seedInitialData(pool: pg.Pool) {
             winnerTeamId,
             JSON.stringify(matchMetadata)
           ]);
-
           const matchId = matchRes.rows[0]?.id;
           if (m.sofascore_id) ingestedMatchIds.add(m.sofascore_id);
           ingestedMatchKeys.add(dateKey);
           totalMatchesIngested++;
-
-          // 9a. Insert into football_match_scores
           if (matchId && typeof m.home_score === "number" && typeof m.away_score === "number") {
             await pool.query(`
               INSERT INTO football_match_scores (
@@ -781,11 +561,8 @@ export async function seedInitialData(pool: pg.Pool) {
                 status = EXCLUDED.status;
             `, [matchId, homeTeamId, awayTeamId, winnerTeamId, m.home_score, m.away_score]);
           }
-
-          // 9b. Insert Home and Away Team Match Statistics into football_match_team_statistics
           if (matchId && m.statistics) {
             const stats = m.statistics;
-
             if (stats.home) {
               await insertTeamStats(pool, matchId, homeTeamId, awayTeamId, stats.home, stats.raw_items);
               totalStatsIngested++;
@@ -800,27 +577,20 @@ export async function seedInitialData(pool: pg.Pool) {
         }
       }
     }
-
-    // 10. Ingest Upcoming Fixtures using explicit ON CONSTRAINT
     if (league.upcoming_matches && league.upcoming_matches.length > 0) {
       for (const m of league.upcoming_matches) {
         if (m.sofascore_id && ingestedMatchIds.has(m.sofascore_id)) continue;
-
         const homeTeamId = teamIdCache.get(m.home_team_id);
         const awayTeamId = teamIdCache.get(m.away_team_id);
-
         const matchTs = m.scheduled_start_at || m.start_timestamp;
         if (!homeTeamId || !awayTeamId || !matchTs) continue;
-
-        const scheduledDate = new Date(matchTs * 1000);
+        const scheduledDate = new Date(matchTs * 1e3);
         const dateKey = `${homeTeamId}-${awayTeamId}-${scheduledDate.toISOString().slice(0, 10)}`;
         if (ingestedMatchKeys.has(dateKey)) continue;
-
         const matchMetadata = {
           sofascoreId: m.sofascore_id,
           round: m.round
         };
-
         try {
           await pool.query(`
             INSERT INTO matches (
@@ -843,7 +613,6 @@ export async function seedInitialData(pool: pg.Pool) {
             m.venue || null,
             JSON.stringify(matchMetadata)
           ]);
-
           if (m.sofascore_id) ingestedMatchIds.add(m.sofascore_id);
           ingestedMatchKeys.add(dateKey);
           totalMatchesIngested++;
@@ -852,18 +621,12 @@ export async function seedInitialData(pool: pg.Pool) {
         }
       }
     }
-
     console.log(`[INGESTED] ${league.country}: ${league.league_name} (${league.teams.length} teams, ${league.recent_matches?.length || 0} finished, ${league.upcoming_matches?.length || 0} upcoming)`);
   }
-
-  // 10. Generate and Populate Football Team Form Features
   await generateTeamFormFeatures(pool);
-
-  // 11. Ensure Admin User
   const adminEmail = (process.env.ADMIN_EMAIL || "admin@skoriq.local").trim().toLowerCase();
   const adminPassword = process.env.ADMIN_PASSWORD || "AdminPassword123!";
   const passwordHash = await hashPassword(adminPassword);
-
   await pool.query(`
     INSERT INTO users (email, first_name, last_name, phone_number, password_hash, role, status)
     VALUES ($1, 'SkorIQ', 'Admin', '+905550000000', $2, 'admin', 'active')
@@ -871,7 +634,6 @@ export async function seedInitialData(pool: pg.Pool) {
     SET role = 'admin', status = 'active', password_hash = EXCLUDED.password_hash, updated_at = now();
   `, [adminEmail, passwordHash]);
   console.log(`Admin user verified: ${adminEmail}`);
-
   console.log("=================================================");
   console.log("INGESTION SUMMARY:");
   console.log(`  Total Competitions Ingested: ${catalog.length}`);
@@ -882,8 +644,7 @@ export async function seedInitialData(pool: pg.Pool) {
   console.log(`  Total Team Match Telemetry Statistics Rows Ingested: ${totalStatsIngested}`);
   console.log("=================================================");
 }
-
-async function generateTeamFormFeatures(pool: pg.Pool) {
+async function generateTeamFormFeatures(pool) {
   console.log("Generating rolling form features for all football teams...");
   const teamsRes = await pool.query(`
     SELECT DISTINCT t.id, t.name
@@ -891,7 +652,6 @@ async function generateTeamFormFeatures(pool: pg.Pool) {
     INNER JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
     WHERE m.status IN ('finished', 'after_extra_time', 'after_penalties')
   `);
-
   let featuresCreated = 0;
   for (const team of teamsRes.rows) {
     const matchesRes = await pool.query(`
@@ -920,25 +680,19 @@ async function generateTeamFormFeatures(pool: pg.Pool) {
         AND m.status IN ('finished', 'after_extra_time', 'after_penalties')
       ORDER BY m.scheduled_start_at DESC
     `, [team.id]);
-
     const allMatches = matchesRes.rows;
     if (allMatches.length === 0) continue;
-
-    const scopes: Array<"overall" | "home" | "away"> = ["overall", "home", "away"];
+    const scopes = ["overall", "home", "away"];
     const windows = [5, 10];
-
     for (const scope of scopes) {
       let filtered = allMatches;
-      if (scope === "home") filtered = allMatches.filter((m: any) => m.is_home);
-      else if (scope === "away") filtered = allMatches.filter((m: any) => !m.is_home);
-
+      if (scope === "home") filtered = allMatches.filter((m) => m.is_home);
+      else if (scope === "away") filtered = allMatches.filter((m) => !m.is_home);
       if (filtered.length === 0) continue;
-
       for (const w of windows) {
         const slice = filtered.slice(0, w);
         const count = slice.length;
         if (count === 0) continue;
-
         let wins = 0;
         let draws = 0;
         let losses = 0;
@@ -958,7 +712,6 @@ async function generateTeamFormFeatures(pool: pg.Pool) {
         let fhOver05 = 0;
         let fhGoalsFor = 0;
         let fhGoalsAgainst = 0;
-
         let totalShots = 0;
         let shotsCount = 0;
         let totalShotsOnTarget = 0;
@@ -969,107 +722,138 @@ async function generateTeamFormFeatures(pool: pg.Pool) {
         let cornCount = 0;
         let totalXg = 0;
         let xgCount = 0;
-
         for (const m of slice) {
           const sc = Number(m.scored ?? 0);
           const con = Number(m.conceded ?? 0);
           const totalMatchGoals = sc + con;
-
           if (sc > con) wins++;
           else if (sc === con) draws++;
           else losses++;
-
           goalsFor += sc;
           goalsAgainst += con;
-
           if (con === 0) cleanSheets++;
           if (sc === 0) failedToScore++;
           if (sc > 0 && con > 0) bothTeamsScored++;
-
           if (totalMatchGoals > 0.5) over05++;
           if (totalMatchGoals > 1.5) over15++;
           if (totalMatchGoals > 2.5) over25++;
           if (totalMatchGoals < 2.5) under25++;
-
-          if (sc > 0) { scoredMatches++; teamOver05++; }
+          if (sc > 0) {
+            scoredMatches++;
+            teamOver05++;
+          }
           if (sc > 1) teamOver15++;
           if (con > 0) concededMatches++;
-
           const htSc = Number(m.ht_scored ?? 0);
           const htCon = Number(m.ht_conceded ?? 0);
           if (htSc + htCon > 0.5) fhOver05++;
           fhGoalsFor += htSc;
           fhGoalsAgainst += htCon;
-
-          if (m.shots_total !== null && m.shots_total !== undefined) { totalShots += Number(m.shots_total); shotsCount++; }
-          if (m.shots_on_target !== null && m.shots_on_target !== undefined) { totalShotsOnTarget += Number(m.shots_on_target); sotCount++; }
-          if (m.possession_percent !== null && m.possession_percent !== undefined) { totalPossession += Number(m.possession_percent); possCount++; }
-          if (m.corners !== null && m.corners !== undefined) { totalCorners += Number(m.corners); cornCount++; }
-          if (m.expected_goals !== null && m.expected_goals !== undefined) { totalXg += Number(m.expected_goals); xgCount++; }
+          if (m.shots_total !== null && m.shots_total !== void 0) {
+            totalShots += Number(m.shots_total);
+            shotsCount++;
+          }
+          if (m.shots_on_target !== null && m.shots_on_target !== void 0) {
+            totalShotsOnTarget += Number(m.shots_on_target);
+            sotCount++;
+          }
+          if (m.possession_percent !== null && m.possession_percent !== void 0) {
+            totalPossession += Number(m.possession_percent);
+            possCount++;
+          }
+          if (m.corners !== null && m.corners !== void 0) {
+            totalCorners += Number(m.corners);
+            cornCount++;
+          }
+          if (m.expected_goals !== null && m.expected_goals !== void 0) {
+            totalXg += Number(m.expected_goals);
+            xgCount++;
+          }
         }
-
         const points = wins * 3 + draws;
         const avgGoalsFor = Number((goalsFor / count).toFixed(3));
         const avgGoalsAgainst = Number((goalsAgainst / count).toFixed(3));
-        const cleanSheetRate = Number(((cleanSheets / count) * 100).toFixed(2));
-        const failedToScoreRate = Number(((failedToScore / count) * 100).toFixed(2));
-        const bothTeamsToScoreRate = Number(((bothTeamsScored / count) * 100).toFixed(2));
-        const over05Rate = Number(((over05 / count) * 100).toFixed(2));
-        const over15Rate = Number(((over15 / count) * 100).toFixed(2));
-        const over25Rate = Number(((over25 / count) * 100).toFixed(2));
-        const under25Rate = Number(((under25 / count) * 100).toFixed(2));
-        const scoredRate = Number(((scoredMatches / count) * 100).toFixed(2));
-        const concededRate = Number(((concededMatches / count) * 100).toFixed(2));
-        const teamOver05Rate = Number(((teamOver05 / count) * 100).toFixed(2));
-        const teamOver15Rate = Number(((teamOver15 / count) * 100).toFixed(2));
-        const firstHalfOver05Rate = Number(((fhOver05 / count) * 100).toFixed(2));
+        const cleanSheetRate = Number((cleanSheets / count * 100).toFixed(2));
+        const failedToScoreRate = Number((failedToScore / count * 100).toFixed(2));
+        const bothTeamsToScoreRate = Number((bothTeamsScored / count * 100).toFixed(2));
+        const over05Rate = Number((over05 / count * 100).toFixed(2));
+        const over15Rate = Number((over15 / count * 100).toFixed(2));
+        const over25Rate = Number((over25 / count * 100).toFixed(2));
+        const under25Rate = Number((under25 / count * 100).toFixed(2));
+        const scoredRate = Number((scoredMatches / count * 100).toFixed(2));
+        const concededRate = Number((concededMatches / count * 100).toFixed(2));
+        const teamOver05Rate = Number((teamOver05 / count * 100).toFixed(2));
+        const teamOver15Rate = Number((teamOver15 / count * 100).toFixed(2));
+        const firstHalfOver05Rate = Number((fhOver05 / count * 100).toFixed(2));
         const firstHalfAvgGoalsFor = Number((fhGoalsFor / count).toFixed(3));
         const firstHalfAvgGoalsAgainst = Number((fhGoalsAgainst / count).toFixed(3));
-
         const avgShots = shotsCount > 0 ? Number((totalShots / shotsCount).toFixed(2)) : null;
         const avgShotsOnTarget = sotCount > 0 ? Number((totalShotsOnTarget / sotCount).toFixed(2)) : null;
         const avgPossessionPercent = possCount > 0 ? Number((totalPossession / possCount).toFixed(1)) : null;
         const avgCorners = cornCount > 0 ? Number((totalCorners / cornCount).toFixed(2)) : null;
         const avgExpectedGoals = xgCount > 0 ? Number((totalXg / xgCount).toFixed(3)) : null;
-
         const latestMatch = slice[0];
-        const asOfDate = latestMatch.scheduled_start_at || new Date();
+        const asOfDate = latestMatch.scheduled_start_at || /* @__PURE__ */ new Date();
         const asOfMatchId = null;
         const compId = latestMatch.competition_id;
         const seasonId = latestMatch.season_id;
-
         featureRows.push([
-          team.id, compId, seasonId, asOfMatchId, asOfDate,
-          w, scope, count, wins, draws, losses, points,
-          goalsFor, goalsAgainst, goalsFor - goalsAgainst,
-          avgGoalsFor, avgGoalsAgainst, cleanSheetRate, failedToScoreRate,
-          bothTeamsToScoreRate, over05Rate, over15Rate, over25Rate, under25Rate,
-          scoredRate, concededRate, teamOver05Rate, teamOver15Rate,
-          firstHalfOver05Rate, firstHalfAvgGoalsFor, firstHalfAvgGoalsAgainst,
-          avgShots, avgShotsOnTarget, avgPossessionPercent, avgCorners, avgExpectedGoals,
+          team.id,
+          compId,
+          seasonId,
+          asOfMatchId,
+          asOfDate,
+          w,
+          scope,
+          count,
+          wins,
+          draws,
+          losses,
+          points,
+          goalsFor,
+          goalsAgainst,
+          goalsFor - goalsAgainst,
+          avgGoalsFor,
+          avgGoalsAgainst,
+          cleanSheetRate,
+          failedToScoreRate,
+          bothTeamsToScoreRate,
+          over05Rate,
+          over15Rate,
+          over25Rate,
+          under25Rate,
+          scoredRate,
+          concededRate,
+          teamOver05Rate,
+          teamOver15Rate,
+          firstHalfOver05Rate,
+          firstHalfAvgGoalsFor,
+          firstHalfAvgGoalsAgainst,
+          avgShots,
+          avgShotsOnTarget,
+          avgPossessionPercent,
+          avgCorners,
+          avgExpectedGoals,
           count
         ]);
       }
     }
   }
-
   featuresCreated = 0;
   const batchSize = 50;
   for (let i = 0; i < featureRows.length; i += batchSize) {
     const chunk = featureRows.slice(i, i + batchSize);
-    const placeholders: string[] = [];
-    const values: any[] = [];
+    const placeholders = [];
+    const values = [];
     let pIdx = 1;
-
     for (const row of chunk) {
-      const rowPh: string[] = [];
+      const rowPh = [];
       for (const val of row) {
         rowPh.push(`$${pIdx++}`);
         values.push(val);
       }
       placeholders.push(`(${rowPh.join(", ")}, 100, '{}')`);
     }
-
     try {
       await pool.query(`
         INSERT INTO football_team_form_features (
@@ -1120,20 +904,16 @@ async function generateTeamFormFeatures(pool: pg.Pool) {
       `, values);
       featuresCreated += chunk.length;
     } catch (batchErr) {
-      // Continue on chunk error
     }
   }
-
   console.log(`Team form features generation complete! (${featuresCreated} feature rows written)`);
 }
-
 async function main() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     console.error("DATABASE_URL is required to run seed.");
     process.exit(1);
   }
-
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 2 });
   try {
     await seedInitialData(pool);
@@ -1144,7 +924,12 @@ async function main() {
     await pool.end();
   }
 }
-
 if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }
+export {
+  hashPassword,
+  insertTeamStats,
+  seedInitialData,
+  slugify
+};

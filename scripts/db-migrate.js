@@ -1,31 +1,980 @@
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
+// scripts/db-seed.js
+var db_seed_exports = {};
+__export(db_seed_exports, {
+  hashPassword: () => hashPassword,
+  insertTeamStats: () => insertTeamStats,
+  seedInitialData: () => seedInitialData,
+  slugify: () => slugify
+});
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomBytes, scrypt as scryptCallback } from "node:crypto";
+import { promisify } from "node:util";
 import pg from "pg";
+async function hashPassword(password) {
+  const salt = randomBytes(16).toString("base64url");
+  const derived = await scrypt(password, salt, keyLength);
+  return `scrypt$${salt}$${derived.toString("base64url")}`;
+}
+function slugify(text) {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+async function insertTeamStats(pool, matchId, tId, oppId, s, rawItems) {
+  const passAccuracy = s.passes && s.accurate_passes ? Number((s.accurate_passes / s.passes * 100).toFixed(2)) : null;
+  const extraMeta = {
+    averageRating: s.average_rating,
+    distanceCovered: s.distance_covered,
+    numberOfSprints: s.number_of_sprints,
+    raw: rawItems
+  };
+  await pool.query(`
+    INSERT INTO football_match_team_statistics (
+      match_id, team_id, opponent_team_id, is_home,
+      possession_percent, shots_total, shots_on_target, shots_off_target, blocked_shots,
+      corners, fouls, yellow_cards, red_cards, offsides, goalkeeper_saves,
+      passes, accurate_passes, pass_accuracy_percent,
+      big_chances, big_chances_missed, expected_goals,
+      tackles, interceptions, clearances, hit_woodwork,
+      metadata_json
+    )
+    VALUES (
+      $1, $2, $3, $4,
+      $5, $6, $7, $8, $9,
+      $10, $11, $12, $13, $14, $15,
+      $16, $17, $18,
+      $19, $20, $21,
+      $22, $23, $24, $25,
+      $26
+    )
+    ON CONFLICT (match_id, team_id) DO UPDATE SET
+      possession_percent = EXCLUDED.possession_percent,
+      shots_total = EXCLUDED.shots_total,
+      shots_on_target = EXCLUDED.shots_on_target,
+      shots_off_target = EXCLUDED.shots_off_target,
+      blocked_shots = EXCLUDED.blocked_shots,
+      corners = EXCLUDED.corners,
+      fouls = EXCLUDED.fouls,
+      yellow_cards = EXCLUDED.yellow_cards,
+      red_cards = EXCLUDED.red_cards,
+      offsides = EXCLUDED.offsides,
+      goalkeeper_saves = EXCLUDED.goalkeeper_saves,
+      passes = EXCLUDED.passes,
+      accurate_passes = EXCLUDED.accurate_passes,
+      pass_accuracy_percent = EXCLUDED.pass_accuracy_percent,
+      big_chances = EXCLUDED.big_chances,
+      big_chances_missed = EXCLUDED.big_chances_missed,
+      expected_goals = EXCLUDED.expected_goals,
+      tackles = EXCLUDED.tackles,
+      interceptions = EXCLUDED.interceptions,
+      clearances = EXCLUDED.clearances,
+      hit_woodwork = EXCLUDED.hit_woodwork,
+      metadata_json = EXCLUDED.metadata_json;
+  `, [
+    matchId,
+    tId,
+    oppId,
+    s.is_home,
+    s.possession_percent ?? null,
+    s.shots_total ?? null,
+    s.shots_on_target ?? null,
+    s.shots_off_target ?? null,
+    s.blocked_shots ?? null,
+    s.corners ?? null,
+    s.fouls ?? null,
+    s.yellow_cards ?? null,
+    s.red_cards ?? null,
+    s.offsides ?? null,
+    s.goalkeeper_saves ?? null,
+    s.passes ?? null,
+    s.accurate_passes ?? null,
+    passAccuracy,
+    s.big_chances ?? null,
+    s.big_chances_missed ?? null,
+    s.expected_goals ?? null,
+    s.tackles ?? null,
+    s.interceptions ?? null,
+    s.clearances ?? null,
+    s.hit_woodwork ?? null,
+    JSON.stringify(extraMeta)
+  ]);
+}
+async function seedInitialData(pool) {
+  console.log("=================================================");
+  console.log("STARTING SOFASCORE ADVANCED DATA & TELEMETRY INGESTION");
+  console.log("=================================================");
+  const forceSeed = process.env.FORCE_SEED === "true";
+  try {
+    const currentSeasonMatchesRes = await pool.query("SELECT count(*) FROM matches WHERE scheduled_start_at >= '2026-08-01'");
+    const currentSeasonMatchesCount = parseInt(currentSeasonMatchesRes.rows[0]?.count || "0", 10);
+    if (currentSeasonMatchesCount >= 50 && !forceSeed) {
+      console.log(`Current season 26/27 matches already seeded (${currentSeasonMatchesCount} matches found). Skipping seed. Use FORCE_SEED=true to override.`);
+      return;
+    }
+  } catch (checkErr) {
+  }
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const catalogPath = path.resolve(__dirname, "sofascore_catalog.json");
+  if (!fs.existsSync(catalogPath)) {
+    throw new Error(`Catalog data file not found at: ${catalogPath}. Please run scripts/scrape_sofascore.py first.`);
+  }
+  const catalog = JSON.parse(fs.readFileSync(catalogPath, "utf-8"));
+  console.log(`Loaded catalog with ${catalog.length} leagues.`);
+  await pool.query(`
+    TRUNCATE TABLE football_match_team_statistics, football_match_scores, football_standings, matches, teams CASCADE;
+    DELETE FROM provider_mappings WHERE entity_type IN ('team', 'match', 'competition', 'country', 'standing', 'football_match_team_statistics');
+  `);
+  console.log("Cleaned teams, matches, standings, and telemetry statistics.");
+  const sportRes = await pool.query(`
+    INSERT INTO sports (slug, name)
+    VALUES ('football', 'Football')
+    ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+    RETURNING id;
+  `);
+  const sportId = sportRes.rows[0].id;
+  console.log(`Sport 'football' verified with ID: ${sportId}`);
+  const countryIdCache = /* @__PURE__ */ new Map();
+  const teamIdCache = /* @__PURE__ */ new Map();
+  const slugCountMap = /* @__PURE__ */ new Map();
+  try {
+    const existingCountriesRes = await pool.query("SELECT id, code, slug FROM countries");
+    for (const c of existingCountriesRes.rows) {
+      if (c.slug) countryIdCache.set(c.slug, c.id);
+      if (c.code) countryIdCache.set(c.code.toUpperCase(), c.id);
+    }
+  } catch (err) {
+  }
+  async function getOrCreateCountry(name, code, slug) {
+    const cleanSlug = slugify(slug || name);
+    if (countryIdCache.has(cleanSlug)) {
+      return countryIdCache.get(cleanSlug);
+    }
+    const cleanCode = (code || cleanSlug.substring(0, 3)).toUpperCase();
+    const existing = await pool.query(`
+      SELECT id FROM countries WHERE slug = $1 OR (code = $2 AND code IS NOT NULL) LIMIT 1;
+    `, [cleanSlug, cleanCode]);
+    let countryId;
+    if (existing.rows.length > 0) {
+      countryId = existing.rows[0].id;
+      await pool.query(`UPDATE countries SET name = $1 WHERE id = $2;`, [name, countryId]);
+    } else {
+      const res = await pool.query(`
+        INSERT INTO countries (code, slug, name)
+        VALUES ($1, $2, $3)
+        RETURNING id;
+      `, [cleanCode, cleanSlug, name]);
+      countryId = res.rows[0].id;
+    }
+    countryIdCache.set(cleanSlug, countryId);
+    await pool.query(`
+      INSERT INTO provider_mappings (provider, entity_type, provider_entity_id, internal_entity_id, internal_entity_type)
+      VALUES ('sofascore', 'country', $1, $2, 'country')
+      ON CONFLICT (provider, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
+    `, [cleanSlug, countryId]);
+    return countryId;
+  }
+  let totalTeamsIngested = 0;
+  let totalStandingsIngested = 0;
+  let totalMatchesIngested = 0;
+  let totalStatsIngested = 0;
+  let totalPlayersIngested = 0;
+  const compIdByTournamentId = /* @__PURE__ */ new Map();
+  const seasonIdByTournamentId = /* @__PURE__ */ new Map();
+  const ingestedMatchIds = /* @__PURE__ */ new Set();
+  const ingestedMatchKeys = /* @__PURE__ */ new Set();
+  for (const league of catalog) {
+    const leagueCountryId = await getOrCreateCountry(league.country, league.country_code, league.country_slug);
+    const compMetadata = {
+      logoUrl: league.tournament_logo_url,
+      imageUrl: league.tournament_logo_url,
+      badgeUrl: league.tournament_logo_url,
+      sofascoreTournamentId: league.sofascore_tournament_id,
+      seasonName: league.season_name
+    };
+    const compRes = await pool.query(`
+      INSERT INTO competitions (sport_id, country_id, slug, name, gender, level, metadata_json)
+      VALUES ($1, $2, $3, $4, 'men', 'tier_1', $5)
+      ON CONFLICT (sport_id, slug) DO UPDATE SET
+        name = EXCLUDED.name,
+        country_id = EXCLUDED.country_id,
+        metadata_json = EXCLUDED.metadata_json
+      RETURNING id;
+    `, [sportId, leagueCountryId, league.league_slug, league.league_name, JSON.stringify(compMetadata)]);
+    const compId = compRes.rows[0].id;
+    await pool.query(`
+      INSERT INTO provider_mappings (provider, entity_type, provider_entity_id, internal_entity_id, internal_entity_type)
+      VALUES ('sofascore', 'competition', $1, $2, 'competition')
+      ON CONFLICT (provider, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
+    `, [String(league.sofascore_tournament_id), compId]);
+    const seasonRes = await pool.query(`
+      INSERT INTO seasons (competition_id, name, is_current, start_date, end_date)
+      VALUES ($1, $2, true, '2026-08-01', '2027-05-31')
+      ON CONFLICT (competition_id, name) DO UPDATE SET is_current = true
+      RETURNING id;
+    `, [compId, league.season_name]);
+    const seasonId = seasonRes.rows[0].id;
+    compIdByTournamentId.set(league.sofascore_tournament_id, compId);
+    seasonIdByTournamentId.set(league.sofascore_tournament_id, seasonId);
+  }
+  for (const league of catalog) {
+    const compId = compIdByTournamentId.get(league.sofascore_tournament_id);
+    const seasonId = seasonIdByTournamentId.get(league.sofascore_tournament_id);
+    for (const team of league.teams) {
+      let teamId = teamIdCache.get(team.sofascore_id);
+      if (!teamId) {
+        const teamCountryId2 = await getOrCreateCountry(
+          team.country_name || league.country,
+          team.country_code || league.country_code,
+          team.country_slug || league.country_slug
+        );
+        let baseSlug = slugify(team.slug || team.name);
+        const currentCount = slugCountMap.get(baseSlug) || 0;
+        let uniqueSlug = baseSlug;
+        if (currentCount > 0) {
+          uniqueSlug = `${baseSlug}-${team.sofascore_id}`;
+        }
+        slugCountMap.set(baseSlug, currentCount + 1);
+        const teamMetadata = {
+          sofascoreId: team.sofascore_id,
+          nameCode: team.name_code,
+          teamColors: team.team_colors,
+          seasonStatistics: team.season_statistics || {}
+        };
+        const teamRes = await pool.query(`
+          INSERT INTO teams (sport_id, country_id, name, short_name, slug, type, gender, logo_url, metadata_json)
+          VALUES ($1, $2, $3, $4, $5, 'club', 'men', $6, $7)
+          ON CONFLICT (sport_id, slug) DO UPDATE SET
+            name = EXCLUDED.name,
+            short_name = EXCLUDED.short_name,
+            logo_url = EXCLUDED.logo_url,
+            country_id = EXCLUDED.country_id,
+            metadata_json = EXCLUDED.metadata_json
+          RETURNING id;
+        `, [
+          sportId,
+          teamCountryId2,
+          team.name,
+          team.short_name,
+          uniqueSlug,
+          team.logo_url,
+          JSON.stringify(teamMetadata)
+        ]);
+        teamId = teamRes.rows[0].id;
+        teamIdCache.set(team.sofascore_id, teamId);
+        totalTeamsIngested++;
+        await pool.query(`
+          INSERT INTO provider_mappings (provider, entity_type, provider_entity_id, internal_entity_id, internal_entity_type)
+          VALUES ('sofascore', 'team', $1, $2, 'team')
+          ON CONFLICT (provider, entity_type, provider_entity_id) DO UPDATE SET internal_entity_id = EXCLUDED.internal_entity_id;
+        `, [String(team.sofascore_id), teamId]);
+      }
+      await pool.query(`
+        INSERT INTO football_standings (
+          competition_id, season_id, team_id, position, played, wins, draws, losses,
+          goals_for, goals_against, goal_difference, points,
+          home_played, home_wins, home_draws, home_losses, home_goals_for, home_goals_against,
+          away_played, away_wins, away_draws, away_losses, away_goals_for, away_goals_against,
+          status
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8,
+          $9, $10, $11, $12,
+          $13, $14, $15, $16, $17, $18,
+          $19, $20, $21, $22, $23, $24,
+          'active'
+        )
+        ON CONFLICT ON CONSTRAINT "football_standings_competition_season_team_uidx" DO UPDATE SET
+          position = EXCLUDED.position,
+          played = EXCLUDED.played,
+          wins = EXCLUDED.wins,
+          draws = EXCLUDED.draws,
+          losses = EXCLUDED.losses,
+          goals_for = EXCLUDED.goals_for,
+          goals_against = EXCLUDED.goals_against,
+          goal_difference = EXCLUDED.goal_difference,
+          points = EXCLUDED.points,
+          home_played = EXCLUDED.home_played,
+          home_wins = EXCLUDED.home_wins,
+          home_draws = EXCLUDED.home_draws,
+          home_losses = EXCLUDED.home_losses,
+          home_goals_for = EXCLUDED.home_goals_for,
+          home_goals_against = EXCLUDED.home_goals_against,
+          away_played = EXCLUDED.away_played,
+          away_wins = EXCLUDED.away_wins,
+          away_draws = EXCLUDED.away_draws,
+          away_losses = EXCLUDED.away_losses,
+          away_goals_for = EXCLUDED.away_goals_for,
+          away_goals_against = EXCLUDED.away_goals_against,
+          status = 'active';
+      `, [
+        compId,
+        seasonId,
+        teamId,
+        team.position,
+        team.played,
+        team.wins,
+        team.draws,
+        team.losses,
+        team.goals_for,
+        team.goals_against,
+        team.goal_difference,
+        team.points,
+        team.home_played || 0,
+        team.home_wins || 0,
+        team.home_draws || 0,
+        team.home_losses || 0,
+        team.home_goals_for || 0,
+        team.home_goals_against || 0,
+        team.away_played || 0,
+        team.away_wins || 0,
+        team.away_draws || 0,
+        team.away_losses || 0,
+        team.away_goals_for || 0,
+        team.away_goals_against || 0
+      ]);
+      totalStandingsIngested++;
+      if (team.players && Array.isArray(team.players) && team.players.length > 0) {
+        try {
+          const playerRows = [];
+          for (const p of team.players) {
+            const playerCountryId = p.country_name ? await getOrCreateCountry(p.country_name, p.country_code, p.country_code?.toLowerCase() || p.slug) : teamCountryId;
+            const playerSlug = `${slugify(p.name)}-${p.sofascore_id}`;
+            const dob = p.date_of_birth_timestamp ? new Date(p.date_of_birth_timestamp * 1e3).toISOString().split("T")[0] : null;
+            playerRows.push({
+              countryId: playerCountryId,
+              name: p.name,
+              shortName: p.short_name || p.name,
+              slug: playerSlug,
+              position: p.position || null,
+              jerseyNumber: p.jersey_number || null,
+              height: p.height || null,
+              photoUrl: p.photo_url || null,
+              dob,
+              metadata: JSON.stringify({
+                sofascoreId: p.sofascore_id,
+                marketValue: p.proposed_market_value,
+                preferredFoot: p.preferred_foot
+              })
+            });
+          }
+          if (playerRows.length > 0) {
+            const pValues = [];
+            const pPlaceholders = [];
+            let pIdx = 1;
+            for (const r of playerRows) {
+              pPlaceholders.push(`($${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++})`);
+              pValues.push(
+                sportId,
+                r.countryId,
+                teamId,
+                r.name,
+                r.shortName,
+                r.slug,
+                r.position,
+                r.jerseyNumber,
+                r.height,
+                r.photoUrl,
+                r.dob,
+                r.metadata
+              );
+            }
+            const playerRes = await pool.query(`
+              INSERT INTO players (
+                sport_id, country_id, current_team_id, name, short_name, slug,
+                position, jersey_number, height_cm, photo_url, date_of_birth, metadata_json
+              )
+              VALUES ${pPlaceholders.join(", ")}
+              RETURNING id;
+            `, pValues);
+            const mValues = [];
+            const mPlaceholders = [];
+            let mIdx = 1;
+            for (let i = 0; i < playerRes.rows.length; i++) {
+              const pid = playerRes.rows[i]?.id;
+              const r = playerRows[i];
+              if (pid && r) {
+                mPlaceholders.push(`($${mIdx++}, $${mIdx++}, $${mIdx++}, $${mIdx++}, $${mIdx++}, $${mIdx++}, true)`);
+                mValues.push(pid, teamId, compId, seasonId, r.position, r.jerseyNumber);
+                totalPlayersIngested++;
+              }
+            }
+            if (mPlaceholders.length > 0) {
+              await pool.query(`
+                INSERT INTO football_player_team_memberships (
+                  player_id, team_id, competition_id, season_id, position, shirt_number, active
+                )
+                VALUES ${mPlaceholders.join(", ")}
+                ON CONFLICT DO NOTHING;
+              `, mValues);
+            }
+          }
+        } catch (playerErr) {
+        }
+      }
+      if (team.recent_matches && Array.isArray(team.recent_matches)) {
+        for (const rm of team.recent_matches) {
+          try {
+            if (rm.sofascore_id && ingestedMatchIds.has(rm.sofascore_id)) {
+              continue;
+            }
+            let hTeamId = teamIdCache.get(rm.home_team_id);
+            let aTeamId = teamIdCache.get(rm.away_team_id);
+            if (!hTeamId) {
+              const hRes = await pool.query(`
+                INSERT INTO teams (sport_id, name, short_name, slug, type, gender, logo_url, metadata_json)
+                VALUES ($1, $2, $2, $3, 'club', 'men', $4, '{}')
+                ON CONFLICT (sport_id, slug) DO UPDATE SET name = EXCLUDED.name RETURNING id;
+              `, [sportId, rm.home_team_name, `${slugify(rm.home_team_name)}-${rm.home_team_id}`, rm.home_team_logo]);
+              hTeamId = hRes.rows[0]?.id;
+              if (hTeamId) teamIdCache.set(rm.home_team_id, hTeamId);
+            }
+            if (!aTeamId) {
+              const aRes = await pool.query(`
+                INSERT INTO teams (sport_id, name, short_name, slug, type, gender, logo_url, metadata_json)
+                VALUES ($1, $2, $2, $3, 'club', 'men', $4, '{}')
+                ON CONFLICT (sport_id, slug) DO UPDATE SET name = EXCLUDED.name RETURNING id;
+              `, [sportId, rm.away_team_name, `${slugify(rm.away_team_name)}-${rm.away_team_id}`, rm.away_team_logo]);
+              aTeamId = aRes.rows[0]?.id;
+              if (aTeamId) teamIdCache.set(rm.away_team_id, aTeamId);
+            }
+            const matchTs = rm.start_timestamp || rm.scheduled_start_at;
+            if (hTeamId && aTeamId && matchTs) {
+              const matchDate = new Date(matchTs * 1e3);
+              const dateKey = `${hTeamId}-${aTeamId}-${matchDate.toISOString().slice(0, 10)}`;
+              if (ingestedMatchKeys.has(dateKey)) {
+                continue;
+              }
+              const matchCompId = rm.tournament_id && compIdByTournamentId.get(rm.tournament_id) || compId;
+              const matchSeasonId = rm.tournament_id && seasonIdByTournamentId.get(rm.tournament_id) || seasonId;
+              let winId = null;
+              if (typeof rm.home_score === "number" && typeof rm.away_score === "number") {
+                if (rm.home_score > rm.away_score) winId = hTeamId;
+                else if (rm.away_score > rm.home_score) winId = aTeamId;
+              }
+              const mMeta = { sofascoreId: rm.sofascore_id, statistics: rm.statistics || null, round: rm.round || null };
+              const mRes = await pool.query(`
+                INSERT INTO matches (
+                  sport_id, competition_id, season_id, round, home_team_id, away_team_id,
+                  scheduled_start_at, status, winner_team_id, metadata_json
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, 'finished', $8, $9)
+                ON CONFLICT ON CONSTRAINT "matches_natural_uidx" DO UPDATE SET
+                  status = 'finished',
+                  winner_team_id = EXCLUDED.winner_team_id,
+                  metadata_json = EXCLUDED.metadata_json
+                RETURNING id;
+              `, [sportId, matchCompId, matchSeasonId, rm.round || null, hTeamId, aTeamId, matchDate, winId, JSON.stringify(mMeta)]);
+              const mId = mRes.rows[0]?.id;
+              if (rm.sofascore_id) ingestedMatchIds.add(rm.sofascore_id);
+              ingestedMatchKeys.add(dateKey);
+              if (mId && typeof rm.home_score === "number" && typeof rm.away_score === "number") {
+                await pool.query(`
+                  INSERT INTO football_match_scores (
+                    match_id, home_team_id, away_team_id, winner_team_id,
+                    home_score_current, away_score_current, home_score_fulltime, away_score_fulltime,
+                    home_score_halftime, away_score_halftime, status
+                  )
+                  VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, 'finished')
+                  ON CONFLICT (match_id) DO UPDATE SET
+                    home_score_current = EXCLUDED.home_score_current,
+                    away_score_current = EXCLUDED.away_score_current,
+                    home_score_fulltime = EXCLUDED.home_score_fulltime,
+                    away_score_fulltime = EXCLUDED.away_score_fulltime,
+                    home_score_halftime = EXCLUDED.home_score_halftime,
+                    away_score_halftime = EXCLUDED.away_score_halftime,
+                    winner_team_id = EXCLUDED.winner_team_id;
+                `, [mId, hTeamId, aTeamId, winId, rm.home_score, rm.away_score, rm.home_score_halftime ?? null, rm.away_score_halftime ?? null]);
+                if (rm.statistics) {
+                  await insertTeamStats(pool, mId, hTeamId, aTeamId, rm.statistics.home);
+                  await insertTeamStats(pool, mId, aTeamId, hTeamId, rm.statistics.away);
+                  totalStatsIngested += 2;
+                }
+                totalMatchesIngested++;
+              }
+            }
+          } catch (rmErr) {
+          }
+        }
+      }
+    }
+    if (league.recent_matches && league.recent_matches.length > 0) {
+      for (const m of league.recent_matches) {
+        if (m.sofascore_id && ingestedMatchIds.has(m.sofascore_id)) continue;
+        const homeTeamId = teamIdCache.get(m.home_team_id);
+        const awayTeamId = teamIdCache.get(m.away_team_id);
+        const matchTs = m.scheduled_start_at || m.start_timestamp;
+        if (!homeTeamId || !awayTeamId || !matchTs) continue;
+        const scheduledDate = new Date(matchTs * 1e3);
+        const dateKey = `${homeTeamId}-${awayTeamId}-${scheduledDate.toISOString().slice(0, 10)}`;
+        if (ingestedMatchKeys.has(dateKey)) continue;
+        let winnerTeamId = null;
+        if (typeof m.home_score === "number" && typeof m.away_score === "number") {
+          if (m.home_score > m.away_score) winnerTeamId = homeTeamId;
+          else if (m.away_score > m.home_score) winnerTeamId = awayTeamId;
+        }
+        const matchMetadata = {
+          sofascoreId: m.sofascore_id,
+          homeScore: m.home_score,
+          awayScore: m.away_score,
+          round: m.round,
+          statistics: m.statistics || null
+        };
+        try {
+          const matchRes = await pool.query(`
+            INSERT INTO matches (
+              sport_id, competition_id, season_id, round, home_team_id, away_team_id,
+              scheduled_start_at, status, venue, winner_team_id, metadata_json
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'finished', $8, $9, $10)
+            ON CONFLICT ON CONSTRAINT "matches_natural_uidx"
+            DO UPDATE SET
+              status = 'finished',
+              winner_team_id = EXCLUDED.winner_team_id,
+              metadata_json = EXCLUDED.metadata_json
+            RETURNING id;
+          `, [
+            sportId,
+            compId,
+            seasonId,
+            m.round || null,
+            homeTeamId,
+            awayTeamId,
+            scheduledDate,
+            m.venue || null,
+            winnerTeamId,
+            JSON.stringify(matchMetadata)
+          ]);
+          const matchId = matchRes.rows[0]?.id;
+          if (m.sofascore_id) ingestedMatchIds.add(m.sofascore_id);
+          ingestedMatchKeys.add(dateKey);
+          totalMatchesIngested++;
+          if (matchId && typeof m.home_score === "number" && typeof m.away_score === "number") {
+            await pool.query(`
+              INSERT INTO football_match_scores (
+                match_id, home_team_id, away_team_id, winner_team_id,
+                home_score_current, away_score_current,
+                home_score_fulltime, away_score_fulltime,
+                status
+              )
+              VALUES ($1, $2, $3, $4, $5, $6, $5, $6, 'finished')
+              ON CONFLICT (match_id) DO UPDATE SET
+                home_score_current = EXCLUDED.home_score_current,
+                away_score_current = EXCLUDED.away_score_current,
+                home_score_fulltime = EXCLUDED.home_score_fulltime,
+                away_score_fulltime = EXCLUDED.away_score_fulltime,
+                winner_team_id = EXCLUDED.winner_team_id,
+                status = EXCLUDED.status;
+            `, [matchId, homeTeamId, awayTeamId, winnerTeamId, m.home_score, m.away_score]);
+          }
+          if (matchId && m.statistics) {
+            const stats = m.statistics;
+            if (stats.home) {
+              await insertTeamStats(pool, matchId, homeTeamId, awayTeamId, stats.home, stats.raw_items);
+              totalStatsIngested++;
+            }
+            if (stats.away) {
+              await insertTeamStats(pool, matchId, awayTeamId, homeTeamId, stats.away, stats.raw_items);
+              totalStatsIngested++;
+            }
+          }
+        } catch (matchErr) {
+          console.warn(`  Warning inserting finished match ${m.home_team_name} vs ${m.away_team_name}:`, matchErr);
+        }
+      }
+    }
+    if (league.upcoming_matches && league.upcoming_matches.length > 0) {
+      for (const m of league.upcoming_matches) {
+        if (m.sofascore_id && ingestedMatchIds.has(m.sofascore_id)) continue;
+        const homeTeamId = teamIdCache.get(m.home_team_id);
+        const awayTeamId = teamIdCache.get(m.away_team_id);
+        const matchTs = m.scheduled_start_at || m.start_timestamp;
+        if (!homeTeamId || !awayTeamId || !matchTs) continue;
+        const scheduledDate = new Date(matchTs * 1e3);
+        const dateKey = `${homeTeamId}-${awayTeamId}-${scheduledDate.toISOString().slice(0, 10)}`;
+        if (ingestedMatchKeys.has(dateKey)) continue;
+        const matchMetadata = {
+          sofascoreId: m.sofascore_id,
+          round: m.round
+        };
+        try {
+          await pool.query(`
+            INSERT INTO matches (
+              sport_id, competition_id, season_id, round, home_team_id, away_team_id,
+              scheduled_start_at, status, venue, metadata_json
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', $8, $9)
+            ON CONFLICT ON CONSTRAINT "matches_natural_uidx"
+            DO UPDATE SET
+              status = 'scheduled',
+              metadata_json = EXCLUDED.metadata_json;
+          `, [
+            sportId,
+            compId,
+            seasonId,
+            m.round || null,
+            homeTeamId,
+            awayTeamId,
+            scheduledDate,
+            m.venue || null,
+            JSON.stringify(matchMetadata)
+          ]);
+          if (m.sofascore_id) ingestedMatchIds.add(m.sofascore_id);
+          ingestedMatchKeys.add(dateKey);
+          totalMatchesIngested++;
+        } catch (matchErr) {
+          console.warn(`  Warning inserting scheduled match ${m.home_team_name} vs ${m.away_team_name}:`, matchErr);
+        }
+      }
+    }
+    console.log(`[INGESTED] ${league.country}: ${league.league_name} (${league.teams.length} teams, ${league.recent_matches?.length || 0} finished, ${league.upcoming_matches?.length || 0} upcoming)`);
+  }
+  await generateTeamFormFeatures(pool);
+  const adminEmail = (process.env.ADMIN_EMAIL || "admin@skoriq.local").trim().toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD || "AdminPassword123!";
+  const passwordHash = await hashPassword(adminPassword);
+  await pool.query(`
+    INSERT INTO users (email, first_name, last_name, phone_number, password_hash, role, status)
+    VALUES ($1, 'SkorIQ', 'Admin', '+905550000000', $2, 'admin', 'active')
+    ON CONFLICT (email) DO UPDATE
+    SET role = 'admin', status = 'active', password_hash = EXCLUDED.password_hash, updated_at = now();
+  `, [adminEmail, passwordHash]);
+  console.log(`Admin user verified: ${adminEmail}`);
+  console.log("=================================================");
+  console.log("INGESTION SUMMARY:");
+  console.log(`  Total Competitions Ingested: ${catalog.length}`);
+  console.log(`  Total Authentic Teams Ingested: ${totalTeamsIngested}`);
+  console.log(`  Total Squad Players Ingested: ${totalPlayersIngested}`);
+  console.log(`  Total Standings Rows Ingested: ${totalStandingsIngested}`);
+  console.log(`  Total Matches Ingested: ${totalMatchesIngested}`);
+  console.log(`  Total Team Match Telemetry Statistics Rows Ingested: ${totalStatsIngested}`);
+  console.log("=================================================");
+}
+async function generateTeamFormFeatures(pool) {
+  console.log("Generating rolling form features for all football teams...");
+  const teamsRes = await pool.query(`
+    SELECT DISTINCT t.id, t.name
+    FROM teams t
+    INNER JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
+    WHERE m.status IN ('finished', 'after_extra_time', 'after_penalties')
+  `);
+  let featuresCreated = 0;
+  for (const team of teamsRes.rows) {
+    const matchesRes = await pool.query(`
+      SELECT
+        m.id as match_id,
+        m.competition_id,
+        m.season_id,
+        m.scheduled_start_at,
+        (m.home_team_id = $1) as is_home,
+        CASE WHEN m.home_team_id = $1 THEN s.home_score_fulltime ELSE s.away_score_fulltime END as scored,
+        CASE WHEN m.home_team_id = $1 THEN s.away_score_fulltime ELSE s.home_score_fulltime END as conceded,
+        CASE WHEN m.home_team_id = $1 THEN s.home_score_halftime ELSE s.away_score_halftime END as ht_scored,
+        CASE WHEN m.home_team_id = $1 THEN s.away_score_halftime ELSE s.home_score_halftime END as ht_conceded,
+        stat.expected_goals,
+        stat.possession_percent,
+        stat.shots_total,
+        stat.shots_on_target,
+        stat.corners,
+        stat.fouls,
+        stat.yellow_cards,
+        stat.red_cards
+      FROM matches m
+      INNER JOIN football_match_scores s ON s.match_id = m.id
+      LEFT JOIN football_match_team_statistics stat ON stat.match_id = m.id AND stat.team_id = $1
+      WHERE (m.home_team_id = $1 OR m.away_team_id = $1)
+        AND m.status IN ('finished', 'after_extra_time', 'after_penalties')
+      ORDER BY m.scheduled_start_at DESC
+    `, [team.id]);
+    const allMatches = matchesRes.rows;
+    if (allMatches.length === 0) continue;
+    const scopes = ["overall", "home", "away"];
+    const windows = [5, 10];
+    for (const scope of scopes) {
+      let filtered = allMatches;
+      if (scope === "home") filtered = allMatches.filter((m) => m.is_home);
+      else if (scope === "away") filtered = allMatches.filter((m) => !m.is_home);
+      if (filtered.length === 0) continue;
+      for (const w of windows) {
+        const slice = filtered.slice(0, w);
+        const count = slice.length;
+        if (count === 0) continue;
+        let wins = 0;
+        let draws = 0;
+        let losses = 0;
+        let goalsFor = 0;
+        let goalsAgainst = 0;
+        let cleanSheets = 0;
+        let failedToScore = 0;
+        let bothTeamsScored = 0;
+        let over05 = 0;
+        let over15 = 0;
+        let over25 = 0;
+        let under25 = 0;
+        let scoredMatches = 0;
+        let concededMatches = 0;
+        let teamOver05 = 0;
+        let teamOver15 = 0;
+        let fhOver05 = 0;
+        let fhGoalsFor = 0;
+        let fhGoalsAgainst = 0;
+        let totalShots = 0;
+        let shotsCount = 0;
+        let totalShotsOnTarget = 0;
+        let sotCount = 0;
+        let totalPossession = 0;
+        let possCount = 0;
+        let totalCorners = 0;
+        let cornCount = 0;
+        let totalXg = 0;
+        let xgCount = 0;
+        for (const m of slice) {
+          const sc = Number(m.scored ?? 0);
+          const con = Number(m.conceded ?? 0);
+          const totalMatchGoals = sc + con;
+          if (sc > con) wins++;
+          else if (sc === con) draws++;
+          else losses++;
+          goalsFor += sc;
+          goalsAgainst += con;
+          if (con === 0) cleanSheets++;
+          if (sc === 0) failedToScore++;
+          if (sc > 0 && con > 0) bothTeamsScored++;
+          if (totalMatchGoals > 0.5) over05++;
+          if (totalMatchGoals > 1.5) over15++;
+          if (totalMatchGoals > 2.5) over25++;
+          if (totalMatchGoals < 2.5) under25++;
+          if (sc > 0) {
+            scoredMatches++;
+            teamOver05++;
+          }
+          if (sc > 1) teamOver15++;
+          if (con > 0) concededMatches++;
+          const htSc = Number(m.ht_scored ?? 0);
+          const htCon = Number(m.ht_conceded ?? 0);
+          if (htSc + htCon > 0.5) fhOver05++;
+          fhGoalsFor += htSc;
+          fhGoalsAgainst += htCon;
+          if (m.shots_total !== null && m.shots_total !== void 0) {
+            totalShots += Number(m.shots_total);
+            shotsCount++;
+          }
+          if (m.shots_on_target !== null && m.shots_on_target !== void 0) {
+            totalShotsOnTarget += Number(m.shots_on_target);
+            sotCount++;
+          }
+          if (m.possession_percent !== null && m.possession_percent !== void 0) {
+            totalPossession += Number(m.possession_percent);
+            possCount++;
+          }
+          if (m.corners !== null && m.corners !== void 0) {
+            totalCorners += Number(m.corners);
+            cornCount++;
+          }
+          if (m.expected_goals !== null && m.expected_goals !== void 0) {
+            totalXg += Number(m.expected_goals);
+            xgCount++;
+          }
+        }
+        const points = wins * 3 + draws;
+        const avgGoalsFor = Number((goalsFor / count).toFixed(3));
+        const avgGoalsAgainst = Number((goalsAgainst / count).toFixed(3));
+        const cleanSheetRate = Number((cleanSheets / count * 100).toFixed(2));
+        const failedToScoreRate = Number((failedToScore / count * 100).toFixed(2));
+        const bothTeamsToScoreRate = Number((bothTeamsScored / count * 100).toFixed(2));
+        const over05Rate = Number((over05 / count * 100).toFixed(2));
+        const over15Rate = Number((over15 / count * 100).toFixed(2));
+        const over25Rate = Number((over25 / count * 100).toFixed(2));
+        const under25Rate = Number((under25 / count * 100).toFixed(2));
+        const scoredRate = Number((scoredMatches / count * 100).toFixed(2));
+        const concededRate = Number((concededMatches / count * 100).toFixed(2));
+        const teamOver05Rate = Number((teamOver05 / count * 100).toFixed(2));
+        const teamOver15Rate = Number((teamOver15 / count * 100).toFixed(2));
+        const firstHalfOver05Rate = Number((fhOver05 / count * 100).toFixed(2));
+        const firstHalfAvgGoalsFor = Number((fhGoalsFor / count).toFixed(3));
+        const firstHalfAvgGoalsAgainst = Number((fhGoalsAgainst / count).toFixed(3));
+        const avgShots = shotsCount > 0 ? Number((totalShots / shotsCount).toFixed(2)) : null;
+        const avgShotsOnTarget = sotCount > 0 ? Number((totalShotsOnTarget / sotCount).toFixed(2)) : null;
+        const avgPossessionPercent = possCount > 0 ? Number((totalPossession / possCount).toFixed(1)) : null;
+        const avgCorners = cornCount > 0 ? Number((totalCorners / cornCount).toFixed(2)) : null;
+        const avgExpectedGoals = xgCount > 0 ? Number((totalXg / xgCount).toFixed(3)) : null;
+        const latestMatch = slice[0];
+        const asOfDate = latestMatch.scheduled_start_at || /* @__PURE__ */ new Date();
+        const asOfMatchId = null;
+        const compId = latestMatch.competition_id;
+        const seasonId = latestMatch.season_id;
+        featureRows.push([
+          team.id,
+          compId,
+          seasonId,
+          asOfMatchId,
+          asOfDate,
+          w,
+          scope,
+          count,
+          wins,
+          draws,
+          losses,
+          points,
+          goalsFor,
+          goalsAgainst,
+          goalsFor - goalsAgainst,
+          avgGoalsFor,
+          avgGoalsAgainst,
+          cleanSheetRate,
+          failedToScoreRate,
+          bothTeamsToScoreRate,
+          over05Rate,
+          over15Rate,
+          over25Rate,
+          under25Rate,
+          scoredRate,
+          concededRate,
+          teamOver05Rate,
+          teamOver15Rate,
+          firstHalfOver05Rate,
+          firstHalfAvgGoalsFor,
+          firstHalfAvgGoalsAgainst,
+          avgShots,
+          avgShotsOnTarget,
+          avgPossessionPercent,
+          avgCorners,
+          avgExpectedGoals,
+          count
+        ]);
+      }
+    }
+  }
+  featuresCreated = 0;
+  const batchSize = 50;
+  for (let i = 0; i < featureRows.length; i += batchSize) {
+    const chunk = featureRows.slice(i, i + batchSize);
+    const placeholders = [];
+    const values = [];
+    let pIdx = 1;
+    for (const row of chunk) {
+      const rowPh = [];
+      for (const val of row) {
+        rowPh.push(`$${pIdx++}`);
+        values.push(val);
+      }
+      placeholders.push(`(${rowPh.join(", ")}, 100, '{}')`);
+    }
+    try {
+      await pool.query(`
+        INSERT INTO football_team_form_features (
+          team_id, competition_id, season_id, as_of_match_id, as_of_date,
+          window_size, scope, matches_played, wins, draws, losses, points,
+          goals_for, goals_against, goal_difference,
+          avg_goals_for, avg_goals_against, clean_sheet_rate, failed_to_score_rate,
+          both_teams_to_score_rate, over_0_5_rate, over_1_5_rate, over_2_5_rate, under_2_5_rate,
+          scored_rate, conceded_rate, team_over_0_5_rate, team_over_1_5_rate,
+          first_half_over_0_5_rate, first_half_avg_goals_for, first_half_avg_goals_against,
+          avg_shots, avg_shots_on_target, avg_possession_percent, avg_corners, avg_expected_goals,
+          sample_size, coverage_score, metadata_json
+        )
+        VALUES ${placeholders.join(", ")}
+        ON CONFLICT ON CONSTRAINT "football_team_form_features_uidx" DO UPDATE SET
+          matches_played = EXCLUDED.matches_played,
+          wins = EXCLUDED.wins,
+          draws = EXCLUDED.draws,
+          losses = EXCLUDED.losses,
+          points = EXCLUDED.points,
+          goals_for = EXCLUDED.goals_for,
+          goals_against = EXCLUDED.goals_against,
+          goal_difference = EXCLUDED.goal_difference,
+          avg_goals_for = EXCLUDED.avg_goals_for,
+          avg_goals_against = EXCLUDED.avg_goals_against,
+          clean_sheet_rate = EXCLUDED.clean_sheet_rate,
+          failed_to_score_rate = EXCLUDED.failed_to_score_rate,
+          both_teams_to_score_rate = EXCLUDED.both_teams_to_score_rate,
+          over_0_5_rate = EXCLUDED.over_0_5_rate,
+          over_1_5_rate = EXCLUDED.over_1_5_rate,
+          over_2_5_rate = EXCLUDED.over_2_5_rate,
+          under_2_5_rate = EXCLUDED.under_2_5_rate,
+          scored_rate = EXCLUDED.scored_rate,
+          conceded_rate = EXCLUDED.conceded_rate,
+          team_over_0_5_rate = EXCLUDED.team_over_0_5_rate,
+          team_over_1_5_rate = EXCLUDED.team_over_1_5_rate,
+          first_half_over_0_5_rate = EXCLUDED.first_half_over_0_5_rate,
+          first_half_avg_goals_for = EXCLUDED.first_half_avg_goals_for,
+          first_half_avg_goals_against = EXCLUDED.first_half_avg_goals_against,
+          avg_shots = EXCLUDED.avg_shots,
+          avg_shots_on_target = EXCLUDED.avg_shots_on_target,
+          avg_possession_percent = EXCLUDED.avg_possession_percent,
+          avg_corners = EXCLUDED.avg_corners,
+          avg_expected_goals = EXCLUDED.avg_expected_goals,
+          sample_size = EXCLUDED.sample_size,
+          coverage_score = 100,
+          updated_at = NOW();
+      `, values);
+      featuresCreated += chunk.length;
+    } catch (batchErr) {
+    }
+  }
+  console.log(`Team form features generation complete! (${featuresCreated} feature rows written)`);
+}
+async function main() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    console.error("DATABASE_URL is required to run seed.");
+    process.exit(1);
+  }
+  const pool = new pg.Pool({ connectionString: databaseUrl, max: 2 });
+  try {
+    await seedInitialData(pool);
+  } catch (err) {
+    console.error("Seed error:", err);
+    process.exitCode = 1;
+  } finally {
+    await pool.end();
+  }
+}
+var scrypt, keyLength;
+var init_db_seed = __esm({
+  "scripts/db-seed.js"() {
+    scrypt = promisify(scryptCallback);
+    keyLength = 64;
+    if (import.meta.url === `file://${process.argv[1]}`) {
+      main();
+    }
+  }
+});
+
+// scripts/db-migrate.ts
+import path2 from "node:path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
+import pg2 from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-
-async function main() {
+async function main2() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     console.error("DATABASE_URL is required to run migrations.");
     process.exit(1);
   }
-
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const migrationsFolder = path.resolve(__dirname, "../packages/database/migrations");
-
+  const __dirname = path2.dirname(fileURLToPath2(import.meta.url));
+  const migrationsFolder = path2.resolve(__dirname, "../packages/database/migrations");
   console.log(`Applying Drizzle migrations from: ${migrationsFolder}`);
-
-  const pool = new pg.Pool({
+  const pool = new pg2.Pool({
     connectionString: databaseUrl,
     max: 2
   });
-
   const db = drizzle(pool);
-
   try {
     await migrate(db, { migrationsFolder });
     console.log("Migrations successfully applied to database.");
+    const { seedInitialData: seedInitialData2 } = await Promise.resolve().then(() => (init_db_seed(), db_seed_exports));
+    await seedInitialData2(pool);
   } catch (error) {
     console.error("Migration failed:", error);
     process.exit(1);
@@ -33,8 +982,7 @@ async function main() {
     await pool.end();
   }
 }
-
-main().catch((err) => {
+main2().catch((err) => {
   console.error("Unhandled error in db-migrate:", err);
   process.exit(1);
 });
