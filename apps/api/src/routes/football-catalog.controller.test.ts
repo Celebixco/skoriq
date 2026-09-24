@@ -101,7 +101,7 @@ describe("FootballCatalogController", () => {
     await expect(controller.getFootballMatchPlayerAvailability("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
     expect(() => parseTeamsQuery({ competitionId: "not-a-uuid" })).toThrow(BadRequestException);
     expect(() => parseTeamsQuery({ search: "x".repeat(81) })).toThrow(BadRequestException);
-    expect(() => parseTeamsQuery({ limit: "101" })).toThrow(BadRequestException);
+    expect(() => parseTeamsQuery({ limit: "501" })).toThrow(BadRequestException);
     expect(() => parseTeamsQuery({ offset: "-1" })).toThrow(BadRequestException);
     expect(() => parseCompetitionsQuery({ limit: "0" })).toThrow(BadRequestException);
   });

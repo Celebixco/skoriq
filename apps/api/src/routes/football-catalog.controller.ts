@@ -6,7 +6,7 @@ import type { FootballCompetitionsFilters, FootballTeamsFilters } from "./footba
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const teamsDefaultLimit = 50;
 const listDefaultLimit = 50;
-const maxLimit = 100;
+const maxLimit = 500;
 
 interface FootballTeamsQuery {
   competitionId?: string;

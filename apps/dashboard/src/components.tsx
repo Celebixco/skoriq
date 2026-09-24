@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { formatEligibility, formatPercent, statusLabel } from "./format";
 import type { CoverageBlock, FeatureStatus, FootballAnalyticsMatchReport, H2HBlock } from "./types";
 
@@ -49,6 +49,7 @@ export function H2HCard({ block }: { block: H2HBlock }) {
 }
 
 export function TeamLogo({ name, logoUrl, size = "md" }: { name: string; logoUrl?: string | null; size?: "sm" | "md" | "lg" }) {
+  const [hasError, setHasError] = useState(false);
   const initials = name
     .split(/\s+/)
     .filter(Boolean)
@@ -56,13 +57,59 @@ export function TeamLogo({ name, logoUrl, size = "md" }: { name: string; logoUrl
     .map((part) => part[0]?.toUpperCase())
     .join("");
 
-  if (logoUrl) {
-    return <img className={`team-logo team-logo-${size}`} src={logoUrl} alt={`${name} logo`} loading="lazy" referrerPolicy="no-referrer" />;
+  if (logoUrl && !hasError) {
+    return (
+      <img
+        className={`team-logo team-logo-${size}`}
+        src={logoUrl}
+        alt={`${name} logo`}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setHasError(true)}
+      />
+    );
   }
 
   return (
     <span className={`team-logo team-logo-${size} team-logo-fallback`} aria-label={`${name} logosu yok`}>
       {initials || "FC"}
+    </span>
+  );
+}
+
+export function CompetitionLogo({
+  name,
+  logoUrl,
+  size = "md"
+}: {
+  name: string;
+  logoUrl?: string | null;
+  size?: "sm" | "md" | "lg" | "xl";
+}) {
+  const [hasError, setHasError] = useState(false);
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+
+  if (logoUrl && !hasError) {
+    return (
+      <img
+        className={`competition-logo competition-logo-${size}`}
+        src={logoUrl}
+        alt={`${name} logosu`}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setHasError(true)}
+      />
+    );
+  }
+
+  return (
+    <span className={`competition-logo competition-logo-${size} competition-logo-fallback`} aria-label={`${name} logosu`}>
+      {initials || "LİG"}
     </span>
   );
 }

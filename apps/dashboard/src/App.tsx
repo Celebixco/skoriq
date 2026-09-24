@@ -34,7 +34,7 @@ import {
   resetPassword as resetPasswordRequest,
   logout as logoutRequest
 } from "./api";
-import { MetricCard, ProgressBar, StatusBadge, TeamLogo } from "./components";
+import { CompetitionLogo, MetricCard, ProgressBar, StatusBadge, TeamLogo } from "./components";
 import { formatDate, formatDateTime, formatDecimal, formatPercent, formatRatePercent, statusLabel } from "./format";
 import skoriqLogo from "./assets/skoriq-logo-wordmark.png";
 import skoriqMark from "./assets/skoriq-logo.png";
@@ -3099,12 +3099,110 @@ function countMemberPreviewItems(groups: FootballMemberPredictionPreviewResponse
 function TeamListPage({ navigate }: { navigate: (path: string) => void }) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<TeamDirectoryFilter>("all");
-  const { data, loading, error } = useLoad(() => fetchFootballTeams({ search, limit: 50 }), [search]);
+  const [selectedCompetition, setSelectedCompetition] = useState<string>("all");
+  const [selectedCountry, setSelectedCountry] = useState<string>("all");
+  const [selectedLetter, setSelectedLetter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"name" | "matches" | "coverage">("name");
+  const [pageSize, setPageSize] = useState<number | "all">(50);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // Fetch all teams (up to 500 covers all 308 teams in DB)
+  const { data, loading, error } = useLoad(() => fetchFootballTeams({ limit: 500 }), []);
+  const { data: compsData } = useLoad(() => fetchFootballCompetitions({ limit: 100 }), []);
+  const competitions = useMemo(() => compsData?.items ?? [], [compsData]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, activeFilter, selectedCompetition, selectedCountry, selectedLetter, sortBy, pageSize]);
+
+  const allTeams = useMemo(() => data?.items ?? [], [data]);
   const teamStats = useMemo(() => (data ? getTeamDirectoryStats(data.items) : null), [data]);
+
+  // Available countries
+  const countries = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const team of allTeams) {
+      if (team.country) {
+        map.set(team.country, (map.get(team.country) ?? 0) + 1);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [allTeams]);
+
+  // Alphabet jump list & counts
+  const alphabetLetters = [
+    "A", "B", "C", "Ç", "D", "E", "F", "G", "H", "I", "İ", "J",
+    "K", "L", "M", "N", "O", "Ö", "P", "R", "S", "Ş", "T", "U", "Ü", "V", "Y", "Z"
+  ];
+  const letterCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const team of allTeams) {
+      const firstChar = team.name.trim().charAt(0).toLocaleUpperCase("tr-TR");
+      counts.set(firstChar, (counts.get(firstChar) ?? 0) + 1);
+    }
+    return counts;
+  }, [allTeams]);
+
+  // Multi-dimensional filtering
   const filteredTeams = useMemo(() => {
-    if (!data) return [];
-    return data.items.filter((team) => matchesTeamDirectoryFilter(team, activeFilter));
-  }, [activeFilter, data]);
+    let list = allTeams;
+
+    if (selectedCompetition !== "all") {
+      list = list.filter((t) => t.competitions.some((c) => c.competitionId === selectedCompetition));
+    }
+    if (selectedCountry !== "all") {
+      list = list.filter((t) => t.country === selectedCountry);
+    }
+    if (selectedLetter !== "all") {
+      list = list.filter((t) => t.name.trim().toLocaleUpperCase("tr-TR").startsWith(selectedLetter));
+    }
+    if (search.trim()) {
+      const q = search.trim().toLocaleLowerCase("tr-TR");
+      list = list.filter(
+        (t) =>
+          t.name.toLocaleLowerCase("tr-TR").includes(q) ||
+          (t.shortName && t.shortName.toLocaleLowerCase("tr-TR").includes(q)) ||
+          (t.country && t.country.toLocaleLowerCase("tr-TR").includes(q)) ||
+          t.competitions.some((c) => c.name.toLocaleLowerCase("tr-TR").includes(q))
+      );
+    }
+    list = list.filter((team) => matchesTeamDirectoryFilter(team, activeFilter));
+
+    return [...list].sort((a, b) => {
+      if (sortBy === "matches") return b.matchesCount - a.matchesCount;
+      if (sortBy === "coverage") return (b.latestFormCoverage ?? 0) - (a.latestFormCoverage ?? 0);
+      return a.name.localeCompare(b.name, "tr");
+    });
+  }, [allTeams, selectedCompetition, selectedCountry, selectedLetter, search, activeFilter, sortBy]);
+
+  // Pagination calculations
+  const totalItems = filteredTeams.length;
+  const effectivePageSize = pageSize === "all" ? Math.max(1, totalItems) : pageSize;
+  const totalPages = Math.max(1, Math.ceil(totalItems / effectivePageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const pagedTeams = useMemo(() => {
+    if (pageSize === "all") return filteredTeams;
+    const start = (safePage - 1) * effectivePageSize;
+    return filteredTeams.slice(start, start + effectivePageSize);
+  }, [filteredTeams, safePage, effectivePageSize, pageSize]);
+
+  // Numeric page buttons (up to 7 visible buttons around current page)
+  const pageNumbers = useMemo(() => {
+    const pages: number[] = [];
+    const maxVisible = 7;
+    let start = Math.max(1, safePage - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  }, [safePage, totalPages]);
 
   return (
     <>
@@ -3112,7 +3210,7 @@ function TeamListPage({ navigate }: { navigate: (path: string) => void }) {
         <div>
           <p className="eyebrow">SkorIQ Futbol</p>
           <h1>Takımlar</h1>
-          <p>Liglerdeki takımları, logoları ve analiz kapsamlarını incele.</p>
+          <p>Tüm liglerdeki takımları, logoları ve analiz kapsamlarını incele.</p>
         </div>
         {teamStats ? (
           <div className="teams-summary-grid" aria-label="Takım özet metrikleri">
@@ -3123,34 +3221,206 @@ function TeamListPage({ navigate }: { navigate: (path: string) => void }) {
           </div>
         ) : null}
       </header>
+
       <section className="teams-toolbar" aria-label="Takım arama ve filtreleri">
-        <label className="teams-search">
-          <span>Takım ara</span>
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Takım ara..." />
-        </label>
+        <div className="teams-toolbar-controls">
+          <div className="teams-search-wrap">
+            <span className="search-icon" aria-hidden="true">🔍</span>
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Takım, lig veya ülke ara..."
+              aria-label="Takım ara"
+            />
+            {search ? (
+              <button
+                type="button"
+                className="teams-search-clear"
+                onClick={() => setSearch("")}
+                aria-label="Aramayı temizle"
+              >
+                ✕
+              </button>
+            ) : null}
+          </div>
+
+          {/* League Dropdown Filter */}
+          <select
+            className="team-filter-select"
+            value={selectedCompetition}
+            onChange={(e) => setSelectedCompetition(e.target.value)}
+            aria-label="Lig filtresi"
+          >
+            <option value="all">Tüm Ligler ({competitions.length || 16})</option>
+            {competitions.map((comp) => (
+              <option key={comp.competitionId} value={comp.competitionId}>
+                {comp.name} ({comp.teamsCount})
+              </option>
+            ))}
+          </select>
+
+          {/* Sort By Dropdown */}
+          <select
+            className="team-filter-select"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            aria-label="Sıralama ölçütü"
+          >
+            <option value="name">İsim (A-Z)</option>
+            <option value="matches">En Çok Maç</option>
+            <option value="coverage">Form Kapsamı</option>
+          </select>
+
+          {/* Page Size Dropdown */}
+          <select
+            className="team-filter-select"
+            value={String(pageSize)}
+            onChange={(e) => setPageSize(e.target.value === "all" ? "all" : Number(e.target.value))}
+            aria-label="Sayfa boyutu"
+          >
+            <option value="50">50 / Sayfa</option>
+            <option value="100">100 / Sayfa</option>
+            <option value="all">Tümü ({totalItems})</option>
+          </select>
+        </div>
+
+        {/* Quality Filter Chips */}
         <div className="team-filter-chips" aria-label="Takım filtreleri">
           <TeamFilterChip label="Tümü" value="all" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
           <TeamFilterChip label="Logolu takımlar" value="logos" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
           <TeamFilterChip label="Maç verisi olanlar" value="matches" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
           <TeamFilterChip label="Yüksek kapsam" value="highCoverage" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
         </div>
+
+        {/* Country Quick Filter Chips */}
+        {countries.length > 0 ? (
+          <div className="team-country-chips" role="tablist" aria-label="Ülke filtreleri">
+            <button
+              type="button"
+              className={`country-chip ${selectedCountry === "all" ? "active" : ""}`}
+              onClick={() => setSelectedCountry("all")}
+            >
+              Tüm Ülkeler ({allTeams.length})
+            </button>
+            {countries.map((c) => (
+              <button
+                type="button"
+                key={c.name}
+                className={`country-chip ${selectedCountry === c.name ? "active" : ""}`}
+                onClick={() => setSelectedCountry(c.name)}
+              >
+                {c.name} ({c.count})
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {/* Alphabet Quick Jump Ribbon */}
+        <div className="alphabet-ribbon" aria-label="Harfe göre filtrele">
+          <span className="alphabet-ribbon-label">Alfabe:</span>
+          <button
+            type="button"
+            className={`alphabet-letter-btn ${selectedLetter === "all" ? "active" : ""}`}
+            onClick={() => setSelectedLetter("all")}
+          >
+            Tümü
+          </button>
+          {alphabetLetters.map((letter) => {
+            const count = letterCounts.get(letter) ?? 0;
+            const isActive = selectedLetter === letter;
+            return (
+              <button
+                type="button"
+                key={letter}
+                className={`alphabet-letter-btn ${isActive ? "active" : ""}`}
+                onClick={() => setSelectedLetter(isActive ? "all" : letter)}
+                disabled={count === 0}
+                title={`${letter}: ${count} takım`}
+              >
+                {letter}
+              </button>
+            );
+          })}
+        </div>
       </section>
+
       {loading ? <StatePanel title="Takımlar yükleniyor..." /> : null}
       {error ? <StatePanel title="Takımlar yüklenemedi" body={error} /> : null}
       {!loading && !error && data && filteredTeams.length === 0 ? <StatePanel title="Takım bulunamadı" /> : null}
+
       {!loading && !error && data && filteredTeams.length > 0 ? (
         <section className="panel">
           <div className="panel-header">
-            <h2>Futbol takımları</h2>
+            <h2>Futbol Takımları</h2>
             <span className="muted">
-              {data.pagination.total} kayıttan {filteredTeams.length} gösteriliyor
+              {pageSize === "all"
+                ? `Toplam ${totalItems} takım listeleniyor`
+                : `Toplam ${totalItems} takımdan ${(safePage - 1) * effectivePageSize + 1} - ${Math.min(safePage * effectivePageSize, totalItems)} gösteriliyor (Sayfa ${safePage} / ${totalPages})`}
             </span>
           </div>
           <div className="team-directory-grid">
-            {filteredTeams.map((team) => (
+            {pagedTeams.map((team) => (
               <TeamDirectoryCard key={team.teamId} team={team} navigate={navigate} />
             ))}
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && pageSize !== "all" ? (
+            <div className="team-pagination-bar" aria-label="Takım sayfalama">
+              <div className="team-pagination-info">
+                Sayfa <strong>{safePage}</strong> / <strong>{totalPages}</strong> (Toplam <strong>{totalItems}</strong> takım)
+              </div>
+              <div className="team-pagination-nav">
+                <button
+                  type="button"
+                  className="team-page-btn"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={safePage === 1}
+                  aria-label="İlk sayfa"
+                >
+                  « İlk
+                </button>
+                <button
+                  type="button"
+                  className="team-page-btn"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage === 1}
+                  aria-label="Önceki sayfa"
+                >
+                  ‹ Önceki
+                </button>
+                {pageNumbers.map((p) => (
+                  <button
+                    type="button"
+                    key={p}
+                    className={`team-page-btn ${safePage === p ? "active" : ""}`}
+                    onClick={() => setCurrentPage(p)}
+                    aria-current={safePage === p ? "page" : undefined}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="team-page-btn"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages}
+                  aria-label="Sonraki sayfa"
+                >
+                  Sonraki ›
+                </button>
+                <button
+                  type="button"
+                  className="team-page-btn"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={safePage === totalPages}
+                  aria-label="Son sayfa"
+                >
+                  Son »
+                </button>
+              </div>
+            </div>
+          ) : null}
         </section>
       ) : null}
     </>
@@ -4272,13 +4542,7 @@ function CompetitionListPage({ navigate }: { navigate: (path: string) => void })
                     </div>
 
                     <div className="comp-card-body">
-                      {competition.logoUrl ? (
-                        <img src={competition.logoUrl} alt={competition.name} className="comp-card-logo-img" loading="lazy" />
-                      ) : (
-                        <div className="comp-avatar">
-                          {competition.name.slice(0, 2).toUpperCase()}
-                        </div>
-                      )}
+                      <CompetitionLogo name={competition.name} logoUrl={competition.logoUrl} size="lg" />
                       <h3 className="comp-card-title">{competition.name}</h3>
                     </div>
 
@@ -4344,11 +4608,7 @@ export function CompetitionDetailPage({ competitionId, navigate }: { competition
           <header className="explorer-hero competition-detail-hero">
             <div className="explorer-hero-main">
               <div className="explorer-hero-logo">
-                {profile.competition.logoUrl ? (
-                  <img src={profile.competition.logoUrl} alt={profile.competition.name} />
-                ) : (
-                  <span className="initials-avatar">{profile.competition.name.charAt(0)}</span>
-                )}
+                <CompetitionLogo name={profile.competition.name} logoUrl={profile.competition.logoUrl} size="xl" />
               </div>
               <div>
                 <p className="explorer-hero-eyebrow">{profile.competition.country.name}</p>
@@ -6963,11 +7223,7 @@ export function CountryListPage({ navigate }: { navigate: (path: string) => void
                     onClick={() => navigate(`/football/competitions/${league.competitionId}`)}
                   >
                     <div className="featured-card-crest">
-                      {league.logoUrl ? (
-                        <img src={league.logoUrl} alt={league.name} className="featured-league-logo" loading="lazy" />
-                      ) : (
-                        <span className="featured-league-initials">{league.name.slice(0, 2).toUpperCase()}</span>
-                      )}
+                      <CompetitionLogo name={league.name} logoUrl={league.logoUrl} size="md" />
                     </div>
                     <div className="featured-card-info">
                       <span className="featured-card-country">{league.country ?? "Avrupa"}</span>
@@ -7072,11 +7328,7 @@ export function CountryListPage({ navigate }: { navigate: (path: string) => void
                     onClick={() => navigate(`/football/competitions/${comp.competitionId}`)}
                   >
                     <div className="league-row-crest-wrap">
-                      {comp.logoUrl ? (
-                        <img src={comp.logoUrl} alt={comp.name} className="league-row-logo" loading="lazy" />
-                      ) : (
-                        <span className="league-row-initials">{comp.name.slice(0, 2).toUpperCase()}</span>
-                      )}
+                      <CompetitionLogo name={comp.name} logoUrl={comp.logoUrl} size="md" />
                     </div>
                     <div className="league-row-details">
                       <div className="league-row-title-strip">
@@ -7159,11 +7411,7 @@ export function CountryListPage({ navigate }: { navigate: (path: string) => void
                             onClick={() => navigate(`/football/competitions/${comp.competitionId}`)}
                           >
                             <div className="pill-btn-crest">
-                              {comp.logoUrl ? (
-                                <img src={comp.logoUrl} alt={comp.name} className="pill-comp-logo" loading="lazy" />
-                              ) : (
-                                <span className="pill-comp-initials">{comp.name.slice(0, 2).toUpperCase()}</span>
-                              )}
+                              <CompetitionLogo name={comp.name} logoUrl={comp.logoUrl} size="sm" />
                             </div>
                             <div className="pill-btn-info">
                               <strong className="pill-comp-name">{comp.name}</strong>
@@ -7226,11 +7474,7 @@ export function CountryDetailPage({ countryId, navigate }: { countryId: string; 
               onClick={() => navigate(`/football/competitions/${league.id}`)}
             >
               <div className="cld-crest-wrap">
-                {league.logoUrl ? (
-                  <img src={league.logoUrl} alt={league.name} className="cld-crest-img" loading="lazy" />
-                ) : (
-                  <span className="cld-initials">{league.name.charAt(0)}</span>
-                )}
+                <CompetitionLogo name={league.name} logoUrl={league.logoUrl} size="md" />
               </div>
               <div className="cld-main-info">
                 <div className="cld-title-row">
