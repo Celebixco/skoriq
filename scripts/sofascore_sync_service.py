@@ -149,8 +149,9 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
         import_status = "executed" if import_result.returncode == 0 and import_summary else "import_failed"
 
     removed = prune_captures(capture.parent, int(env.get("SYNC_CAPTURE_RETENTION_DAYS", str(DEFAULT_CAPTURE_RETENTION_DAYS))), now)
-    return {
+    summary = {
         "job": job.name,
+        "status": classify_run_status(capture.exists(), import_status),
         "mode": "execute" if execute else "dry_run",
         "capture": str(capture) if capture.exists() else None,
         "importStatus": import_status,
@@ -159,6 +160,68 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
         "prunedCaptures": removed,
         "finishedAt": now.isoformat(timespec="seconds").replace("+00:00", "Z"),
     }
+    log_run_outcome(job, env, summary, runner=runner)
+    return summary
+
+
+def classify_run_status(capture_exists: bool, import_status: str) -> str:
+    if not capture_exists:
+        return "fetch_failed"
+    if import_status == "import_failed":
+        return "import_failed"
+    if import_status == "executed":
+        return "succeeded"
+    return "fetch_failed"
+
+
+def log_run_outcome(job: Job, env: dict[str, str], summary: dict[str, Any], *, runner: Runner) -> None:
+    # Executed runs are recorded by the importer itself; this helper makes fetch
+    # and import failures visible in sync_jobs even when no importer ever ran.
+    if not env.get("DATABASE_URL") or summary.get("importStatus") == "executed":
+        return
+    npx = shutil.which("npx") or "npx"
+    payload = {
+        "fetchSummary": summary.get("fetchSummary"),
+        "importStatus": summary.get("importStatus"),
+        "capture": summary.get("capture"),
+    }
+    command = [npx, "tsx", str(ROOT / "scripts" / "sync-run-log.ts"),
+               "--job", job.name, "--status", str(summary.get("status", "service_error")),
+               "--mode", str(summary.get("mode", "dry_run")),
+               "--summary", json.dumps(payload, ensure_ascii=False),
+               "--error", str(summary.get("error") or summary.get("status", "service_error"))]
+    try:
+        runner(command, capture_output=True, text=True,
+               timeout=int(env.get("SYNC_JOB_TIMEOUT_SECONDS", str(DEFAULT_JOB_TIMEOUT_SECONDS))))
+    except Exception:
+        # Logging is best effort; the refresh loop must keep running.
+        return
+
+
+def execute_job_with_containment(job: Job, env: dict[str, str], state_dir: Path, *, runner: Runner = subprocess.run) -> dict[str, Any]:
+    try:
+        summary = run_job(job, env, state_dir, utc_now(), runner=runner)
+    except Exception as error:  # keep the service alive across controlled failures
+        summary = {
+            "job": job.name,
+            "status": "service_error",
+            "mode": "execute" if env.get("SYNC_EXECUTE", "0").strip().lower() in {"1", "true", "yes"} else "dry_run",
+            "error": type(error).__name__,
+            "capture": None,
+            "importStatus": "not_attempted",
+            "fetchSummary": None,
+            "importSummary": None,
+            "prunedCaptures": 0,
+            "finishedAt": utc_now().isoformat(timespec="seconds").replace("+00:00", "Z"),
+        }
+        try:
+            log_run_outcome(job, env, summary, runner=runner)
+        except Exception:
+            pass
+    state = load_state(state_dir)
+    state[job.name] = {"last_finished_at": summary["finishedAt"]}
+    save_state(state_dir, state)
+    return summary
 
 
 def acquire_lock(state_dir: Path, now: datetime, stale_after_seconds: int) -> bool:
@@ -194,12 +257,7 @@ def release_lock(state_dir: Path) -> None:
 
 
 def run_once(job: Job, env: dict[str, str], state_dir: Path, *, runner: Runner = subprocess.run) -> dict[str, Any]:
-    now = utc_now()
-    summary = run_job(job, env, state_dir, now, runner=runner)
-    state = load_state(state_dir)
-    state[job.name] = {"last_finished_at": summary["finishedAt"]}
-    save_state(state_dir, state)
-    return summary
+    return execute_job_with_containment(job, env, state_dir, runner=runner)
 
 
 def run_loop(env: dict[str, str], state_dir: Path, *, runner: Runner = subprocess.run, poll_seconds: int | None = None,
@@ -225,10 +283,7 @@ def run_loop(env: dict[str, str], state_dir: Path, *, runner: Runner = subproces
                 for job in pending:
                     if stop:
                         break
-                    summary = run_job(job, env, state_dir, utc_now(), runner=runner)
-                    state = load_state(state_dir)
-                    state[job.name] = {"last_finished_at": summary["finishedAt"]}
-                    save_state(state_dir, state)
+                    summary = execute_job_with_containment(job, env, state_dir, runner=runner)
                     print(json.dumps({"event": "sync_run", **summary}, ensure_ascii=False), flush=True)
             finally:
                 release_lock(state_dir)

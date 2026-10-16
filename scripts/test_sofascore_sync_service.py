@@ -37,6 +37,8 @@ class FakeRunner:
             return completed(command, 0, json.dumps({"fetched_leagues": 16, "events_total": 240}))
         if "provider-sofascore-matches-sync.ts" in command[2]:
             return completed(command, self.import_returncode, json.dumps(self.import_summary) + "\nnoise line")
+        if "sync-run-log.ts" in command[2]:
+            return completed(command, 0, json.dumps({"logged": True}))
         raise AssertionError(f"Unexpected command: {command}")
 
 
@@ -106,6 +108,40 @@ class RunJobTests(unittest.TestCase):
         runner = FakeRunner(import_returncode=1)
         summary = service.run_job(self.job, {}, self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["importStatus"], "import_failed")
+        self.assertEqual(summary["status"], "import_failed")
+
+    def test_fetch_failure_is_recorded_via_run_log_helper(self):
+        runner = FakeRunner(publish=False)
+        summary = service.run_job(self.job, {"DATABASE_URL": "postgres://example"}, self.state_dir, NOW, runner=runner)
+        self.assertEqual(summary["status"], "fetch_failed")
+        helper = [command for command in runner.commands if "sync-run-log.ts" in command[2]]
+        self.assertEqual(len(helper), 1)
+        self.assertIn("fetch_failed", helper[0])
+        self.assertIn("--error", helper[0])
+
+    def test_import_failure_is_recorded_via_run_log_helper(self):
+        runner = FakeRunner(import_returncode=1)
+        summary = service.run_job(self.job, {"DATABASE_URL": "postgres://example"}, self.state_dir, NOW, runner=runner)
+        self.assertEqual(summary["status"], "import_failed")
+        helper = [command for command in runner.commands if "sync-run-log.ts" in command[2]]
+        self.assertEqual(len(helper), 1)
+        self.assertIn("import_failed", helper[0])
+
+    def test_executed_run_is_not_double_logged(self):
+        runner = FakeRunner()
+        summary = service.run_job(self.job, {"DATABASE_URL": "postgres://example"}, self.state_dir, NOW, runner=runner)
+        self.assertEqual(summary["status"], "succeeded")
+        self.assertEqual([command for command in runner.commands if "sync-run-log.ts" in command[2]], [])
+
+    def test_containment_keeps_service_alive_and_updates_state(self):
+        def failing_runner(command, **kwargs):
+            raise FileNotFoundError("npx is unavailable")
+
+        summary = service.execute_job_with_containment(self.job, {}, self.state_dir, runner=failing_runner)
+        self.assertEqual(summary["status"], "service_error")
+        self.assertEqual(summary["error"], "FileNotFoundError")
+        state = service.load_state(self.state_dir)
+        self.assertIn("finished-matches", state)
 
 
 class StateAndLockTests(unittest.TestCase):

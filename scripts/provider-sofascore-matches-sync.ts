@@ -99,7 +99,13 @@ export async function runSofaScoreMatchesSync(
   const entries: MatchEntry[] = [];
   try {
     for (const event of events) {
-      entries.push(await importEvent(event, options, database, now));
+      try {
+        entries.push(await importEvent(event, options, database, now));
+      } catch {
+        // A single failed resolution must not abort the whole refresh; the
+        // category is recorded without leaking database diagnostics.
+        entries.push({ providerMatchId: event.sofascoreId, tournamentId: event.tournamentId, action: "query_failed", reason: "query_failed" });
+      }
     }
   } finally {
     await pool?.end();

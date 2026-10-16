@@ -257,4 +257,18 @@ describe("SofaScore finished matches refresh", () => {
     expect(report.loggingError).toBe("sync job logging is down");
     expect(report.entries[0]).toMatchObject({ action: "planned_update" });
   });
+
+  it("records a per-event query failure without aborting the refresh or leaking diagnostics", async () => {
+    const data = fixture({ matchRows: scheduledExisting });
+    data.dependencies.database = {
+      async query(text: string) {
+        if (/FROM provider_mappings pm\s+JOIN competitions/.test(text)) return { rows: [{ id: "comp-1" }] };
+        if (/FROM seasons/.test(text)) throw new Error("relation broken with sensitive details");
+        return { rows: [] };
+      }
+    };
+    const report = await runSofaScoreMatchesSync({ execute: true, capturePath: "capture.json", logRun: false }, data.dependencies);
+    expect(report.entries[0]).toMatchObject({ action: "query_failed", reason: "query_failed" });
+    expect(JSON.stringify(report)).not.toContain("sensitive");
+  });
 });
