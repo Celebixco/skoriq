@@ -4646,7 +4646,7 @@ export function TeamFormTrendChart({
             <path d={pathD} fill="none" stroke="#facc15" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
             {pointsCoords.map((pt, idx) => {
-              const color = pt.match.result === "W" ? "#facc15" : pt.match.result === "L" ? "#f87171" : "#63635c";
+              const color = pt.match.result === "W" ? "#18794E" : pt.match.result === "L" ? "#C13B30" : "#5C5A52";
               return (
                 <g
                   key={idx}
