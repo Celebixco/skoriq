@@ -282,7 +282,7 @@ strong, time, em, .badge {
   padding: 0.55rem 0.7rem;
   color: var(--text);
   font-size: 0.88rem;
-  background: rgba(15, 21, 35, 0.75);
+  background: rgba(17, 17, 16, 0.75);
 }
 
 .results-pagination-bar {
@@ -316,14 +316,14 @@ strong, time, em, .badge {
   color: var(--text);
   font-size: 0.82rem;
   font-weight: 700;
-  background: rgba(15, 21, 35, 0.65);
+  background: rgba(17, 17, 16, 0.65);
   cursor: pointer;
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .results-page-btn:hover:not(:disabled) {
   border-color: rgba(250, 204, 21, 0.35);
-  background: rgba(20, 28, 48, 0.85);
+  background: rgba(22, 22, 21, 0.85);
 }
 
 .results-page-btn:disabled {
@@ -341,7 +341,7 @@ strong, time, em, .badge {
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 0.75rem;
   overflow: hidden;
-  background: rgba(11, 15, 25, 0.6);
+  background: rgba(13, 13, 12, 0.6);
   backdrop-filter: blur(12px);
 }
 
@@ -355,14 +355,14 @@ strong, time, em, .badge {
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   padding: 0.85rem 1.15rem;
   color: var(--text);
-  background: rgba(15, 21, 35, 0.5);
+  background: rgba(17, 17, 16, 0.5);
   cursor: pointer;
   text-align: left;
   transition: background 0.2s ease;
 }
 
 .league-group-header:hover {
-  background: rgba(20, 28, 48, 0.7);
+  background: rgba(22, 22, 21, 0.7);
 }
 
 .league-group-identity {
@@ -497,7 +497,7 @@ strong, time, em, .badge {
 }
 
 .status-finished {
-  background: rgba(100, 116, 139, 0.15);
+  background: rgba(110, 110, 106, 0.15);
   color: #9a9a96;
 }
 
@@ -765,7 +765,7 @@ body {
   background:
     radial-gradient(circle at 14% 0%, rgba(234, 179, 8, 0.24), transparent 29rem),
     radial-gradient(circle at 82% 12%, rgba(250, 204, 21, 0.14), transparent 30rem),
-    linear-gradient(145deg, #060606 0%, #0b1626 48%, #060606 100%);
+    linear-gradient(145deg, #060606 0%, #0d0d0c 48%, #060606 100%);
 }
 
 body,
@@ -1072,7 +1072,7 @@ p {
   border: 1px solid rgba(250, 204, 21, 0.26);
   border-radius: 1rem 1rem 1rem 0.25rem;
   padding: 0.6rem 0.75rem;
-  color: #dbeafe;
+  color: #f2f2f0;
   font-size: 0.82rem;
   font-weight: 750;
   line-height: 1.28;
@@ -1358,7 +1358,7 @@ p {
   min-height: 2.7rem;
   border: 0;
   padding: 0;
-  color: #0f172a;
+  color: #141413;
   background: transparent;
   box-shadow: none;
   font-size: 1rem;
@@ -1503,7 +1503,7 @@ p {
   display: grid;
   place-items: center;
   padding: 1.5rem;
-  background: rgba(9, 12, 21, 0.75);
+  background: rgba(10, 10, 10, 0.75);
   backdrop-filter: blur(8px);
 }
 
@@ -1962,7 +1962,7 @@ p {
 .metric-card {
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 0.65rem;
-  background: rgba(11, 15, 25, 0.55);
+  background: rgba(13, 13, 12, 0.55);
   box-shadow: none;
   backdrop-filter: blur(10px);
 }
@@ -1995,7 +1995,7 @@ p {
   border-radius: 0.5rem;
   padding: 0.45rem 0.85rem;
   color: var(--muted-strong);
-  background: rgba(11, 15, 25, 0.6);
+  background: rgba(13, 13, 12, 0.6);
   box-shadow: none;
   font-size: 0.84rem;
   font-weight: 600;
@@ -2005,7 +2005,7 @@ p {
 .match-detail-back:hover {
   color: var(--text);
   border-color: rgba(250, 204, 21, 0.35);
-  background: rgba(15, 21, 35, 0.85);
+  background: rgba(17, 17, 16, 0.85);
 }
 
 .match-report-layout {
@@ -2023,7 +2023,7 @@ p {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 1rem;
   padding: clamp(1.75rem, 3.5vw, 2.75rem) clamp(1.5rem, 3vw, 2.25rem);
-  background: radial-gradient(ellipse at 50% 0%, rgba(250, 204, 21, 0.09) 0%, rgba(11, 15, 25, 0.85) 70%, rgba(7, 10, 18, 0.95) 100%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(250, 204, 21, 0.09) 0%, rgba(13, 13, 12, 0.85) 70%, rgba(9, 9, 9, 0.95) 100%);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(16px);
 }
@@ -2032,7 +2032,7 @@ p {
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-left: 3px solid rgba(250, 204, 21, 0.6);
   border-radius: 0.65rem;
-  background: rgba(11, 15, 25, 0.5);
+  background: rgba(13, 13, 12, 0.5);
   box-shadow: none;
   backdrop-filter: blur(12px);
 }
@@ -2044,7 +2044,7 @@ p {
 .analysis-summary-panel {
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 0.75rem;
-  background: rgba(11, 15, 25, 0.55);
+  background: rgba(13, 13, 12, 0.55);
   box-shadow: none;
   backdrop-filter: blur(12px);
 }
@@ -2159,8 +2159,8 @@ p {
 .match-report-status .badge-ready {
   color: #141003;
   background:
-    radial-gradient(circle at 0.72rem 50%, rgba(5, 46, 22, 0.5) 0 0.16rem, transparent 0.18rem),
-    linear-gradient(180deg, #facc15, #16a34a);
+    radial-gradient(circle at 0.72rem 50%, rgba(20, 16, 3, 0.5) 0 0.16rem, transparent 0.18rem),
+    linear-gradient(180deg, #facc15, #facc15);
 }
 
 .match-report-title {
@@ -2240,7 +2240,7 @@ p {
   display: flex;
   gap: 0.35rem;
   padding: 0.35rem;
-  background: rgba(11, 15, 25, 0.65);
+  background: rgba(13, 13, 12, 0.65);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 0.75rem;
   overflow-x: auto;
@@ -2291,7 +2291,7 @@ p {
   gap: 0.65rem;
   margin-bottom: 1.1rem;
   padding: 1.1rem 1.35rem;
-  background: rgba(11, 15, 25, 0.6);
+  background: rgba(13, 13, 12, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 0.75rem;
   backdrop-filter: blur(12px);
@@ -2645,7 +2645,7 @@ p {
 }
 
 .lineup-pos-badge.pos-fw {
-  background: rgba(244, 63, 94, 0.15);
+  background: rgba(248, 113, 113, 0.15);
   color: #fb7185;
 }
 
@@ -2713,14 +2713,14 @@ p {
 }
 
 .availability-status-pill.status-injured {
-  background: rgba(244, 63, 94, 0.12);
+  background: rgba(248, 113, 113, 0.12);
   color: #fb7185;
-  border: 1px solid rgba(244, 63, 94, 0.25);
+  border: 1px solid rgba(248, 113, 113, 0.25);
 }
 
 .availability-status-pill.status-suspended {
   background: rgba(251, 146, 60, 0.12);
-  color: #fbbf24;
+  color: #fb923c;
   border: 1px solid rgba(251, 146, 60, 0.25);
 }
 
@@ -2871,7 +2871,7 @@ p {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
   padding: 0.24rem 0.5rem;
-  background: rgba(15, 23, 42, 0.46);
+  background: rgba(17, 17, 16, 0.46);
 }
 
 .mini-trend {
@@ -2890,15 +2890,15 @@ p {
 }
 
 .mini-trend circle {
-  fill: #0f1b2d;
+  fill: #101010;
   stroke: var(--blue);
   stroke-width: 3;
 }
 
 .analysis-h2h-card {
   background:
-    radial-gradient(circle at 84% 70%, rgba(100, 116, 139, 0.16), transparent 12rem),
-    linear-gradient(145deg, rgba(18, 18, 17, 0.86), rgba(15, 23, 42, 0.72));
+    radial-gradient(circle at 84% 70%, rgba(110, 110, 106, 0.16), transparent 12rem),
+    linear-gradient(145deg, rgba(18, 18, 17, 0.86), rgba(17, 17, 16, 0.72));
 }
 
 .h2h-watermark {
@@ -3280,7 +3280,7 @@ p {
   border-radius: 999px;
   padding: 0.22rem 0.48rem;
   color: var(--muted-strong);
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(17, 17, 16, 0.5);
   font-size: 0.76rem;
 }
 
@@ -3427,7 +3427,7 @@ p {
   border-radius: 0.5rem;
   padding: 0.45rem 0.65rem;
   color: var(--text);
-  background: rgba(15, 21, 35, 0.75);
+  background: rgba(17, 17, 16, 0.75);
 }
 
 /* Analytics Search & Filter Controls */
@@ -3650,7 +3650,7 @@ p {
   color: var(--muted);
   font-size: 0.86rem;
   font-weight: 700;
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(15, 23, 42, 0.45));
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.08), rgba(17, 17, 16, 0.45));
 }
 
 .analytics-results-link-panel button {
@@ -3822,7 +3822,7 @@ p {
   padding: 0.9rem 1.15rem;
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 0.75rem;
-  background: rgba(11, 15, 25, 0.6);
+  background: rgba(13, 13, 12, 0.6);
   backdrop-filter: blur(12px);
   box-shadow: none;
 }
@@ -3838,7 +3838,7 @@ p {
   padding: 1.25rem 1.35rem 1.15rem;
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 0.75rem;
-  background: rgba(11, 15, 25, 0.6);
+  background: rgba(13, 13, 12, 0.6);
   backdrop-filter: blur(12px);
   box-shadow: none;
   cursor: pointer;
@@ -3862,7 +3862,7 @@ p {
 .analytics-match-row:focus-visible {
   transform: translateY(-2px);
   border-color: rgba(250, 204, 21, 0.35);
-  background: rgba(15, 21, 35, 0.85);
+  background: rgba(17, 17, 16, 0.85);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
@@ -3890,7 +3890,7 @@ p {
 }
 
 .analytics-card-topline .badge-ready {
-  color: #dcfce7;
+  color: #fde047;
   background: rgba(250, 204, 21, 0.2);
   border-color: rgba(250, 204, 21, 0.4);
 }
@@ -4080,7 +4080,7 @@ p {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 750;
-  background: rgba(15, 23, 42, 0.52);
+  background: rgba(17, 17, 16, 0.52);
 }
 
 .analytics-detail-button {
@@ -4101,7 +4101,7 @@ p {
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
-  background: rgba(100, 116, 139, 0.24);
+  background: rgba(110, 110, 106, 0.24);
 }
 
 .analytics-coverage-bar i {
@@ -4220,12 +4220,12 @@ p {
 .badge-insufficient_data,
 .badge-muted {
   color: #e8e8e4;
-  background: rgba(100, 116, 139, 0.52);
+  background: rgba(110, 110, 106, 0.52);
 }
 
 .badge-danger,
 .badge-tier-avoid {
-  color: #fff1f2;
+  color: #fca5a5;
   background: var(--red);
 }
 
@@ -4235,7 +4235,7 @@ p {
 }
 
 .pill {
-  color: #bfdbfe;
+  color: #f2f2f0;
   border: 1px solid rgba(250, 204, 21, 0.22);
   background: rgba(234, 179, 8, 0.14);
 }
@@ -4257,7 +4257,7 @@ p {
   height: 0.5rem;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(100, 116, 139, 0.28);
+  background: rgba(110, 110, 106, 0.28);
 }
 
 .progress span {
@@ -4426,7 +4426,7 @@ p {
 }
 
 .dashboard-stat-purple strong {
-  color: #c4b5fd;
+  color: #fde047;
 }
 
 .overview-main-grid {
@@ -4458,7 +4458,7 @@ p {
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 0.75rem;
   padding: 1.25rem 1.35rem;
-  background: rgba(11, 15, 25, 0.55);
+  background: rgba(13, 13, 12, 0.55);
   box-shadow: none;
   backdrop-filter: blur(12px);
 }
@@ -4500,7 +4500,7 @@ p {
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 0.65rem;
   padding: 0.85rem 1.15rem;
-  background: rgba(11, 15, 25, 0.6);
+  background: rgba(13, 13, 12, 0.6);
   backdrop-filter: blur(10px);
   box-shadow: none;
   cursor: pointer;
@@ -4515,7 +4515,7 @@ p {
 .overview-match-row:focus-visible {
   transform: translateX(4px);
   border-color: rgba(250, 204, 21, 0.35);
-  background: rgba(15, 21, 35, 0.85);
+  background: rgba(17, 17, 16, 0.85);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
@@ -4548,7 +4548,7 @@ p {
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 0.65rem;
   padding: 0.85rem 1.15rem;
-  background: rgba(11, 15, 25, 0.6);
+  background: rgba(13, 13, 12, 0.6);
   backdrop-filter: blur(10px);
   box-shadow: none;
   cursor: pointer;
@@ -4563,7 +4563,7 @@ p {
 .overview-match-row:focus-visible {
   transform: translateX(4px);
   border-color: rgba(250, 204, 21, 0.35);
-  background: rgba(15, 21, 35, 0.85);
+  background: rgba(17, 17, 16, 0.85);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
@@ -4707,7 +4707,7 @@ p {
   height: 0.48rem;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(100, 116, 139, 0.28);
+  background: rgba(110, 110, 106, 0.28);
 }
 
 .overview-bar-fill {
@@ -4919,7 +4919,7 @@ p {
 .team-chip {
   border: 1px solid var(--line);
   border-radius: 0.9rem;
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(17, 17, 16, 0.55);
 }
 
 .catalog-card {
@@ -4985,7 +4985,7 @@ p {
   border: 1px solid rgba(251, 146, 60, 0.26);
   border-radius: 999px;
   padding: 0.35rem 0.6rem;
-  color: #fde68a;
+  color: #fdba74;
   background: rgba(251, 146, 60, 0.12);
 }
 
@@ -5114,7 +5114,7 @@ p {
   color: var(--muted-strong);
   font-size: 0.86rem;
   font-weight: 750;
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(17, 17, 16, 0.5);
   box-shadow: none;
 }
 
@@ -5199,7 +5199,7 @@ p {
 }
 
 .team-filter-select option {
-  background: #0f172a;
+  background: #141413;
   color: #fff;
 }
 
@@ -5345,7 +5345,7 @@ p {
 }
 
 .team-page-size-select option {
-  background: #0f172a;
+  background: #141413;
   color: #fff;
 }
 
@@ -5484,7 +5484,7 @@ p {
   min-height: 2.35rem;
   border-color: rgba(250, 204, 21, 0.24);
   padding: 0.52rem 0.75rem;
-  color: #dbeafe;
+  color: #f2f2f0;
   font-size: 0.88rem;
   font-weight: 750;
   background: rgba(234, 179, 8, 0.15);
@@ -5531,7 +5531,7 @@ p {
   border-radius: 999px;
   padding: 0.5rem 0.75rem;
   color: var(--text);
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(17, 17, 16, 0.55);
   box-shadow: none;
 }
 
@@ -5575,7 +5575,7 @@ p {
   gap: 0.45rem;
   border-radius: 1rem;
   padding: clamp(1rem, 2vw, 1.35rem);
-  background: linear-gradient(180deg, rgba(18, 18, 17, 0.82), rgba(15, 23, 42, 0.76));
+  background: linear-gradient(180deg, rgba(18, 18, 17, 0.82), rgba(17, 17, 16, 0.76));
 }
 
 .metric-card p {
@@ -5606,7 +5606,7 @@ p {
   border-color: rgba(251, 146, 60, 0.28);
   border-radius: 1rem;
   padding: 1rem;
-  color: #fde68a;
+  color: #fdba74;
   background: rgba(251, 146, 60, 0.1);
 }
 
@@ -6618,13 +6618,13 @@ p {
 }
 
 .result-l {
-  color: #fff1f2;
+  color: #fca5a5;
   background: var(--red);
 }
 
 .result-unknown {
   color: var(--muted);
-  background: rgba(100, 116, 139, 0.52);
+  background: rgba(110, 110, 106, 0.52);
 }
 
 .recent-match-homeaway,
@@ -7586,7 +7586,7 @@ p {
 }
 
 .section-title-label {
-  color: #f1f5f9;
+  color: #f2f2f0;
   font-size: 0.88rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -7698,7 +7698,7 @@ p {
 }
 
 .featured-card-arrow {
-  color: #475569;
+  color: #6e6e6a;
   font-size: 1.1rem;
   font-weight: 700;
   transition: transform 140ms ease, color 140ms ease;
@@ -7731,7 +7731,7 @@ p {
   align-items: center;
   padding: 0.25rem;
   border-radius: 0.6rem;
-  background: rgba(11, 15, 25, 0.7);
+  background: rgba(13, 13, 12, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -7779,7 +7779,7 @@ p {
   padding: 0 2rem 0 2.25rem;
   border-radius: 0.55rem;
   border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(11, 15, 25, 0.65);
+  background: rgba(13, 13, 12, 0.65);
   color: #f2f2f0;
   font-size: 0.82rem;
   font-weight: 500;
@@ -7816,7 +7816,7 @@ p {
 .explorer-chip {
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 999px;
-  background: rgba(11, 15, 25, 0.45);
+  background: rgba(13, 13, 12, 0.45);
   padding: 0.25rem 0.65rem;
   color: #9a9a96;
   font-size: 0.74rem;
@@ -7938,11 +7938,11 @@ p {
 }
 
 .league-stat strong {
-  color: #f1f5f9;
+  color: #f2f2f0;
 }
 
 .league-stat-sep {
-  color: #475569;
+  color: #6e6e6a;
 }
 
 .league-ready-pill {
@@ -7969,7 +7969,7 @@ p {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  color: #475569;
+  color: #6e6e6a;
   font-size: 0.78rem;
   font-weight: 700;
   transition: all 130ms ease;
@@ -8126,7 +8126,7 @@ p {
 }
 
 .pill-comp-name {
-  color: #f1f5f9;
+  color: #f2f2f0;
   font-size: 0.86rem;
   font-weight: 700;
   white-space: nowrap;
@@ -8142,7 +8142,7 @@ p {
 }
 
 .pill-btn-arrow {
-  color: #475569;
+  color: #6e6e6a;
   font-size: 0.85rem;
   font-weight: 700;
   transition: transform 120ms ease, color 120ms ease;
@@ -8276,7 +8276,7 @@ p {
 }
 
 .cld-telemetry-row strong {
-  color: #f1f5f9;
+  color: #f2f2f0;
 }
 
 .cld-cov-badge {
@@ -8290,7 +8290,7 @@ p {
 }
 
 .cld-cta {
-  color: #475569;
+  color: #6e6e6a;
   font-size: 0.8rem;
   font-weight: 700;
   flex-shrink: 0;
@@ -8681,7 +8681,7 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
-  color: #f1f5f9;
+  color: #f2f2f0;
   font-size: 0.96rem;
   font-weight: 750;
   white-space: nowrap;
@@ -8889,7 +8889,7 @@ p {
   gap: 1.25rem;
   margin: 1.5rem 0 2rem;
   padding: 1.25rem;
-  background: rgba(15, 23, 42, 0.4);
+  background: rgba(17, 17, 16, 0.4);
   border: 1px solid var(--line-subtle);
   border-radius: 0.6rem;
 }
@@ -8946,13 +8946,13 @@ p {
 
 .telemetry-track-home {
   height: 100%;
-  background: linear-gradient(90deg, #0284c7, #facc15);
+  background: linear-gradient(90deg, #facc15, #facc15);
   transition: width 0.4s ease;
 }
 
 .telemetry-track-away {
   height: 100%;
-  background: linear-gradient(90deg, #fb923c, #d97706);
+  background: linear-gradient(90deg, #fb923c, #fb923c);
   transition: width 0.4s ease;
 }
 
@@ -8963,7 +8963,7 @@ p {
 }
 
 .telemetry-table-card {
-  background: rgba(15, 23, 42, 0.25);
+  background: rgba(17, 17, 16, 0.25);
   border: 1px solid var(--line-subtle);
   border-radius: 0.6rem;
   padding: 1.1rem;
@@ -9036,7 +9036,7 @@ p {
   display: flex;
   flex-direction: column;
   padding: 0.85rem;
-  background: rgba(15, 23, 42, 0.3);
+  background: rgba(17, 17, 16, 0.3);
   border: 1px solid var(--line-subtle);
   border-radius: 0.5rem;
 }
@@ -9445,7 +9445,7 @@ p {
 
 .standings-table tr.zone-relegation {
   border-left: 3px solid #fb7185;
-  background: rgba(251, 113, 133, 0.03);
+  background: rgba(252, 165, 165, 0.03);
 }
 
 .standings-pos-cell {
@@ -9535,7 +9535,7 @@ p {
 
 .team-form-analytics-panel {
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(17, 17, 16, 0.7) 0%, rgba(11, 15, 25, 0.95) 100%);
+  background: linear-gradient(180deg, rgba(17, 17, 16, 0.7) 0%, rgba(13, 13, 12, 0.95) 100%);
   border-radius: 1rem;
   padding: 1.5rem;
   display: flex;
@@ -9691,7 +9691,7 @@ p {
 .home-away-split-matrix h3 {
   font-size: 0.88rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: #f2f2f0;
   letter-spacing: 0.02em;
 }
 
@@ -9767,14 +9767,14 @@ p {
 }
 
 .away-fill {
-  background: #a855f7;
+  background: #facc15;
   border-radius: 0 9999px 9999px 0;
 }
 
 /* Squad Roster Panel */
 .team-squad-panel {
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(17, 17, 16, 0.7) 0%, rgba(11, 15, 25, 0.95) 100%);
+  background: linear-gradient(180deg, rgba(17, 17, 16, 0.7) 0%, rgba(13, 13, 12, 0.95) 100%);
   border-radius: 1rem;
   padding: 1.5rem;
   display: flex;
@@ -9862,7 +9862,7 @@ p {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(250, 204, 21, 0.2), rgba(168, 85, 247, 0.2));
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.2), rgba(234, 179, 8, 0.2));
   border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
@@ -9876,7 +9876,7 @@ p {
   position: absolute;
   bottom: -0.25rem;
   right: -0.25rem;
-  background: #0f172a;
+  background: #141413;
   border: 1px solid rgba(250, 204, 21, 0.4);
   color: #facc15;
   font-size: 0.65rem;
@@ -9898,7 +9898,7 @@ p {
 .squad-player-info strong {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: #f2f2f0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -9916,7 +9916,7 @@ p {
 
 .pos-g {
   background: rgba(251, 146, 60, 0.15);
-  color: #fbbf24;
+  color: #fb923c;
   border: 1px solid rgba(251, 146, 60, 0.3);
 }
 
@@ -9927,9 +9927,9 @@ p {
 }
 
 .pos-m {
-  background: rgba(168, 85, 247, 0.15);
-  color: #c084fc;
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: rgba(234, 179, 8, 0.15);
+  color: #fde047;
+  border: 1px solid rgba(234, 179, 8, 0.3);
 }
 
 .pos-f {
@@ -10146,7 +10146,7 @@ p {
 .team-nav-tabs {
   display: flex;
   gap: 0.35rem;
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(17, 17, 16, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 0.75rem;
   padding: 0.35rem;
@@ -10348,7 +10348,7 @@ p {
 .recent-match-opponent strong,
 .upcoming-match-opponent strong {
   font-size: 0.88rem;
-  color: #f1f5f9;
+  color: #f2f2f0;
   display: block;
 }
 
@@ -10424,7 +10424,7 @@ p {
   font-weight: 800;
   letter-spacing: 0.05em;
   color: #f2f2f0;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(17, 17, 16, 0.85);
   border: 1px solid rgba(250, 204, 21, 0.25);
   padding: 0.2rem 0.85rem;
   border-radius: 0.5rem;
@@ -10461,7 +10461,7 @@ p {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  background: rgba(15, 23, 42, 0.75);
+  background: rgba(17, 17, 16, 0.75);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0.75rem;
   padding: 0.35rem;
@@ -10519,7 +10519,7 @@ p {
 .season-telemetry-panel {
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 0.85rem;
-  background: rgba(11, 17, 32, 0.7);
+  background: rgba(12, 12, 12, 0.7);
   backdrop-filter: blur(14px);
   padding: 1.5rem;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
@@ -10530,7 +10530,7 @@ p {
   margin-top: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 0.65rem;
-  background: rgba(7, 11, 22, 0.6);
+  background: rgba(9, 9, 9, 0.6);
 }
 
 .h2h-standings-table {
@@ -10549,7 +10549,7 @@ p {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(17, 17, 16, 0.5);
 }
 
 .h2h-standings-table th.th-rank,
@@ -10590,7 +10590,7 @@ p {
 }
 
 .standing-row.away-row {
-  background: rgba(168, 85, 247, 0.04);
+  background: rgba(234, 179, 8, 0.04);
 }
 
 .standing-row:hover {
@@ -10624,9 +10624,9 @@ p {
 }
 
 .team-role-pill.away-pill {
-  background: rgba(168, 85, 247, 0.14);
-  color: #c084fc;
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: rgba(234, 179, 8, 0.14);
+  color: #fde047;
+  border: 1px solid rgba(234, 179, 8, 0.3);
 }
 
 .rank-badge {
@@ -10645,7 +10645,7 @@ p {
 
 .rank-badge.rank-top {
   background: rgba(251, 146, 60, 0.15);
-  color: #fbbf24;
+  color: #fb923c;
   border-color: rgba(251, 146, 60, 0.35);
   box-shadow: 0 0 10px rgba(251, 146, 60, 0.2);
 }
@@ -10693,8 +10693,8 @@ p {
 }
 
 .legend-dot.away-dot {
-  background: #c084fc;
-  box-shadow: 0 0 6px rgba(192, 132, 252, 0.6);
+  background: #fde047;
+  box-shadow: 0 0 6px rgba(253, 224, 71, 0.6);
 }
 
 .h2h-split-metrics-grid {
@@ -10705,7 +10705,7 @@ p {
 }
 
 .h2h-split-row {
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(17, 17, 16, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 0.65rem;
   padding: 0.85rem 1.1rem;
@@ -10713,7 +10713,7 @@ p {
 }
 
 .h2h-split-row:hover {
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(17, 17, 16, 0.8);
   border-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -10747,7 +10747,7 @@ p {
 }
 
 .h2h-split-val.away {
-  color: #c084fc;
+  color: #fde047;
   text-align: right;
 }
 
@@ -10774,11 +10774,11 @@ p {
 }
 
 .h2h-bar-segment.home-seg {
-  background: linear-gradient(90deg, #0284c7, #facc15);
+  background: linear-gradient(90deg, #facc15, #facc15);
 }
 
 .h2h-bar-segment.away-seg {
-  background: linear-gradient(90deg, #c084fc, #9333ea);
+  background: linear-gradient(90deg, #fde047, #eab308);
 }
 
 /* ==========================================================================
@@ -10793,7 +10793,7 @@ p {
 }
 
 .h2h-matches-col {
-  background: rgba(7, 11, 22, 0.5);
+  background: rgba(9, 9, 9, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 0.75rem;
   padding: 1.15rem;
@@ -10811,7 +10811,7 @@ p {
 .h2h-col-header h3 {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: #f2f2f0;
   margin: 0;
 }
 
@@ -10837,13 +10837,13 @@ p {
   gap: 0.7rem;
   padding: 0.55rem 0.75rem;
   border-radius: 0.45rem;
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(17, 17, 16, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.04);
   transition: all 0.15s ease;
 }
 
 .recent-match-pill-row:hover {
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(17, 17, 16, 0.9);
   border-color: rgba(250, 204, 21, 0.25);
   transform: translateX(2px);
 }
@@ -11015,7 +11015,7 @@ p {
 }
 
 .telemetry-bar-item {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(17, 17, 16, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 0.65rem;
   padding: 0.95rem 1.15rem;
@@ -11044,7 +11044,7 @@ p {
 .telemetry-val-away {
   font-size: 1.1rem;
   font-weight: 800;
-  color: #c084fc;
+  color: #fde047;
 }
 
 .telemetry-bar-label {
@@ -11068,14 +11068,14 @@ p {
 
 .telemetry-track-home {
   height: 100%;
-  background: linear-gradient(90deg, #0284c7, #facc15);
+  background: linear-gradient(90deg, #facc15, #facc15);
   border-radius: 999px;
   transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .telemetry-track-away {
   height: 100%;
-  background: linear-gradient(90deg, #c084fc, #9333ea);
+  background: linear-gradient(90deg, #fde047, #eab308);
   border-radius: 999px;
   transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -11087,7 +11087,7 @@ p {
 }
 
 .telemetry-table-card {
-  background: rgba(7, 11, 22, 0.5);
+  background: rgba(9, 9, 9, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 0.75rem;
   padding: 1.2rem;
@@ -11114,7 +11114,7 @@ p {
   align-items: center;
   padding: 0.45rem 0.65rem;
   border-radius: 0.35rem;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(17, 17, 16, 0.45);
   font-variant-numeric: tabular-nums;
   font-size: 0.85rem;
 }
@@ -11149,7 +11149,7 @@ p {
 .season-telemetry-empty-panel {
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 0.85rem;
-  background: rgba(11, 17, 32, 0.6);
+  background: rgba(12, 12, 12, 0.6);
   padding: 1.5rem;
 }
 

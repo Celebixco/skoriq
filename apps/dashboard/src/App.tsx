@@ -4635,8 +4635,8 @@ export function TeamFormTrendChart({
           <svg className="form-momentum-svg" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="none">
             <defs>
               <linearGradient id="formMomentumGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                <stop offset="0%" stopColor="#facc15" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#facc15" stopOpacity="0.0" />
               </linearGradient>
             </defs>
             <line x1={paddingX} y1={paddingY} x2={svgWidth - paddingX} y2={paddingY} stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
@@ -4644,17 +4644,17 @@ export function TeamFormTrendChart({
             <line x1={paddingX} y1={svgHeight - paddingY} x2={svgWidth - paddingX} y2={svgHeight - paddingY} stroke="rgba(255,255,255,0.12)" />
 
             <path d={areaD} fill="url(#formMomentumGrad)" />
-            <path d={pathD} fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={pathD} fill="none" stroke="#facc15" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
             {pointsCoords.map((pt, idx) => {
-              const color = pt.match.result === "W" ? "#10b981" : pt.match.result === "L" ? "#ef4444" : "#94a3b8";
+              const color = pt.match.result === "W" ? "#facc15" : pt.match.result === "L" ? "#f87171" : "#9a9a96";
               return (
                 <g
                   key={idx}
                   style={navigate ? { cursor: "pointer" } : undefined}
                   onClick={() => navigate?.(`/football/analytics/${pt.match.matchId}`)}
                 >
-                  <circle cx={pt.x} cy={pt.y} r="5" fill="#0f172a" stroke={color} strokeWidth="2.5" />
+                  <circle cx={pt.x} cy={pt.y} r="5" fill="#141413" stroke={color} strokeWidth="2.5" />
                   <circle cx={pt.x} cy={pt.y} r="2" fill={color} />
                   <title>{`${pt.match.opponent.name} (${pt.match.homeAway === "home" ? "İç" : "Dış"}) ${pt.match.fulltimeScore || ""}`}</title>
                 </g>
@@ -6245,10 +6245,10 @@ function ResultsSkeleton() {
         <div key={i} className="league-group">
           <div className="league-group-header skeleton-shimmer">
             <div className="league-group-identity">
-              <span className="league-group-initials" style={{ background: "rgba(148,163,184,0.12)" }} />
+              <span className="league-group-initials" style={{ background: "rgba(255,255,255,0.12)" }} />
               <div className="league-group-names">
-                <span className="league-group-name" style={{ width: "8rem", height: "0.9rem", background: "rgba(148,163,184,0.12)", borderRadius: "0.3rem" }} />
-                <span className="league-group-country" style={{ width: "5rem", height: "0.7rem", background: "rgba(148,163,184,0.08)", borderRadius: "0.3rem" }} />
+                <span className="league-group-name" style={{ width: "8rem", height: "0.9rem", background: "rgba(255,255,255,0.12)", borderRadius: "0.3rem" }} />
+                <span className="league-group-country" style={{ width: "5rem", height: "0.7rem", background: "rgba(255,255,255,0.08)", borderRadius: "0.3rem" }} />
               </div>
             </div>
           </div>
@@ -6257,20 +6257,20 @@ function ResultsSkeleton() {
               <div key={j} className="match-result-row skeleton-shimmer">
                 <div className="match-result-main">
                   <div className="match-result-left">
-                    <span style={{ width: "3rem", height: "0.75rem", background: "rgba(148,163,184,0.1)", borderRadius: "0.2rem" }} />
+                    <span style={{ width: "3rem", height: "0.75rem", background: "rgba(255,255,255,0.1)", borderRadius: "0.2rem" }} />
                   </div>
                   <div className="match-result-teams">
                     <div className="match-result-team">
-                      <span style={{ width: "1.5rem", height: "1.5rem", borderRadius: "0.3rem", background: "rgba(148,163,184,0.1)" }} />
-                      <span style={{ width: "6rem", height: "0.85rem", background: "rgba(148,163,184,0.1)", borderRadius: "0.2rem" }} />
+                      <span style={{ width: "1.5rem", height: "1.5rem", borderRadius: "0.3rem", background: "rgba(255,255,255,0.1)" }} />
+                      <span style={{ width: "6rem", height: "0.85rem", background: "rgba(255,255,255,0.1)", borderRadius: "0.2rem" }} />
                     </div>
                     <div className="match-result-team">
-                      <span style={{ width: "1.5rem", height: "1.5rem", borderRadius: "0.3rem", background: "rgba(148,163,184,0.1)" }} />
-                      <span style={{ width: "6rem", height: "0.85rem", background: "rgba(148,163,184,0.1)", borderRadius: "0.2rem" }} />
+                      <span style={{ width: "1.5rem", height: "1.5rem", borderRadius: "0.3rem", background: "rgba(255,255,255,0.1)" }} />
+                      <span style={{ width: "6rem", height: "0.85rem", background: "rgba(255,255,255,0.1)", borderRadius: "0.2rem" }} />
                     </div>
                   </div>
                   <div className="match-result-score">
-                    <span style={{ width: "2rem", height: "1.2rem", background: "rgba(148,163,184,0.1)", borderRadius: "0.2rem" }} />
+                    <span style={{ width: "2rem", height: "1.2rem", background: "rgba(255,255,255,0.1)", borderRadius: "0.2rem" }} />
                   </div>
                 </div>
               </div>
