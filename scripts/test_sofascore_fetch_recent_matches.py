@@ -85,6 +85,16 @@ class SelectLeaguesTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             capture.select_leagues([])
 
+    def test_tournament_filter_selects_a_single_league(self):
+        catalog = [
+            {"sofascore_tournament_id": 52, "season_id": 1, "league_name": "Süper Lig"},
+            {"sofascore_tournament_id": 98, "season_id": 2, "league_name": "1. Lig"},
+        ]
+        leagues = capture.select_leagues(catalog, None, 98)
+        self.assertEqual([league.tournament_id for league in leagues], [98])
+        with self.assertRaises(ValueError):
+            capture.select_leagues(catalog, None, 999)
+
 
 class ValidateEventTests(unittest.TestCase):
     def test_captures_finished_event_with_halftime(self):

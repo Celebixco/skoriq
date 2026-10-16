@@ -124,19 +124,85 @@ def prune_captures(capture_dir: Path, retention_days: int, now: datetime) -> int
     return removed
 
 
+def read_tournament_ids(catalog_path: Path) -> list[int]:
+    document = json.loads(catalog_path.read_text(encoding="utf-8"))
+    leagues = document.get("leagues") if isinstance(document, dict) else document
+    if not isinstance(leagues, list):
+        raise ValueError("Catalog must contain a league list.")
+    ids: list[int] = []
+    seen: set[int] = set()
+    for league in leagues:
+        if not isinstance(league, dict):
+            continue
+        value = league.get("sofascore_tournament_id")
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0 or value in seen:
+            continue
+        seen.add(value)
+        ids.append(value)
+    if not ids:
+        raise ValueError("Catalog contains no usable tournament ids.")
+    return ids
+
+
+def publish_capture(output: Path, capture: dict[str, Any]) -> None:
+    temporary = output.with_name(f".{output.name}.{os.getpid()}.tmp")
+    temporary.write_text(json.dumps(capture, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    os.replace(temporary, output)
+
+
+def merge_captures(parts: list[Path], output: Path, now: datetime) -> int:
+    tournaments: list[dict[str, Any]] = []
+    for part in parts:
+        try:
+            document = json.loads(part.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        part_tournaments = document.get("tournaments") if isinstance(document, dict) else None
+        if isinstance(part_tournaments, list):
+            tournaments.extend(item for item in part_tournaments if isinstance(item, dict))
+    publish_capture(output, {
+        "source": "sofascore",
+        "capturedAt": now.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+        "tournaments": tournaments,
+    })
+    return len(tournaments)
+
+
 def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, runner: Runner = subprocess.run) -> dict[str, Any]:
     execute = env.get("SYNC_EXECUTE", "0").strip().lower() in {"1", "true", "yes"}
     timeout = int(env.get("SYNC_JOB_TIMEOUT_SECONDS", str(DEFAULT_JOB_TIMEOUT_SECONDS)))
+    fetch_timeout = int(env.get("SYNC_FETCH_TIMEOUT_SECONDS", "120"))
     capture = capture_path_for(state_dir, job, now)
     capture.parent.mkdir(parents=True, exist_ok=True)
-
-    fetch_command = [sys.executable, str(job.fetch_script), "--output", str(capture)]
     catalog = env.get("SYNC_CATALOG")
-    if catalog:
-        fetch_command += ["--catalog", catalog]
-    fetch_result = runner(fetch_command, capture_output=True, text=True, timeout=timeout)
-    fetch_summary = parse_last_json_line(fetch_result.stdout or "")
-    log_step(job, env, "fetch_completed", {"fetchSummary": fetch_summary, "captureExists": capture.exists()}, runner=runner)
+    catalog_path = Path(catalog) if catalog else job.fetch_script.with_name("sofascore_catalog.json")
+
+    tournament_ids = read_tournament_ids(catalog_path)
+    parts: list[Path] = []
+    fetch_entries: list[dict[str, Any]] = []
+    for tournament_id in tournament_ids:
+        part = capture.with_name(f"{capture.stem}-t{tournament_id}.json")
+        command = [sys.executable, str(job.fetch_script), "--output", str(part), "--tournament-id", str(tournament_id)]
+        if catalog:
+            command += ["--catalog", catalog]
+        result = runner(command, capture_output=True, text=True, timeout=fetch_timeout)
+        part_summary = parse_last_json_line(result.stdout or "")
+        published = part.exists()
+        if published:
+            parts.append(part)
+        fetch_entries.append({"tournamentId": tournament_id, "fetched": published, "summary": part_summary})
+        log_step(job, env, "fetch_completed",
+                 {"tournamentId": tournament_id, "captureExists": published, "summary": part_summary}, runner=runner)
+
+    if parts:
+        merge_captures(parts, capture, now)
+        for part in parts:
+            part.unlink(missing_ok=True)
+    fetch_summary = {
+        "tournaments": fetch_entries,
+        "partsPublished": len(parts),
+        "tournamentsRequested": len(tournament_ids),
+    }
 
     import_summary: dict[str, Any] | None = None
     import_status = "skipped_no_capture"

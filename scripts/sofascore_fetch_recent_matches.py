@@ -65,10 +65,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", type=Path, help="New JSON capture file; existing files are never overwritten.")
     parser.add_argument("--limit-tournaments", type=positive_argument, default=None,
                         help="Optional smoke-test limit on the number of leagues to fetch.")
+    parser.add_argument("--tournament-id", type=positive_argument, default=None,
+                        help="Fetch a single league by SofaScore tournament id.")
     return parser.parse_args(argv)
 
 
-def select_leagues(catalog: Any, limit: int | None = None) -> list[LeagueScope]:
+def select_leagues(catalog: Any, limit: int | None = None, tournament_id: int | None = None) -> list[LeagueScope]:
     if isinstance(catalog, dict):
         catalog = catalog.get("leagues")
     if not isinstance(catalog, list):
@@ -79,15 +81,17 @@ def select_leagues(catalog: Any, limit: int | None = None) -> list[LeagueScope]:
         if not isinstance(league, dict):
             raise ValueError("Catalog league entries must be objects.")
         try:
-            tournament_id = positive_id(league.get("sofascore_tournament_id"))
+            tournament_id_value = positive_id(league.get("sofascore_tournament_id"))
             season_id = positive_id(league.get("season_id"))
         except ValueError:
             continue
-        if tournament_id in seen:
+        if tournament_id is not None and tournament_id_value != tournament_id:
             continue
-        seen.add(tournament_id)
-        label = str(league.get("league_name") or tournament_id)
-        selected.append(LeagueScope(tournament_id, season_id, label))
+        if tournament_id_value in seen:
+            continue
+        seen.add(tournament_id_value)
+        label = str(league.get("league_name") or tournament_id_value)
+        selected.append(LeagueScope(tournament_id_value, season_id, label))
         if limit is not None and len(selected) == limit:
             break
     if not selected:
@@ -265,17 +269,20 @@ def detect_current_season(transport: Transport, league: LeagueScope, sleep: Call
 
 def run_fetch(catalog_path: Path, output_path: Path, *, transport: Transport,
               limit_tournaments: int | None = None,
+              tournament_id: int | None = None,
               now: Callable[[], datetime] = utc_now,
               sleep: Callable[[float], None] = time.sleep) -> dict[str, Any]:
     if limit_tournaments is not None:
         positive_id(limit_tournaments)
+    if tournament_id is not None:
+        positive_id(tournament_id)
     catalog_path, output_path = Path(catalog_path), Path(output_path)
     validate_output(catalog_path, output_path)
     try:
         catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         raise ValueError("Catalog cannot be read as JSON.") from error
-    leagues = select_leagues(catalog, limit_tournaments)
+    leagues = select_leagues(catalog, limit_tournaments, tournament_id)
     snapshot_instant = now()
     tournaments: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
@@ -363,7 +370,8 @@ def main(argv: list[str] | None = None) -> int:
                 return session.get(url, timeout=timeout, impersonate=IMPERSONATE, allow_redirects=False,
                                    headers={"Accept": "application/json", "Referer": "https://www.sofascore.com/"})
             summary = run_fetch(options.catalog, output, transport=transport,
-                                limit_tournaments=options.limit_tournaments)
+                                limit_tournaments=options.limit_tournaments,
+                                tournament_id=options.tournament_id)
     except ValueError as error:
         print(json.dumps({"error": str(error)}))
         return 2
