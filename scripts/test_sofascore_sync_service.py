@@ -22,10 +22,12 @@ def completed(command: list[str], returncode: int, stdout: str, stderr: str = ""
 
 
 class FakeRunner:
-    def __init__(self, *, publish: bool = True, import_returncode: int = 0, import_summary: dict | None = None):
+    def __init__(self, *, publish: bool = True, import_returncode: int = 0, import_summary: dict | None = None,
+                 fail_tournaments: set | None = None):
         self.publish = publish
         self.import_returncode = import_returncode
         self.import_summary = import_summary if import_summary is not None else {"mode": "dry_run", "counts": {"planned_update": 2}}
+        self.fail_tournaments = fail_tournaments or set()
         self.commands: list[list[str]] = []
 
     def __call__(self, command, **kwargs):
@@ -44,8 +46,11 @@ class FakeRunner:
             return completed(command, 0, json.dumps({"fetched_leagues": 1 if self.publish else 0,
                                                      "events_total": 1 if self.publish else 0}))
         if any("provider-sofascore-matches-sync.ts" in part for part in command):
-            stderr = "" if self.import_returncode == 0 else "boom postgres://user:secret@db:5432/sports failed"
-            return completed(command, self.import_returncode, json.dumps(self.import_summary) + "\nnoise line", stderr=stderr)
+            capture_arg = command[command.index("--capture") + 1]
+            tournament_id = int(Path(capture_arg).stem.rsplit("-t", 1)[1])
+            if tournament_id in self.fail_tournaments or self.import_returncode != 0:
+                return completed(command, 1, "", stderr="boom postgres://user:secret@db:5432/x failed")
+            return completed(command, 0, json.dumps(self.import_summary) + "\nnoise line")
         if any("sync-run-log.ts" in part for part in command):
             return completed(command, 0, json.dumps({"logged": True}))
         raise AssertionError(f"Unexpected command: {command}")
@@ -95,22 +100,21 @@ class RunJobTests(unittest.TestCase):
         ]), encoding="utf-8")
         self.base_env = {"SYNC_CATALOG": str(self.catalog)}
 
-    def test_dry_run_fetches_per_league_and_merges_before_import(self):
+    def test_runs_one_import_per_league_and_aggregates_counts(self):
         runner = FakeRunner()
         summary = service.run_job(self.job, dict(self.base_env), self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["mode"], "dry_run")
         self.assertEqual(summary["importStatus"], "executed")
+        self.assertEqual(summary["status"], "succeeded")
         self.assertEqual(summary["fetchSummary"]["tournamentsRequested"], 2)
         self.assertEqual(summary["fetchSummary"]["partsPublished"], 2)
-        self.assertEqual(summary["importSummary"], {"mode": "dry_run", "counts": {"planned_update": 2}})
+        self.assertEqual(len(summary["importSummary"]["parts"]), 2)
+        self.assertEqual(summary["importSummary"]["counts"], {"planned_update": 4})
         fetch_commands = [command for command in runner.commands if "sofascore_fetch_recent_matches.py" in command[1]]
+        import_commands = [command for command in runner.commands if any("provider-sofascore-matches-sync.ts" in part for part in command)]
         self.assertEqual(len(fetch_commands), 2)
-        self.assertIn("--tournament-id", fetch_commands[0])
-        import_command = runner.commands[-1]
-        self.assertIn("--capture", import_command)
-        self.assertNotIn("--execute", import_command)
-        merged = json.loads(Path(summary["capture"]).read_text(encoding="utf-8"))
-        self.assertEqual(len(merged["tournaments"]), 2)
+        self.assertEqual(len(import_commands), 2)
+        self.assertNotIn("--execute", import_commands[0])
 
     def test_execute_adds_the_flag_and_passes_catalog(self):
         runner = FakeRunner()
@@ -118,15 +122,30 @@ class RunJobTests(unittest.TestCase):
         summary = service.run_job(self.job, env, self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["mode"], "execute")
         fetch_command = runner.commands[0]
-        import_command = runner.commands[-1]
+        import_commands = [command for command in runner.commands if any("provider-sofascore-matches-sync.ts" in part for part in command)]
         self.assertIn("--catalog", fetch_command)
-        self.assertIn("--execute", import_command)
+        self.assertEqual(len(import_commands), 2)
+        self.assertTrue(all("--execute" in command for command in import_commands))
+
+    def test_partial_import_still_reports_success_with_failed_parts(self):
+        runner = FakeRunner(fail_tournaments={98})
+        env = {**self.base_env, "DATABASE_URL": "postgres://example"}
+        summary = service.run_job(self.job, env, self.state_dir, NOW, runner=runner)
+        self.assertEqual(summary["importStatus"], "partial_import")
+        self.assertEqual(summary["status"], "succeeded")
+        self.assertIsNotNone(summary["importError"])
+        part_statuses = {entry["tournamentId"]: entry["status"] for entry in summary["importSummary"]["parts"]}
+        self.assertEqual(part_statuses, {52: "executed", 98: "import_failed"})
+        helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
+        self.assertEqual(len(helper), 4)
+        self.assertTrue(any("DATABASE_URL=<redacted>" in part for part in helper[-1]) or any("import_failed" in part for part in helper[-1]))
 
     def test_missing_capture_skips_import_but_reports_fetch_summary(self):
         runner = FakeRunner(publish=False)
         summary = service.run_job(self.job, dict(self.base_env), self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["importStatus"], "skipped_no_capture")
-        self.assertIsNone(summary["importSummary"])
+        self.assertEqual(summary["importSummary"]["counts"], {})
+        self.assertEqual([entry["status"] for entry in summary["importSummary"]["parts"]], ["skipped_no_capture", "skipped_no_capture"])
         self.assertEqual(summary["fetchSummary"]["tournamentsRequested"], 2)
         self.assertEqual(summary["fetchSummary"]["partsPublished"], 0)
         self.assertEqual(len(runner.commands), 2)
@@ -157,7 +176,7 @@ class RunJobTests(unittest.TestCase):
         self.assertIn("DATABASE_URL=<redacted>", summary["importError"])
         self.assertNotIn("secret", summary["importError"])
         helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
-        self.assertEqual(len(helper), 3)
+        self.assertEqual(len(helper), 4)
         self.assertIn("fetch_completed", helper[0])
         self.assertIn("import_failed", helper[-1])
         self.assertTrue(any("DATABASE_URL=<redacted>" in part for part in helper[-1]))
@@ -168,8 +187,8 @@ class RunJobTests(unittest.TestCase):
         summary = service.run_job(self.job, env, self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["status"], "succeeded")
         helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
-        self.assertEqual(len(helper), 2)
-        self.assertTrue(all("fetch_completed" in command for command in helper))
+        self.assertEqual(len(helper), 3)
+        self.assertTrue(all(any("fetch_completed" in token or "fetch_phase_complete" in token for token in command) for command in helper))
 
     def test_containment_keeps_service_alive_and_updates_state(self):
         def failing_runner(command, **kwargs):

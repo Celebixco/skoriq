@@ -159,30 +159,6 @@ def read_tournament_ids(catalog_path: Path) -> list[int]:
     return ids
 
 
-def publish_capture(output: Path, capture: dict[str, Any]) -> None:
-    temporary = output.with_name(f".{output.name}.{os.getpid()}.tmp")
-    temporary.write_text(json.dumps(capture, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    os.replace(temporary, output)
-
-
-def merge_captures(parts: list[Path], output: Path, now: datetime) -> int:
-    tournaments: list[dict[str, Any]] = []
-    for part in parts:
-        try:
-            document = json.loads(part.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        part_tournaments = document.get("tournaments") if isinstance(document, dict) else None
-        if isinstance(part_tournaments, list):
-            tournaments.extend(item for item in part_tournaments if isinstance(item, dict))
-    publish_capture(output, {
-        "source": "sofascore",
-        "capturedAt": now.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
-        "tournaments": tournaments,
-    })
-    return len(tournaments)
-
-
 def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, runner: Runner = subprocess.run) -> dict[str, Any]:
     execute = env.get("SYNC_EXECUTE", "0").strip().lower() in {"1", "true", "yes"}
     timeout = int(env.get("SYNC_JOB_TIMEOUT_SECONDS", str(DEFAULT_JOB_TIMEOUT_SECONDS)))
@@ -210,39 +186,56 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
                  {"tournamentId": tournament_id, "captureExists": published, "summary": part_summary}, runner=runner)
 
     if parts:
-        merge_captures(parts, capture, now)
-        for part in parts:
-            part.unlink(missing_ok=True)
+        log_step(job, env, "fetch_phase_complete", {"partsPublished": len(parts), "tournamentsRequested": len(tournament_ids)}, runner=runner)
     fetch_summary = {
         "tournaments": fetch_entries,
         "partsPublished": len(parts),
         "tournamentsRequested": len(tournament_ids),
     }
 
-    import_summary: dict[str, Any] | None = None
-    import_error: str | None = None
-    import_status = "skipped_no_capture"
-    if capture.exists():
-        import_command = [node_binary(), str(job.import_script), "--capture", str(capture)]
-        if execute:
-            import_command.append("--execute")
-        import_result = runner(import_command, capture_output=True, text=True, timeout=timeout)
-        import_summary = parse_last_json_line(import_result.stdout or "")
-        import_status = "executed" if import_result.returncode == 0 and import_summary else "import_failed"
-        if import_status == "import_failed":
-            stderr_tail = (import_result.stderr or "").strip()[-600:]
-            import_error = redact(f"exit {import_result.returncode}: {stderr_tail}") if stderr_tail else f"exit {import_result.returncode}"
+    # Import each league as its own invocation: a single wedged league is killed
+    # by its own timeout and cannot hold the whole refresh hostage.
+    import_timeout = int(env.get("SYNC_IMPORT_TIMEOUT_SECONDS", "180"))
+    part_summaries: list[dict[str, Any]] = []
+    aggregate_counts: dict[str, int] = {}
+    imported_parts = 0
+    for part_summary in fetch_entries:
+        if not part_summary["fetched"]:
+            part_summaries.append({"tournamentId": part_summary["tournamentId"], "status": "skipped_no_capture"})
+            continue
+        part_path = capture.with_name(f"{capture.stem}-t{part_summary['tournamentId']}.json")
+        if not part_path.exists():
+            part_summaries.append({"tournamentId": part_summary["tournamentId"], "status": "skipped_no_capture"})
+            continue
+        import_summary = import_part(job, part_path, env, execute, import_timeout, runner)
+        part_summaries.append(import_summary)
+        if import_summary["status"] == "executed":
+            imported_parts += 1
+            for action, count in (import_summary.get("counts") or {}).items():
+                aggregate_counts[action] = aggregate_counts.get(action, 0) + int(count)
+
+    fetched_count = len([entry for entry in fetch_entries if entry["fetched"]])
+    executed_count = len([summary for summary in part_summaries if summary["status"] == "executed"])
+    if fetched_count > 0 and executed_count == fetched_count:
+        import_status = "executed"
+    elif imported_parts > 0:
+        import_status = "partial_import"
+    elif fetched_count > 0:
+        import_status = "import_failed"
+    else:
+        import_status = "skipped_no_capture"
 
     removed = prune_captures(capture.parent, int(env.get("SYNC_CAPTURE_RETENTION_DAYS", str(DEFAULT_CAPTURE_RETENTION_DAYS))), now)
     summary = {
         "job": job.name,
-        "status": classify_run_status(capture.exists(), import_status),
+        "status": classify_run_status(any(entry["fetched"] for entry in fetch_entries), import_status),
         "mode": "execute" if execute else "dry_run",
-        "capture": str(capture) if capture.exists() else None,
+        "capture": None,
+        "capturesRetained": len(parts),
         "importStatus": import_status,
-        "importError": import_error,
+        "importError": next((entry.get("error") for entry in part_summaries if entry.get("error")), None),
         "fetchSummary": fetch_summary,
-        "importSummary": import_summary,
+        "importSummary": {"parts": part_summaries, "counts": aggregate_counts},
         "prunedCaptures": removed,
         "finishedAt": now.isoformat(timespec="seconds").replace("+00:00", "Z"),
     }
@@ -250,32 +243,53 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
     return summary
 
 
-def classify_run_status(capture_exists: bool, import_status: str) -> str:
-    if not capture_exists:
+def import_part(job: Job, part_path: Path, env: dict[str, str], execute: bool, timeout: int, runner: Runner) -> dict[str, Any]:
+    tournament_id = int(part_path.stem.rsplit("-t", 1)[1])
+    command = [node_binary(), str(job.import_script), "--capture", str(part_path)]
+    if execute:
+        command.append("--execute")
+    try:
+        result = runner(command, capture_output=True, text=True, timeout=timeout)
+    except Exception as error:
+        return {"tournamentId": tournament_id, "status": "import_timeout", "error": type(error).__name__}
+    summary = parse_last_json_line(result.stdout or "")
+    if result.returncode == 0 and summary:
+        return {"tournamentId": tournament_id, "status": "executed", "counts": summary.get("counts"), "queriesExecuted": summary.get("queriesExecuted")}
+    stderr_tail = redact((result.stderr or "").strip()[-400:])
+    return {"tournamentId": tournament_id, "status": "import_failed", "error": stderr_tail or f"exit {result.returncode}"}
+
+
+def classify_run_status(fetched_any: bool, import_status: str) -> str:
+    if not fetched_any:
         return "fetch_failed"
+    if import_status in {"executed", "partial_import"}:
+        return "succeeded"
     if import_status == "import_failed":
         return "import_failed"
-    if import_status == "executed":
-        return "succeeded"
     return "fetch_failed"
 
 
 def log_run_outcome(job: Job, env: dict[str, str], summary: dict[str, Any], *, runner: Runner) -> None:
-    # Executed runs are recorded by the importer itself; this helper makes fetch
-    # and import failures visible in sync_jobs even when no importer ever ran.
+    # Fully executed runs are recorded by the importer itself; this helper makes
+    # fetch failures, partial imports and import failures visible in sync_jobs.
     if not env.get("DATABASE_URL") or summary.get("importStatus") == "executed":
         return
     payload = {
         "fetchSummary": summary.get("fetchSummary"),
         "importStatus": summary.get("importStatus"),
         "importError": summary.get("importError"),
+        "failedParts": [entry for entry in (summary.get("importSummary") or {}).get("parts", [])
+                        if entry.get("status") not in {"executed"}][:8],
         "capture": summary.get("capture"),
     }
+    status = str(summary.get("status", "service_error"))
+    error_value = summary.get("error") or (status if status in {"fetch_failed", "import_failed", "service_error"} else None)
     command = [node_binary(), str(ROOT / "scripts" / "sync-run-log.ts"),
-               "--job", job.name, "--status", str(summary.get("status", "service_error")),
+               "--job", job.name, "--status", status,
                "--mode", str(summary.get("mode", "dry_run")),
-               "--summary", json.dumps(payload, ensure_ascii=False),
-               "--error", str(summary.get("error") or summary.get("status", "service_error"))]
+               "--summary", json.dumps(payload, ensure_ascii=False)]
+    if error_value:
+        command += ["--error", str(error_value)]
     try:
         runner(command, capture_output=True, text=True,
                timeout=int(env.get("SYNC_JOB_TIMEOUT_SECONDS", str(DEFAULT_JOB_TIMEOUT_SECONDS))))
