@@ -20,3 +20,5 @@ cookies.txt
 *.cookies.txt
 __pycache__/
 *.pyc
+
+design-preview/

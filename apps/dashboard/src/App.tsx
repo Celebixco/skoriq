@@ -36,7 +36,6 @@ import {
 } from "./api";
 import { CompetitionLogo, MetricCard, ProgressBar, StatusBadge, TeamLogo } from "./components";
 import { formatDate, formatDateTime, formatDecimal, formatPercent, formatRatePercent, statusLabel } from "./format";
-import skoriqLogo from "./assets/skoriq-logo-wordmark.png";
 import skoriqMark from "./assets/skoriq-logo.png";
 import type {
   FeatureStatus,
@@ -533,6 +532,52 @@ export function shouldRenderOverviewPage(routeKind: ReturnType<typeof resolveRou
   return routeKind === "overview" || routeKind === "landing";
 }
 
+function AuthScene() {
+  return (
+    <div className="login-intelligence" aria-hidden="true">
+      <div className="reason-stage">
+        <div className="rs-head">
+          <span className="rs-live"><i />Canlı Analiz</span>
+          <span className="rs-match">BVB — SCF · 26. Hafta</span>
+        </div>
+        <div className="rs-bar"><i /></div>
+        <ol className="rs-steps">
+          <li className="rs-row rs-1">
+            <span className="rs-box" />
+            <span className="rs-label">Veri Toplama</span>
+            <span className="rs-val">5/5 form · %64 kapsam</span>
+          </li>
+          <li className="rs-row rs-2">
+            <span className="rs-box" />
+            <span className="rs-label">Sinyal Ayrıştırma</span>
+            <span className="rs-val">gol profili ↑ · H2H ∅</span>
+          </li>
+          <li className="rs-row rs-3">
+            <span className="rs-box" />
+            <span className="rs-label">Neden-Sonuç</span>
+            <span className="rs-val">2 destek · 1 çürütücü</span>
+          </li>
+          <li className="rs-row rs-4">
+            <span className="rs-box" />
+            <span className="rs-label">Tahmin Desteği</span>
+            <span className="rs-val">Tahminim: 2,5 Üst</span>
+          </li>
+          <li className="rs-row rs-5">
+            <span className="rs-box" />
+            <span className="rs-label">Risk Açıklaması</span>
+            <span className="rs-val">1 uyarı · güven tavanı</span>
+          </li>
+        </ol>
+        <div className="rs-tags">
+          <span className="rs-tag rs-tag1">Aday · 2,5 Üst</span>
+          <span className="rs-tag rs-tag2">Risk · H2H ∅</span>
+        </div>
+      </div>
+      <span className="scene-foot" aria-hidden="true">SkorIQ Analiz Motoru — veri hattı canlı</span>
+    </div>
+  );
+}
+
 function LoginPage({ onLogin, navigate }: { onLogin: (user: AuthUser) => void; navigate: (path: string) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -557,33 +602,15 @@ function LoginPage({ onLogin, navigate }: { onLogin: (user: AuthUser) => void; n
   return (
     <main className="login-shell">
       <section className="login-experience" aria-label="SkorIQ giriş ekranı">
-        <div className="login-intelligence" aria-hidden="true">
-          <div className="brain-stage">
-            <div className="brain-orbit brain-orbit-one" />
-            <div className="brain-orbit brain-orbit-two" />
-            <div className="brain-core">
-              <span className="brain-node node-a" />
-              <span className="brain-node node-b" />
-              <span className="brain-node node-c" />
-              <span className="brain-node node-d" />
-              <span className="brain-node node-e" />
-              <span className="brain-path path-a" />
-              <span className="brain-path path-b" />
-              <span className="brain-path path-c" />
-              <span className="brain-bar bar-a" />
-              <span className="brain-bar bar-b" />
-              <span className="brain-bar bar-c" />
-              <span className="brain-bar bar-d" />
-            </div>
-            <span className="data-chip chip-a">Senin için analiz yapıyorum</span>
-            <span className="data-chip chip-b">Bu maçta tempo yüksek olabilir</span>
-            <span className="data-chip chip-c">Verileri karşılaştırıyorum</span>
-            <span className="data-chip chip-d">2.5 üst ihtimalini inceliyorum</span>
-          </div>
-        </div>
+        <AuthScene />
         <section className="login-card">
           <div className="login-brand">
-            <img src={skoriqLogo} alt="SkorIQ" />
+            <span className="brand-text">Skor<i>IQ</i></span>
+          </div>
+          <div className="auth-copy">
+            <p className="auth-kicker">SkorIQ — Üye Girişi</p>
+            <h1>Tahtaya giriş yap.</h1>
+            <p>Analiz paneline erişmek için hesabına giriş yap. Her maçı veriyle oku, gerekçesiyle gör.</p>
           </div>
           <form className="login-form" onSubmit={submit}>
             <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="E-posta" aria-label="E-posta" required />
@@ -634,35 +661,13 @@ function ForgotPasswordPage({ navigate }: { navigate: (path: string) => void }) 
   return (
     <main className="login-shell">
       <section className="login-experience" aria-label="SkorIQ şifre sıfırlama ekranı">
-        <div className="login-intelligence" aria-hidden="true">
-          <div className="brain-stage">
-            <div className="brain-orbit brain-orbit-one" />
-            <div className="brain-orbit brain-orbit-two" />
-            <div className="brain-core">
-              <span className="brain-node node-a" />
-              <span className="brain-node node-b" />
-              <span className="brain-node node-c" />
-              <span className="brain-node node-d" />
-              <span className="brain-node node-e" />
-              <span className="brain-path path-a" />
-              <span className="brain-path path-b" />
-              <span className="brain-path path-c" />
-              <span className="brain-bar bar-a" />
-              <span className="brain-bar bar-b" />
-              <span className="brain-bar bar-c" />
-              <span className="brain-bar bar-d" />
-            </div>
-            <span className="data-chip chip-a">Guvenli baglanti hazirlaniyor</span>
-            <span className="data-chip chip-b">Hesap erisimi geri aliniyor</span>
-            <span className="data-chip chip-c">Mail teslimi kontrol ediliyor</span>
-            <span className="data-chip chip-d">Tek kullanimlik baglanti olusturuluyor</span>
-          </div>
-        </div>
-        <section className="login-card">
+                <AuthScene />
+<section className="login-card">
           <div className="login-brand">
-            <img src={skoriqLogo} alt="SkorIQ" />
+            <span className="brand-text">Skor<i>IQ</i></span>
           </div>
           <div className="auth-copy">
+            <p className="auth-kicker">SkorIQ — Erişim</p>
             <h1>Şifreni yenile</h1>
             <p>E-posta adresini gir. Hesabın varsa sana güvenli bir yenileme bağlantısı gönderelim.</p>
           </div>
@@ -721,35 +726,13 @@ function ResetPasswordPage({ navigate }: { navigate: (path: string) => void }) {
   return (
     <main className="login-shell">
       <section className="login-experience" aria-label="SkorIQ yeni şifre ekranı">
-        <div className="login-intelligence" aria-hidden="true">
-          <div className="brain-stage">
-            <div className="brain-orbit brain-orbit-one" />
-            <div className="brain-orbit brain-orbit-two" />
-            <div className="brain-core">
-              <span className="brain-node node-a" />
-              <span className="brain-node node-b" />
-              <span className="brain-node node-c" />
-              <span className="brain-node node-d" />
-              <span className="brain-node node-e" />
-              <span className="brain-path path-a" />
-              <span className="brain-path path-b" />
-              <span className="brain-path path-c" />
-              <span className="brain-bar bar-a" />
-              <span className="brain-bar bar-b" />
-              <span className="brain-bar bar-c" />
-              <span className="brain-bar bar-d" />
-            </div>
-            <span className="data-chip chip-a">Yeni sifre güvenliği ölçülüyor</span>
-            <span className="data-chip chip-b">Erisim anahtari dogrulaniyor</span>
-            <span className="data-chip chip-c">Hesap kalkanlari yenileniyor</span>
-            <span className="data-chip chip-d">Oturum yeniden hazirlaniyor</span>
-          </div>
-        </div>
-        <section className="login-card">
+                <AuthScene />
+<section className="login-card">
           <div className="login-brand">
-            <img src={skoriqLogo} alt="SkorIQ" />
+            <span className="brand-text">Skor<i>IQ</i></span>
           </div>
           <div className="auth-copy">
+            <p className="auth-kicker">SkorIQ — Güvenlik</p>
             <h1>Yeni şifreni belirle</h1>
             <p>En az 12 karakter; büyük harf, küçük harf ve rakam içeren güçlü bir şifre kullan.</p>
           </div>
@@ -848,40 +831,22 @@ function RegisterPage({ onRegister, navigate }: { onRegister: (user: AuthUser) =
   return (
     <main className="login-shell">
       <section className="login-experience" aria-label="SkorIQ kayıt ekranı">
-        <div className="login-intelligence" aria-hidden="true">
-          <div className="brain-stage">
-            <div className="brain-orbit brain-orbit-one" />
-            <div className="brain-orbit brain-orbit-two" />
-            <div className="brain-core">
-              <span className="brain-node node-a" />
-              <span className="brain-node node-b" />
-              <span className="brain-node node-c" />
-              <span className="brain-node node-d" />
-              <span className="brain-node node-e" />
-              <span className="brain-path path-a" />
-              <span className="brain-path path-b" />
-              <span className="brain-path path-c" />
-              <span className="brain-bar bar-a" />
-              <span className="brain-bar bar-b" />
-              <span className="brain-bar bar-c" />
-              <span className="brain-bar bar-d" />
-            </div>
-            <span className="data-chip chip-a">Üyelik oluşturuluyor</span>
-            <span className="data-chip chip-b">Analiz paneli hazırlanıyor</span>
-            <span className="data-chip chip-c">Veri kapsamı kontrol ediliyor</span>
-            <span className="data-chip chip-d">Güven skoru sinyalleri ayrıştırılıyor</span>
-          </div>
-        </div>
-        <section className="login-card">
+                <AuthScene />
+<section className="login-card">
           <div className="login-brand">
-            <img src={skoriqLogo} alt="SkorIQ" />
+            <span className="brand-text">Skor<i>IQ</i></span>
+          </div>
+          <div className="auth-copy">
+            <p className="auth-kicker">SkorIQ — Üyelik</p>
+            <h1>Tahtaya katıl.</h1>
+            <p>Ücretsiz hesap oluştur; yaklaşan maçların veri kapsamı, sinyalleri ve riskleri tek tahtada toplansın.</p>
           </div>
           <form className="login-form" onSubmit={submit}>
             <input value={firstName} onChange={(event) => setFirstName(event.target.value)} type="text" autoComplete="given-name" placeholder="Ad" aria-label="Ad" minLength={2} maxLength={80} required />
             <input value={lastName} onChange={(event) => setLastName(event.target.value)} type="text" autoComplete="family-name" placeholder="Soyad" aria-label="Soyad" minLength={2} maxLength={80} required />
             <label className="phone-field">
               <span className="phone-prefix" aria-hidden="true">
-                <span className="flag-tr">🇹🇷</span>
+                <span className="flag-tr">TR</span>
                 +90
               </span>
               <input
@@ -911,7 +876,7 @@ function RegisterPage({ onRegister, navigate }: { onRegister: (user: AuthUser) =
                 required
               />
               <button type="button" aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"} onClick={() => setShowPassword((value) => !value)}>
-                {showPassword ? "🙈" : "👁"}
+                {showPassword ? "Gizle" : "Göster"}
               </button>
             </div>
             <div className="password-field">
@@ -7005,7 +6970,7 @@ export function Shell({
       <aside className={`sidebar${mobileSidebarOpen ? " mobile-open" : ""}`} aria-label="Dashboard navigation">
         <div className="sidebar-top">
           <div className="brand">
-            <img src={skoriqLogo} alt="SkorIQ" />
+            <span className="brand-text">Skor<i>IQ</i></span>
             <span>Veri Destekli Maç Analizi</span>
           </div>
           <div className="user-card">
@@ -7417,13 +7382,45 @@ function parseBooleanFilter(value: string): boolean | "" {
 }
 
 export function LandingPage({ navigate }: { navigate: (path: string) => void }) {
+  useEffect(() => {
+    const root = document.querySelector(".taktik-home");
+    if (!root) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const els = Array.from(root.querySelectorAll<HTMLElement>(".tk-reveal"));
+    if (reduced || !("IntersectionObserver" in window)) {
+      els.forEach((el) => el.classList.add("tk-in"));
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("tk-in");
+            io.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -6% 0px" }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
+  const drills = [
+    { no: "01", title: "Veri Toplama", desc: "Lig, takım, form ve gol verisi tek yapıya getirilir." },
+    { no: "02", title: "Sinyal Ayrıştırma", desc: "Form, gol profili ve H2H ayrı katmanlar olarak okunur." },
+    { no: "03", title: "Neden-Sonuç", desc: "Her sinyal destekleyici ya da çürütücü olarak yorumlanır." },
+    { no: "04", title: "Tahmin Desteği", desc: "Adaylar dört seviyede derecelendirilir; en güçlüsü öne çıkar." },
+    { no: "05", title: "Risk Açıklaması", desc: "Eksik veri ve çelişkiler gizlenmeden yazılır." }
+  ];
+
   const features = [
-    { title: "Maç Analizleri", desc: "Takım formu, veri kapsamı ve maç hazırlığını tek ekranda gör.", letter: "M" },
-    { title: "Gol Profili", desc: "Gol üretimi, gol yeme eğilimi, ilk yarı ve KG sinyallerini ayrıştır.", letter: "G" },
-    { title: "H2H Bağlamı", desc: "Takımlar arası geçmişi destekleyici sinyal olarak kullan.", letter: "H" },
-    { title: "Tahmin Yorumu", desc: "Tahminim, Denenir ve Alternatif ayrımıyla daha net yorum al.", letter: "T" },
-    { title: "Risk Sinyalleri", desc: "Eksik veri ve tutarsız adaylar sistem tarafından ayrıştırılır.", letter: "R" },
-    { title: "Takım / Lig", desc: "Lig, takım, puan durumu ve form detaylarını dinamik verilerle incele.", letter: "L" }
+    "Maç Analizleri",
+    "Gol Profili",
+    "H2H Bağlamı",
+    "Tahmin Yorumu",
+    "Risk Sinyalleri",
+    "Takım / Lig"
   ];
 
   const benefits = [
@@ -7435,229 +7432,406 @@ export function LandingPage({ navigate }: { navigate: (path: string) => void }) 
     "Lig ve takım detayları"
   ];
 
-  const reasoningFlow = [
-    { label: "Veri", desc: "Toplama" },
-    { label: "Sinyal", desc: "Ayrıştırma" },
-    { label: "Neden-Sonuç", desc: "Yorum" },
-    { label: "Tahmin Desteği", desc: "Öneri" },
-    { label: "Risk Açıklaması", desc: "Şeffaflık" }
-  ];
-
-  const previewCards = [
-    {
-      title: "Veri Kapsamı",
-      desc: "Her maçta veri yeterliliği ayrı değerlendirilir. Yetersiz veri = uyarı.",
-      icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
-        </svg>
-      )
-    },
-    {
-      title: "Tutarlılık Kontrolü",
-      desc: "Çelişen tahminler öneri olarak gösterilmez. Tutarlılık önceliklidir.",
-      icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        </svg>
-      )
-    },
-    {
-      title: "Açıklanabilir Yorum",
-      desc: "Tahminler sinyal ve risk açıklamalarıyla desteklenir, gerekçelendirilir.",
-      icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
-      )
-    }
+  const leagues = [
+    { code: "TR", name: "Süper Lig", on: true },
+    { code: "ENG", name: "Premier League", on: true },
+    { code: "ESP", name: "La Liga", on: true },
+    { code: "ITA", name: "Serie A", on: true },
+    { code: "GER", name: "Bundesliga", on: true },
+    { code: "GER", name: "2. Bundesliga", on: true },
+    { code: "FRA", name: "Ligue 1", on: false },
+    { code: "NED", name: "Eredivisie", on: false }
   ];
 
   return (
-    <div className="landing-page">
-      <nav className="landing-nav">
-        <div className="landing-nav-inner">
-          <span className="landing-logo">SkorIQ</span>
-          <div className="landing-nav-actions">
-            <button type="button" className="landing-nav-link" onClick={() => navigate("/login")}>Giriş Yap</button>
-            <button type="button" className="landing-nav-cta" onClick={() => navigate("/register")}>Kayıt Ol</button>
-          </div>
-        </div>
-      </nav>
-
-      <header className="landing-hero">
-        <div className="landing-hero-visual" aria-hidden="true">
-          <div className="brain-stage">
-            <div className="brain-orbit brain-orbit-one" />
-            <div className="brain-orbit brain-orbit-two" />
-            <div className="brain-orbit brain-orbit-three" />
-            <div className="brain-core">
-              <div className="brain-core-inner" />
-              <span className="brain-node node-a" />
-              <span className="brain-node node-b" />
-              <span className="brain-node node-c" />
-              <span className="brain-node node-d" />
-              <span className="brain-node node-e" />
-              <span className="brain-path path-a" />
-              <span className="brain-path path-b" />
-              <span className="brain-path path-c" />
-              <span className="brain-bar bar-a" />
-              <span className="brain-bar bar-b" />
-              <span className="brain-bar bar-c" />
-              <span className="brain-bar bar-d" />
-            </div>
-            <span className="data-chip chip-a">Form verilerini tarıyorum</span>
-            <span className="data-chip chip-b">Gol profilini analiz ediyorum</span>
-            <span className="data-chip chip-c">H2H eğilimlerini ölçüyorum</span>
-            <span className="data-chip chip-d">Risk sinyallerini kontrol ediyorum</span>
-            <span className="data-chip chip-e">Tutarlılık kontrolü yapıyorum</span>
-          </div>
-        </div>
-        <div className="landing-hero-content">
-          <h1>Veriyle Okunan Maçlar, Nedenleriyle Açıklanan Tahminler</h1>
-          <p className="landing-hero-lead">
-            SkorIQ; takım formu, gol profili, H2H, veri kapsamı ve risk sinyallerini birlikte değerlendirerek maçları neden-sonuç ilişkisiyle yorumlar.
-          </p>
-          <p className="landing-hero-explanation">
-            Bot gibi sonuç vermez. Veriyi okur, sinyali ayrıştırır, gerekçeyi açıklar.
-          </p>
-          <div className="landing-hero-actions">
-            <button type="button" className="landing-btn-primary" onClick={() => navigate("/register")}>Ücretsiz Hesap Oluştur</button>
-            <button type="button" className="landing-btn-secondary" onClick={() => navigate("/login")}>Giriş Yap</button>
-          </div>
-          <p className="landing-hero-note">Kesin sonuç vaadi yoktur. SkorIQ, veriye dayalı analiz ve yorum desteği sunar.</p>
+    <div className="taktik-home" id="top">
+      <header className="tk-topbar">
+        <div className="tk-container tk-topbar-in">
+          <a className="tk-brand" href="#top">
+            Skor<i>IQ</i>
+          </a>
+          <nav className="tk-nav" aria-label="Ana menü">
+            <a href="#akis">Akış</a>
+            <a href="#prensipler">Prensipler</a>
+            <a href="#skala">Seviyeler</a>
+            <a href="#ligler">Ligler</a>
+            <button type="button" onClick={() => navigate("/login")}>Giriş Yap</button>
+            <button type="button" className="tk-cta-mini" onClick={() => navigate("/register")}>Kayıt Ol</button>
+          </nav>
         </div>
       </header>
 
-      <section className="landing-reasoning" aria-label="SkorIQ akıl yürütme süreci">
-        <div className="landing-reasoning-inner">
-          {reasoningFlow.map((item, index) => (
-            <div className="reasoning-card" key={item.label}>
-              <span className="reasoning-dot" />
-              <span className="reasoning-label">{item.label}</span>
-              <span className="reasoning-desc">{item.desc}</span>
-              {index < reasoningFlow.length - 1 && <span className="reasoning-arrow" aria-hidden="true">→</span>}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="landing-section landing-section-muted">
-        <div className="landing-section-inner">
-          <p className="landing-section-label">Prensipler</p>
-          <h2 className="landing-section-title">SkorIQ farkı nedir?</h2>
-          <div className="landing-preview-cards">
-            {previewCards.map((card) => (
-              <div className="landing-preview-card" key={card.title}>
-                <div className="landing-preview-icon">{card.icon}</div>
-                <h3>{card.title}</h3>
-                <p>{card.desc}</p>
+      <main>
+        <section className="tk-hero">
+          <div className="tk-container tk-stage">
+            <div>
+              <p className="tk-kicker tk-reveal">Taktik Analiz Tahtası — 26. Hafta</p>
+              <p className="tk-motto tk-reveal">«Veriyle Okunan Maçlar, Nedenleriyle Açıklanan Tahminler»</p>
+              <h1 className="tk-reveal">
+                Her pasın bir <span className="tk-u">gerekçesi</span> vardır.
+              </h1>
+              <p className="tk-lead tk-reveal">
+                SkorIQ; takım formu, gol profili, H2H bağlamı, veri kapsamı ve risk sinyallerini birlikte
+                değerlendirir. <b>Bot gibi sonuç vermez.</b> Veriyi okur, sinyali ayrıştırır, gerekçeyi açıklar.
+              </p>
+              <div className="tk-btn-row tk-reveal">
+                <button type="button" className="tk-btn tk-btn-solid" onClick={() => navigate("/register")}>
+                  Ücretsiz Hesap Oluştur
+                </button>
+                <button type="button" className="tk-btn tk-btn-line" onClick={() => navigate("/login")}>
+                  Giriş Yap
+                </button>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+              <p className="tk-hero-note tk-reveal">
+                Kesin sonuç vaadi yoktur; SkorIQ yalnızca veriye dayalı analiz ve yorum desteği sunar.
+                Sahanın üstüne analistin gözüyle bakar.
+              </p>
+            </div>
 
-      <section className="landing-section">
-        <div className="landing-section-inner">
-          <p className="landing-section-label">Yetenekler</p>
-          <h2 className="landing-section-title">Platform Özellikleri</h2>
-          <div className="landing-features">
-            {features.map((f) => (
-              <div className="landing-feature" key={f.title}>
-                <span className="landing-feature-letter">{f.letter}</span>
-                <div>
-                  <h3>{f.title}</h3>
-                  <p>{f.desc}</p>
+            <div className="tk-board-wrap tk-reveal">
+              <span className="tk-reg tl" aria-hidden="true" />
+              <span className="tk-reg tr" aria-hidden="true" />
+              <span className="tk-reg bl" aria-hidden="true" />
+              <span className="tk-reg br" aria-hidden="true" />
+
+              <svg className="tk-pitch" viewBox="0 0 560 840" role="img" aria-label="Yarım saha taktik tahtası: sinyal hattı orta sahadan forvete ilerliyor, 9 numara aday">
+                <defs>
+                  <linearGradient id="tkSheen" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stopColor="rgba(255,255,255,0.035)" />
+                    <stop offset="0.45" stopColor="rgba(255,255,255,0)" />
+                  </linearGradient>
+                  <radialGradient id="tkGlow9" cx="0.5" cy="0.5" r="0.5">
+                    <stop offset="0" stopColor="rgba(250,204,21,0.16)" />
+                    <stop offset="0.6" stopColor="rgba(250,204,21,0.05)" />
+                    <stop offset="1" stopColor="rgba(250,204,21,0)" />
+                  </radialGradient>
+                  <clipPath id="tkFieldClip">
+                    <rect x="20" y="20" width="520" height="800" />
+                  </clipPath>
+                  <filter id="tkNodeShadow" x="-40%" y="-40%" width="180%" height="180%">
+                    <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#000000" floodOpacity="0.55" />
+                  </filter>
+                  <filter id="tkHotGlow" x="-80%" y="-80%" width="260%" height="260%">
+                    <feDropShadow dx="0" dy="0" stdDeviation="7" floodColor="#facc15" floodOpacity="0.55" />
+                  </filter>
+                </defs>
+
+                <g clipPath="url(#tkFieldClip)">
+                  <rect x="20" y="20" width="520" height="800" fill="url(#tkSheen)" />
+                  <rect x="20" y="180" width="520" height="80" fill="rgba(255,255,255,0.012)" />
+                  <rect x="20" y="340" width="520" height="80" fill="rgba(255,255,255,0.012)" />
+                  <rect x="20" y="500" width="520" height="80" fill="rgba(255,255,255,0.012)" />
+                  <rect x="20" y="660" width="520" height="80" fill="rgba(255,255,255,0.012)" />
+                </g>
+
+                <rect x="12" y="12" width="536" height="816" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
+
+                <rect className="frame frame-outer" x="20" y="20" width="520" height="800" />
+                <path className="frame" d="M 20 34 Q 20 20 34 20" />
+                <path className="frame" d="M 526 20 Q 540 20 540 34" />
+                <rect className="frame frame-goal" x="252" y="8" width="56" height="12" />
+                <rect className="frame" x="210" y="20" width="140" height="84" />
+                <rect className="frame" x="120" y="20" width="320" height="210" />
+                <circle cx="280" cy="188" r="3.5" fill="rgba(255,255,255,0.4)" />
+                <path className="frame" d="M 206 230 Q 280 316 354 230" />
+                <path className="frame" d="M 189 820 Q 280 650 371 820" />
+
+                <path className="link" d="M 280 58 L 210 255" />
+                <path className="link" d="M 210 255 L 350 255" />
+                <path className="link" d="M 350 255 L 455 265" />
+                <path className="link" d="M 105 265 L 210 255" />
+                <path className="link" d="M 280 350 L 150 420" />
+                <path className="link" d="M 100 560 L 262 479" />
+                <path className="link" d="M 455 265 L 460 560" />
+
+                <circle cx="280" cy="470" r="78" fill="url(#tkGlow9)" />
+
+                <path className="signal s1" d="M 280 350 L 410 420" />
+                <path className="signal s2" d="M 410 420 L 460 560" />
+                <path className="signal s3" d="M 460 560 L 298 479" />
+
+                <g filter="url(#tkNodeShadow)">
+                  <g className="node"><circle cx="280" cy="58" r="15" /><text x="280" y="59">1</text></g>
+                  <g className="node"><circle cx="105" cy="265" r="15" /><text x="105" y="266">3</text></g>
+                  <g className="node"><circle cx="210" cy="255" r="15" /><text x="210" y="256">4</text></g>
+                  <g className="node"><circle cx="350" cy="255" r="15" /><text x="350" y="256">5</text></g>
+                  <g className="node"><circle cx="455" cy="265" r="15" /><text x="455" y="266">2</text></g>
+                  <g className="node chain"><circle cx="280" cy="350" r="15" /><text x="280" y="351">6</text></g>
+                  <g className="node"><circle cx="150" cy="420" r="15" /><text x="150" y="421">8</text></g>
+                  <g className="node chain"><circle cx="410" cy="420" r="15" /><text x="410" y="421">10</text></g>
+                  <g className="node"><circle cx="100" cy="560" r="15" /><text x="100" y="561">11</text></g>
+                  <g className="node chain"><circle cx="460" cy="560" r="15" /><text x="460" y="561">7</text></g>
+                  <circle className="ball" cx="314" cy="482" r="4" />
+                </g>
+
+                <g className="hot" filter="url(#tkHotGlow)">
+                  <circle className="ripple" cx="280" cy="470" r="15" />
+                  <circle cx="280" cy="470" r="15" /><text x="280" y="471">9</text>
+                </g>
+              </svg>
+
+              <span className="tk-note n1">form <span className="tk-y">↑</span> son 5: 4G–1M</span>
+              <span className="tk-note n2">h2h yok — güven tavanı <span className="tk-y">düşük</span></span>
+              <span className="tk-note n3">9 numara: gol profili <span className="tk-y">↑↑</span></span>
+              <span className="tk-note n4">ileri pas hattı açık</span>
+
+              <svg className="tk-doodle" viewBox="0 0 80 60" fill="none" aria-hidden="true">
+                <path d="M74 8 C 46 2, 14 16, 8 42" stroke="rgba(255,255,255,0.4)" strokeWidth="1.6" strokeLinecap="round" />
+                <path d="M15 37 L 8 43 L 16 49" stroke="rgba(255,255,255,0.4)" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+              </svg>
+
+              <span className="tk-tag t1">Aday · 2,5 Üst</span>
+              <span className="tk-tag t2">Risk · H2H ∅</span>
+              <span className="tk-tag t3">Sinyal Hattı</span>
+
+              <div className="tk-board-foot">
+                <span>SkorIQ Analiz Tahtası — bvb vs scf · kapsam %64</span>
+                <span className="tk-legend">
+                  <span className="tk-lg"><i className="tk-sw tk-sw-signal" aria-hidden="true" />Sinyal hattı</span>
+                  <span className="tk-lg"><i className="tk-sw tk-sw-link" aria-hidden="true" />Pas bağlantısı</span>
+                  <span className="tk-lg"><i className="tk-sw tk-sw-hot" aria-hidden="true" />Tahmin adayı</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="tk-sec" id="akis">
+          <div className="tk-container tk-drills-wrap">
+            <div className="tk-shead tk-reveal">
+              <p className="tk-kicker">Analiz Akışı — Maç Önü Protokolü</p>
+              <h2 className="tk-h2">Bot gibi sonuç yok.<br />Uçtan uca gerekçe var.</h2>
+              <p className="tk-slede">Her maç aynı beş adımlı hattan geçer. Hiçbir adım atlanmaz; eksik veri varsayımla kapatılmaz.</p>
+            </div>
+
+            <p className="tk-drills-note tk-reveal" aria-hidden="true">analiz böyle akar →</p>
+            <ol className="tk-drills">
+              {drills.map((d) => (
+                <li className="tk-reveal" key={d.no}>
+                  <span className="tk-drill-node" aria-hidden="true">{d.no}</span>
+                  <h3>{d.title}</h3>
+                  <p>{d.desc}</p>
+                </li>
+              ))}
+            </ol>
+
+            <p className="tk-kicker tk-reveal" style={{ marginTop: "3.5rem" }}>Platform Özellikleri</p>
+            <div className="tk-features tk-reveal">
+              {features.map((f, i) => (
+                <div className="tk-feature" key={f}>
+                  <span className="tk-no">{String(i + 1).padStart(2, "0")}</span>
+                  <h4>{f}</h4>
                 </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="tk-sec" id="prensipler">
+          <div className="tk-container">
+            <div className="tk-shead tk-reveal">
+              <p className="tk-kicker">Tahta Kuralları — Tavizsiz Üç İlke</p>
+              <h2 className="tk-h2">SkorIQ farkı nedir?</h2>
+              <p className="tk-slede">SkorIQ bir tahmin botu değil; veri okuryazarlığı aracıdır. Üç kural, tahtadan asla kaldırılmaz.</p>
+            </div>
+
+            <div className="tk-notes tk-reveal">
+              <article className="tk-note-card">
+                <span className="tk-no">KURAL 01</span>
+                <h3>Veri Kapsamı</h3>
+                <p>Her maçta veri yeterliliği ayrı değerlendirilir. Yetersiz veri varsayımla kapatılmaz; kapsam düştükçe güven tavanı da düşer.</p>
+                <span className="tk-scrawl" aria-hidden="true">varsayım yok — <span className="tk-y">tavan düşer</span></span>
+              </article>
+              <article className="tk-note-card">
+                <span className="tk-no">KURAL 02</span>
+                <h3>Tutarlılık Kontrolü</h3>
+                <p>Çelişen tahminler öneri olarak gösterilmez. Çelişen adaylar otomatik olarak “Uzak Dur” seviyesine indirilir.</p>
+                <span className="tk-scrawl" aria-hidden="true">çelişki = <span className="tk-y">eleme</span></span>
+              </article>
+              <article className="tk-note-card">
+                <span className="tk-no">KURAL 03</span>
+                <h3>Açıklanabilir Yorum</h3>
+                <p>Tahminler sinyal ve risk açıklamalarıyla desteklenir, gerekçelendirilir. Gerekçesiz çıktı yayınlanmaz.</p>
+                <span className="tk-scrawl" aria-hidden="true">gerekçe <span className="tk-y">zorunlu</span></span>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section className="tk-sec">
+          <div className="tk-container tk-split">
+            <div>
+              <p className="tk-kicker tk-reveal">Analiz Ekranından Bir Kesit</p>
+              <div className="tk-snippet tk-reveal" style={{ marginTop: "1.2rem" }}>
+                <div className="tk-snippet-head">
+                  <span className="tk-lbl">SkorIQ Önizleme — Bundesliga · 26. Hafta</span>
+                  <span className="tk-snippet-status"><i aria-hidden="true" />Analiz Hazır</span>
+                </div>
+                <div className="tk-snippet-teams">
+                  <div className="tk-snippet-team">
+                    <span className="tk-mono-badge" aria-hidden="true">BVB</span>
+                    <div><b>Dortmund</b><small>Ev Sahibi</small></div>
+                  </div>
+                  <span className="tk-snippet-vs" aria-hidden="true">VS</span>
+                  <div className="tk-snippet-team away">
+                    <div><b>Freiburg</b><small>Deplasman</small></div>
+                    <span className="tk-mono-badge" aria-hidden="true">SCF</span>
+                  </div>
+                </div>
+                <div className="tk-snippet-metrics">
+                  <div>
+                    <span className="tk-lbl">Veri Kapsamı</span>
+                    <span className="tk-val">%64</span>
+                    <div className="tk-meter" role="img" aria-label="Veri kapsamı yüzde 64"><i style={{ width: "64%" }} /></div>
+                  </div>
+                  <div>
+                    <span className="tk-lbl">Form Örneklemi</span>
+                    <span className="tk-val">5 / 5</span>
+                  </div>
+                  <div>
+                    <span className="tk-lbl">H2H Örneklemi</span>
+                    <span className="tk-val warn">0</span>
+                  </div>
+                </div>
+                <p className="tk-snippet-caption">Örnek ekran görüntüsü — tasarım önizlemesidir, gerçek maç verisi içermez.</p>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="landing-section landing-section-muted">
-        <div className="landing-section-inner">
-          <p className="landing-section-label">Önizleme</p>
-          <h2 className="landing-section-title">Analiz Ekranından Bir Kesit</h2>
-          <div className="landing-mockup">
-            <div className="landing-mockup-header">
-              <span>Süper Lig · 4 May 2026</span>
-              <span className="landing-mockup-status">Hazır</span>
             </div>
-            <div className="landing-mockup-match">
-              <div className="landing-mockup-team">
-                <span className="landing-mockup-avatar">E</span>
-                <span>Ev Sahibi</span>
-              </div>
-              <span className="landing-mockup-vs">VS</span>
-              <div className="landing-mockup-team">
-                <span className="landing-mockup-avatar">D</span>
-                <span>Deplasman</span>
+
+            <div>
+              <p className="tk-kicker tk-reveal">Üyelik</p>
+              <h2 className="tk-h2 tk-reveal" style={{ fontSize: "clamp(1.5rem, 2.6vw, 2rem)" }}>Üye olduğunda ne görürsün?</h2>
+              <ul className="tk-benefits tk-reveal" style={{ marginTop: "1.4rem" }}>
+                {benefits.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+              <div className="tk-soon tk-reveal">
+                <b>Başarılı tahmin arşivi yakında</b>
+                <p>Yalnızca sonuçlanmış ve iç kontrolden geçmiş tahminler, şeffaf bir arşivde yayınlanacaktır.</p>
               </div>
             </div>
-            <div className="landing-mockup-bars">
-              <div className="landing-mockup-bar"><span>Veri Kapsamı</span><div className="landing-mockup-track"><div style={{ width: "72%" }} /></div></div>
-              <div className="landing-mockup-bar"><span>Form Kapsamı</span><div className="landing-mockup-track"><div style={{ width: "85%" }} /></div></div>
-              <div className="landing-mockup-bar"><span>H2H Kapsamı</span><div className="landing-mockup-track"><div style={{ width: "60%" }} /></div></div>
+          </div>
+        </section>
+
+        <section className="tk-sec" id="skala">
+          <div className="tk-container tk-tier-wrap">
+            <div className="tk-shead tk-reveal">
+              <p className="tk-kicker">Karar Skalası — Dört Seviye</p>
+              <h2 className="tk-h2">Dört seviye. Tek kural: şeffaflık.</h2>
+              <p className="tk-slede">Her aday, sinyal desteğine ve risk durumuna göre derecelendirilir. Öneri olmayan seviye, öneri gibi gösterilmez.</p>
             </div>
-            <div className="landing-mockup-tags">
-              <span className="landing-tag-primary">Tahminim</span>
-              <span className="landing-tag-secondary">Denenir</span>
-              <span className="landing-tag-muted">Alternatif</span>
+
+            <p className="tk-tier-annot tk-reveal" aria-hidden="true">bu kutu asla <span className="tk-y">öneri olmaz</span> ↓</p>
+            <div className="tk-tier-panel tk-reveal">
+              <div className="tk-tier-col c-primary">
+                <div className="tk-tier-top"><span className="tk-tier-sq" aria-hidden="true" /><span className="tk-tier-name">Tahminim</span></div>
+                <p className="tk-tier-role">Birincil aday</p>
+                <p className="tk-tier-desc">Sinyal desteği en güçlü, çelişki yok. Analiz hattının ana çıktısıdır.</p>
+                <span className="tk-tier-sample">MS 2,5 Üst</span>
+                <span className="tk-tier-foot">Güven: Yüksek · 82</span>
+              </div>
+              <div className="tk-tier-col c-secondary">
+                <div className="tk-tier-top"><span className="tk-tier-sq" aria-hidden="true" /><span className="tk-tier-name">Denenir</span></div>
+                <p className="tk-tier-role">Destekli aday</p>
+                <p className="tk-tier-desc">Sinyal güçlü, riskler tanımlı ve sınırlı. Değerlendirmeye açık seçenek.</p>
+                <span className="tk-tier-sample">KG Var</span>
+                <span className="tk-tier-foot">Güven: Orta · 64</span>
+              </div>
+              <div className="tk-tier-col c-watch">
+                <div className="tk-tier-top"><span className="tk-tier-sq" aria-hidden="true" /><span className="tk-tier-name">Alternatif</span></div>
+                <p className="tk-tier-role">İzleme adayı</p>
+                <p className="tk-tier-desc">İkincil senaryo. Tek başına öneri değildir; yalnızca bağlam sağlar.</p>
+                <span className="tk-tier-sample">İY 0,5 Üst</span>
+                <span className="tk-tier-foot">Güven: İzleme</span>
+              </div>
+              <div className="tk-tier-col c-avoid">
+                <div className="tk-tier-top"><span className="tk-tier-sq" aria-hidden="true" /><span className="tk-tier-name">Uzak Dur</span></div>
+                <p className="tk-tier-role">Öneri değil</p>
+                <p className="tk-tier-desc">Çelişki veya yetersiz veri tespit edildi. Öneri olarak asla gösterilmez.</p>
+                <span className="tk-tier-sample">İY 1,5 Alt</span>
+                <span className="tk-tier-foot">Durum: Çelişki</span>
+              </div>
             </div>
           </div>
-          <p className="landing-caption">Örnek ekran görüntüsü — gerçek veriler üyelik gerektirir.</p>
-        </div>
-      </section>
+        </section>
 
-      <section className="landing-section">
-        <div className="landing-section-inner">
-          <p className="landing-section-label">Üyelik</p>
-          <h2 className="landing-section-title">Üye olduğunda ne görürsün?</h2>
-          <ul className="landing-benefits">
-            {benefits.map((b) => (
-              <li key={b}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                {b}
-              </li>
-            ))}
-          </ul>
-          <div className="landing-cta-row">
-            <button type="button" className="landing-btn-primary" onClick={() => navigate("/register")}>Hesap Oluştur</button>
+        <section className="tk-sec" id="ligler">
+          <div className="tk-container">
+            <div className="tk-shead tk-reveal">
+              <p className="tk-kicker">Gözlem Listesi — İzlenen Ligler</p>
+              <h2 className="tk-h2">Sekiz lig, tek mercek.</h2>
+              <p className="tk-slede">Veri hattı bu liglerden akar; her lig aynı protokolle izlenir, aynı gerekçe standardıyla raporlanır.</p>
+            </div>
+
+            <div className="tk-league-list tk-reveal">
+              {leagues.map((l, i) => (
+                <div className="tk-league-row" key={`${l.code}-${l.name}-${i}`}>
+                  <span className="tk-code-chip">{l.code}</span>
+                  <span className="tk-league-name">{l.name}</span>
+                  <span className="tk-leader" aria-hidden="true" />
+                  <span className={`tk-status${l.on ? " on" : ""}`}>{l.on ? "Aktif Takip" : "İzlemede"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="tk-cta-band">
+          <div className="tk-container tk-cta-in">
+            <p className="tk-kicker tk-reveal">Tahtaya Dön</p>
+            <h2 className="tk-reveal">Analiz hazır olduğunda <span className="tk-circled">ilk sen</span> gör.</h2>
+            <p className="tk-slede tk-reveal">Yaklaşan maçların veri kapsamını, sinyallerini ve risk uyarılarını tek tahtada takip et.</p>
+            <div className="tk-btn-row tk-reveal">
+              <button type="button" className="tk-btn tk-btn-solid" onClick={() => navigate("/register")}>
+                Ücretsiz Hesap Oluştur
+              </button>
+              <button type="button" className="tk-btn tk-btn-line" onClick={() => navigate("/login")}>
+                Giriş Yap
+              </button>
+            </div>
+            <p className="tk-cta-note tk-reveal">Hesap oluşturmak ücretsizdir · Kesin sonuç vaadi yoktur</p>
+          </div>
+        </section>
+      </main>
+
+      <footer className="tk-footer">
+        <div className="tk-container">
+          <div className="tk-footer-grid">
+            <div className="tk-footer-brand">
+              <a className="tk-brand" href="#top">
+                Skor<i>IQ</i>
+              </a>
+              <p>Maçı form, gol profili, H2H ve risk sinyalleriyle okuyan; gördüğünü gerekçesiyle yazan veri destekli analiz. SkorIQ bir tahmin botu değildir.</p>
+            </div>
+            <div className="tk-footer-col">
+              <span className="tk-fh">Ürün</span>
+              <ul>
+                <li><a href="#akis">Analiz Akışı</a></li>
+                <li><a href="#prensipler">Tahta Kuralları</a></li>
+                <li><a href="#skala">Karar Skalası</a></li>
+                <li><a href="#ligler">İzlenen Ligler</a></li>
+              </ul>
+            </div>
+            <div className="tk-footer-col">
+              <span className="tk-fh">Hesap</span>
+              <ul>
+                <li><button type="button" onClick={() => navigate("/login")}>Giriş Yap</button></li>
+                <li><button type="button" onClick={() => navigate("/register")}>Kayıt Ol</button></li>
+              </ul>
+            </div>
+          </div>
+          <p className="tk-disclaimer">
+            SkorIQ, istatistiksel modelleme ve veri destekli analizlerle hazırlanır. Bu bir kesin sonuç garantisi değildir.
+          </p>
+          <div className="tk-footer-bottom">
+            <span>© 2026 SkorIQ</span>
+            <span className="tk-footer-legal">
+              <button type="button">Gizlilik</button>
+              <button type="button">Kullanım Şartları</button>
+              <button type="button">Sorumluluk Reddi</button>
+            </span>
           </div>
         </div>
-      </section>
-
-      <section className="landing-section landing-section-muted">
-        <div className="landing-section-inner">
-          <p className="landing-section-label">Arşiv</p>
-          <h2 className="landing-section-title">Başarılı Tahmin Arşivi</h2>
-          <div className="landing-soon">
-            <p className="landing-soon-title">Başarılı tahmin arşivi yakında</p>
-            <p className="landing-soon-desc">Yalnızca sonuçlanmış ve iç kontrolden geçmiş tahminler public alanda gösterilecektir.</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="landing-disclaimer">
-        <div className="landing-section-inner">
-          <p>SkorIQ, istatistiksel modelleme ve veri destekli analizlerle hazırlanır. Tahminler kesin sonuç garantisi değildir. Analizler, kullanıcıya maçları daha bilinçli değerlendirme desteği sağlar.</p>
-        </div>
-      </section>
-
-      <footer className="landing-footer">
-        <div className="landing-footer-inner">
-          <span className="landing-logo">SkorIQ</span>
-          <div className="landing-footer-links">
-            <button type="button" onClick={() => navigate("/login")}>Giriş Yap</button>
-            <button type="button" onClick={() => navigate("/register")}>Kayıt Ol</button>
-            <span>Gizlilik</span>
-            <span>Kullanım Şartları</span>
-            <span>Sorumluluk Reddi</span>
-          </div>
-        </div>
-        <p className="landing-footer-copy">© {new Date().getFullYear()} SkorIQ</p>
       </footer>
     </div>
   );
