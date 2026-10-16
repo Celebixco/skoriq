@@ -10711,3 +10711,711 @@ p {
   transform: translateY(-2px);
   filter: brightness(1.15);
 }
+
+/* ==========================================================================
+   Match Center Broadcast-Grade Sub-Navigation & Tab Bar
+   ========================================================================== */
+
+.match-center-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  padding: 0.35rem;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.match-center-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.05rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #94a3b8;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.match-center-tab-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.match-center-tab-btn.active {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 2px 12px rgba(56, 189, 248, 0.16);
+}
+
+.match-center-tab-btn .tab-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* ==========================================================================
+   Match Center H2H & Standings Comparison
+   ========================================================================== */
+
+.match-center-h2h-comparison {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.h2h-standings-panel,
+.h2h-form-metrics-panel,
+.h2h-recent-matches-panel,
+.direct-h2h-panel,
+.season-telemetry-panel {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0.85rem;
+  background: rgba(11, 17, 32, 0.7);
+  backdrop-filter: blur(14px);
+  padding: 1.5rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+.h2h-standings-table-wrap {
+  overflow-x: auto;
+  margin-top: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.65rem;
+  background: rgba(7, 11, 22, 0.6);
+}
+
+.h2h-standings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+  min-width: 620px;
+}
+
+.h2h-standings-table thead th {
+  padding: 0.7rem 0.85rem;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.h2h-standings-table th.th-rank,
+.h2h-standings-table td.td-rank {
+  width: 50px;
+  text-align: center;
+}
+
+.h2h-standings-table th.th-team,
+.h2h-standings-table td.td-team {
+  text-align: left;
+}
+
+.h2h-standings-table th.th-num,
+.h2h-standings-table td.td-num {
+  text-align: center;
+  width: 44px;
+}
+
+.h2h-standings-table th.th-pts,
+.h2h-standings-table td.td-pts {
+  text-align: center;
+  width: 65px;
+  font-weight: 800;
+}
+
+.h2h-standings-table tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s ease;
+}
+
+.h2h-standings-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.standing-row.home-row {
+  background: rgba(56, 189, 248, 0.04);
+}
+
+.standing-row.away-row {
+  background: rgba(168, 85, 247, 0.04);
+}
+
+.standing-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.standing-row td {
+  padding: 0.75rem 0.85rem;
+  vertical-align: middle;
+}
+
+.table-team-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.team-role-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.3rem;
+}
+
+.team-role-pill.home-pill {
+  background: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.team-role-pill.away-pill {
+  background: rgba(168, 85, 247, 0.14);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 0.35rem;
+  font-weight: 800;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rank-badge.rank-top {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+}
+
+.td-pts strong {
+  font-size: 1.05rem;
+  color: #f8fafc;
+}
+
+.text-positive {
+  color: #10b981;
+}
+
+.text-danger {
+  color: #ef4444;
+}
+
+/* ==========================================================================
+   Form Telemetry Split Rows & Legend
+   ========================================================================== */
+
+.h2h-legend {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.legend-dot.home-dot {
+  background: #38bdf8;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+}
+
+.legend-dot.away-dot {
+  background: #c084fc;
+  box-shadow: 0 0 6px rgba(192, 132, 252, 0.6);
+}
+
+.h2h-split-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.85rem;
+  margin-top: 1.25rem;
+}
+
+.h2h-split-row {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0.65rem;
+  padding: 0.85rem 1.1rem;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.h2h-split-row:hover {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.h2h-split-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.h2h-split-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+  flex: 1;
+  padding: 0 0.5rem;
+}
+
+.h2h-split-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+  min-width: 48px;
+}
+
+.h2h-split-val.home {
+  color: #38bdf8;
+  text-align: left;
+}
+
+.h2h-split-val.away {
+  color: #c084fc;
+  text-align: right;
+}
+
+.h2h-split-val.leader {
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-shadow: 0 0 8px currentColor;
+}
+
+.h2h-split-bar-track {
+  display: flex;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 0.65rem;
+  gap: 2px;
+}
+
+.h2h-bar-segment {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.h2h-bar-segment.home-seg {
+  background: linear-gradient(90deg, #0284c7, #38bdf8);
+}
+
+.h2h-bar-segment.away-seg {
+  background: linear-gradient(90deg, #c084fc, #9333ea);
+}
+
+/* ==========================================================================
+   Recent Matches Side-by-Side Comparison
+   ========================================================================== */
+
+.h2h-matches-side-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.h2h-matches-col {
+  background: rgba(7, 11, 22, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.75rem;
+  padding: 1.15rem;
+}
+
+.h2h-col-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.h2h-col-header h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+.h2h-count-badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+.h2h-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.recent-match-pill-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.45rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: all 0.15s ease;
+}
+
+.recent-match-pill-row:hover {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(56, 189, 248, 0.25);
+  transform: translateX(2px);
+}
+
+.match-result-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 0.35rem;
+  font-weight: 800;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
+.match-result-pill.res-w {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.match-result-pill.res-d {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.match-result-pill.res-l {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.match-result-pill.res-u {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.match-pill-opponent {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.match-pill-opponent .opponent-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-pill-opponent .opponent-ha {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.match-pill-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.match-pill-date {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.match-pill-score {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #f8fafc;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.3rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.match-pill-link-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  border-radius: 0.3rem;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.match-pill-link-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(56, 189, 248, 0.5);
+  color: #fff;
+}
+
+/* ==========================================================================
+   H2H Informative Notice & Empty States
+   ========================================================================== */
+
+.h2h-notice-panel {
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-left: 3px solid #38bdf8;
+  background: rgba(56, 189, 248, 0.05);
+  border-radius: 0.65rem;
+  padding: 1.15rem 1.4rem;
+}
+
+.h2h-notice-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.h2h-notice-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.h2h-notice-content strong {
+  font-size: 0.95rem;
+  color: #38bdf8;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.h2h-notice-content p {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ==========================================================================
+   Match & Seasonal Telemetry Components
+   ========================================================================== */
+
+.match-telemetry-panel,
+.season-telemetry-panel {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.live-telemetry-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  padding: 0.25rem 0.65rem;
+  border-radius: 0.35rem;
+}
+
+.telemetry-key-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.telemetry-bar-item {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.65rem;
+  padding: 0.95rem 1.15rem;
+  transition: all 0.15s ease;
+}
+
+.telemetry-bar-item.highlight {
+  border-color: rgba(56, 189, 248, 0.3);
+  background: rgba(56, 189, 248, 0.05);
+}
+
+.telemetry-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 0.55rem;
+}
+
+.telemetry-val-home {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+.telemetry-val-away {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #c084fc;
+}
+
+.telemetry-bar-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+  padding: 0 0.5rem;
+}
+
+.telemetry-dual-track {
+  display: flex;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  gap: 2px;
+}
+
+.telemetry-track-home {
+  height: 100%;
+  background: linear-gradient(90deg, #0284c7, #38bdf8);
+  border-radius: 999px;
+  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.telemetry-track-away {
+  height: 100%;
+  background: linear-gradient(90deg, #c084fc, #9333ea);
+  border-radius: 999px;
+  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.telemetry-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.telemetry-table-card {
+  background: rgba(7, 11, 22, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.75rem;
+  padding: 1.2rem;
+}
+
+.telemetry-table-card h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin: 0 0 0.85rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding-bottom: 0.65rem;
+}
+
+.telemetry-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.telemetry-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.45rem 0.65rem;
+  border-radius: 0.35rem;
+  background: rgba(15, 23, 42, 0.45);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+.telemetry-stat-label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-weight: 500;
+  text-align: center;
+}
+
+.telemetry-side-val {
+  font-weight: 700;
+  color: #64748b;
+  min-width: 32px;
+}
+
+.telemetry-side-val:first-child {
+  text-align: left;
+}
+
+.telemetry-side-val:last-child {
+  text-align: right;
+}
+
+.telemetry-side-val.lead {
+  color: #f8fafc;
+  font-weight: 800;
+}
+
+.match-telemetry-empty-panel,
+.season-telemetry-empty-panel {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.85rem;
+  background: rgba(11, 17, 32, 0.6);
+  padding: 1.5rem;
+}
+
+.match-telemetry-empty-panel .muted,
+.season-telemetry-empty-panel .muted {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  margin-top: 0.5rem;
+}
+

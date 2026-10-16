@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { MatchDetailReportView, MemberPredictionPreviewErrorNotice, MemberPredictionPreviewSection, PredictionPreviewErrorNotice, PredictionPreviewSection } from "./App";
+import { AnalysisCoverageCard, AnalysisH2HCard, MatchDetailReportView, MemberPredictionPreviewErrorNotice, MemberPredictionPreviewSection, PredictionPreviewErrorNotice, PredictionPreviewSection } from "./App";
 import type { AuthUser, FootballAnalyticsMatchReport, FootballMatchPredictionDraftsResponse, FootballPredictionDraftListItem, FootballMemberPredictionPreviewResponse } from "./types";
 
 const memberUser: AuthUser = {
@@ -167,18 +167,46 @@ describe("MatchDetailReportView", () => {
     expect(html).toContain("Veri Kapsamı");
     expect(html).toContain("63");
     expect(html).toContain("72%");
+    expect(html).toContain("Form &amp; H2H");
+    expect(html).not.toContain("Sample");
+    expect(html).not.toContain("Scope");
+    expect(html).not.toContain("Window");
+    expect(html).not.toContain("Head-to-head");
+  });
+
+  it("renders form coverage and H2H sample details with Turkish labels", () => {
+    const report = mockReport();
+    const html = renderToStaticMarkup(
+      <>
+        <AnalysisCoverageCard teamName={report.match.homeTeam.name} label="İç saha formu" block={report.homeForm} side="home" />
+        <AnalysisCoverageCard teamName={report.match.awayTeam.name} label="Dış saha formu" block={report.awayForm} side="away" />
+        <AnalysisH2HCard block={report.h2h} />
+      </>
+    );
+
     expect(html).toContain("Örneklem: 9");
     expect(html).toContain("Örneklem: 8");
     expect(html).toContain("Örneklem: 2");
     expect(html).toContain("Kapsam: İç saha");
     expect(html).toContain("Kapsam: Dış saha");
     expect(html).toContain("Son 10 maç");
+    expect(html).toContain("Takımlar Arası Geçmiş");
+    expect(html).toContain("Geçmiş eşleşme verisi mevcut");
     expect(html).not.toContain("Kapsam home");
     expect(html).not.toContain("Kapsam away");
     expect(html).not.toContain("Sample");
     expect(html).not.toContain("Scope");
     expect(html).not.toContain("Window");
     expect(html).not.toContain("Head-to-head");
+  });
+
+  it("renders missing H2H copy in Turkish on the form comparison card", () => {
+    const html = renderToStaticMarkup(<AnalysisH2HCard block={{ sampleSize: 0, coverageScore: 0, h2hMissing: true }} />);
+
+    expect(html).toContain("Bu eşleşme için yeterli H2H verisi yok");
+    expect(html).toContain("Eksik veri");
+    expect(html).not.toContain("Head-to-head");
+    expect(html).not.toContain("missing");
   });
 
   it("hides goal profile when the API report does not include goal fields", () => {
@@ -219,7 +247,6 @@ describe("MatchDetailReportView", () => {
     expect(html).toContain("Minimum analiz veri eşiği sağlandı.");
     expect(html).toContain("Takımlar arası geçmiş veri eksik olduğu için güven sınırı düşürüldü.");
     expect(html).toContain("Bu eşleşme için yeterli H2H örneklemi bulunmuyor.");
-    expect(html).toContain("Bu eşleşme için yeterli H2H verisi yok");
     expect(html).not.toContain("Feature readiness");
     expect(html).not.toContain("Minimum MVP");
     expect(html).not.toContain("Head-to-head history");

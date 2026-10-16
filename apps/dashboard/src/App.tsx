@@ -1898,6 +1898,18 @@ function MatchDetailPage({ matchId, navigate, user }: { matchId: string; navigat
     return null;
   }, [report, statistics]);
 
+  const homeTeamId = effectiveReport?.match.homeTeam.id;
+  const awayTeamId = effectiveReport?.match.awayTeam.id;
+
+  const { data: homeProfile } = useLoad(
+    () => (homeTeamId ? fetchFootballTeamProfile(homeTeamId) : Promise.resolve(null)),
+    [homeTeamId]
+  );
+  const { data: awayProfile } = useLoad(
+    () => (awayTeamId ? fetchFootballTeamProfile(awayTeamId) : Promise.resolve(null)),
+    [awayTeamId]
+  );
+
   return (
     <>
       <button className="back-button match-detail-back" type="button" onClick={() => navigate("/football/analytics")}>
@@ -1915,6 +1927,8 @@ function MatchDetailPage({ matchId, navigate, user }: { matchId: string; navigat
           lineups={lineups ?? undefined}
           statistics={statistics ?? undefined}
           availability={availability?.items ?? []}
+          homeProfile={homeProfile}
+          awayProfile={awayProfile}
         />
       ) : null}
     </>
@@ -1930,7 +1944,9 @@ export function MatchDetailReportView({
   navigate,
   lineups,
   statistics,
-  availability
+  availability,
+  homeProfile,
+  awayProfile
 }: {
   report: FootballAnalyticsMatchReport;
   matchId: string;
@@ -1939,6 +1955,8 @@ export function MatchDetailReportView({
   lineups?: FootballMatchLineupsResponse;
   statistics?: FootballMatchStatisticsResponse;
   availability: FootballTeamProfileResponse["playerAvailability"];
+  homeProfile?: FootballTeamProfileResponse | null;
+  awayProfile?: FootballTeamProfileResponse | null;
 }) {
   const isFinished = report.match.status === "finished" || report.match.status === "ended";
   const [activeTab, setActiveTab] = useState<MatchCenterTab>(
@@ -2035,68 +2053,155 @@ export function MatchDetailReportView({
         </button>
       </nav>
 
-      {/* Telemetry & Stats Section */}
-      {(activeTab === "overview" || activeTab === "stats") && (
-        <MatchTelemetrySection statistics={statistics} showEmptyNotice={activeTab === "stats"} />
-      )}
+      {/* 1. OVERVIEW TAB */}
+      {activeTab === "overview" && (
+        <>
+          {isFinished && statistics?.hasStatistics ? (
+            <MatchTelemetrySection statistics={statistics} showEmptyNotice={false} />
+          ) : null}
 
-      {/* KPI Overview Grid */}
-      {(activeTab === "overview" || activeTab === "signals") && (
-        <div className="analysis-kpi-grid">
-          <AnalysisKpiCard title="Analiz Durumu" value={statusLabel(report.featureStatus)} body={analysisStatusHelper(report.featureStatus)} tone={report.featureStatus === "ready" ? "success" : report.featureStatus === "partial" ? "warning" : "muted"} icon="shield" />
-          <AnalysisKpiCard title="Tahmine Uygunluk" value={report.predictionEligible ? "Uygun" : "Uygun değil"} body={report.predictionEligible ? "Ön analiz üretilebilir" : "Tahmin için yeterli değil"} tone={report.predictionEligible ? "success" : "muted"} icon="star" />
-          <AnalysisKpiCard title="Güven Tavanı" value={report.confidenceCeiling} body="En yüksek güven sınırı" tone="blue" icon="trend" />
-          <AnalysisKpiCard title="Veri Kapsamı" value={formatPercent(report.combinedCoverageScore)} body="Kullanılan veri yeterliliği" tone="blue" icon="target">
-            <ProgressBar value={report.combinedCoverageScore} />
-          </AnalysisKpiCard>
-        </div>
-      )}
+          <MatchCenterH2HFormComparison
+            homeTeam={report.match.homeTeam}
+            awayTeam={report.match.awayTeam}
+            homeProfile={homeProfile}
+            awayProfile={awayProfile}
+            h2h={report.h2h}
+            navigate={navigate}
+            compact
+          />
 
-      {/* Form & H2H Grid */}
-      {(activeTab === "overview" || activeTab === "form") && (
-        <div className="analysis-form-grid">
-          <AnalysisCoverageCard teamName={report.match.homeTeam.name} label="İç saha formu" block={report.homeForm} side="home" />
-          <AnalysisCoverageCard teamName={report.match.awayTeam.name} label="Dış saha formu" block={report.awayForm} side="away" />
-          <AnalysisH2HCard block={report.h2h} />
-        </div>
-      )}
-
-      {/* Goal Profile & Expected Goals Proxy */}
-      {(activeTab === "overview" || activeTab === "stats") && (
-        <GoalProfileSection report={report} />
-      )}
-
-      {/* Editorial AI Summary */}
-      {(activeTab === "overview" || activeTab === "form" || activeTab === "signals") && analysisSummary ? (
-        <section className="panel analysis-summary-panel">
-          <div>
-            <p className="eyebrow">Rapor yorumu</p>
-            <h2>Analiz Özeti</h2>
+          <div className="analysis-kpi-grid">
+            <AnalysisKpiCard title="Analiz Durumu" value={statusLabel(report.featureStatus)} body={analysisStatusHelper(report.featureStatus)} tone={report.featureStatus === "ready" ? "success" : report.featureStatus === "partial" ? "warning" : "muted"} icon="shield" />
+            <AnalysisKpiCard title="Tahmine Uygunluk" value={report.predictionEligible ? "Uygun" : "Uygun değil"} body={report.predictionEligible ? "Ön analiz üretilebilir" : "Tahmin için yeterli değil"} tone={report.predictionEligible ? "success" : "muted"} icon="star" />
+            <AnalysisKpiCard title="Güven Tavanı" value={report.confidenceCeiling} body="En yüksek güven sınırı" tone="blue" icon="trend" />
+            <AnalysisKpiCard title="Veri Kapsamı" value={formatPercent(report.combinedCoverageScore)} body="Kullanılan veri yeterliliği" tone="blue" icon="target">
+              <ProgressBar value={report.combinedCoverageScore} />
+            </AnalysisKpiCard>
           </div>
-          <p>{analysisSummary}</p>
-        </section>
-      ) : null}
 
-      {/* Prediction Preview */}
-      {activeTab === "overview" ? (
-        <MemberPredictionPreview matchId={matchId} />
-      ) : null}
+          <GoalProfileSection report={report} />
 
-      {/* Lineups & Availability */}
-      {(activeTab === "overview" || activeTab === "lineups") && (
+          {analysisSummary ? (
+            <section className="panel analysis-summary-panel">
+              <div>
+                <p className="eyebrow">Rapor yorumu</p>
+                <h2>Analiz Özeti</h2>
+              </div>
+              <p>{analysisSummary}</p>
+            </section>
+          ) : null}
+
+          <MemberPredictionPreview matchId={matchId} />
+
+          <MatchLineupsSection lineups={lineups} />
+          <MatchAvailabilitySection items={availability} />
+
+          <div className="signal-grid analysis-signal-grid">
+            <ReportSignalCard title="Pozitif Sinyaller" items={report.positiveSignals.map((item) => formatSignalText(item, report))} tone="positive" />
+            <ReportSignalCard title="Risk Faktörleri" items={report.riskFactors.map((item) => formatRiskText(item, report))} tone="risk" />
+            <ReportSignalCard title="Eksik Veriler" items={report.missingDataWarnings.map((item) => formatMissingText(item, report))} tone="missing" />
+          </div>
+        </>
+      )}
+
+      {/* 2. FORM & H2H TAB */}
+      {activeTab === "form" && (
+        <>
+          <MatchCenterH2HFormComparison
+            homeTeam={report.match.homeTeam}
+            awayTeam={report.match.awayTeam}
+            homeProfile={homeProfile}
+            awayProfile={awayProfile}
+            h2h={report.h2h}
+            navigate={navigate}
+          />
+
+          <div className="analysis-form-grid">
+            <AnalysisCoverageCard teamName={report.match.homeTeam.name} label="İç saha formu" block={report.homeForm} side="home" />
+            <AnalysisCoverageCard teamName={report.match.awayTeam.name} label="Dış saha formu" block={report.awayForm} side="away" />
+            <AnalysisH2HCard block={report.h2h} />
+          </div>
+
+          {analysisSummary ? (
+            <section className="panel analysis-summary-panel">
+              <div>
+                <p className="eyebrow">Rapor yorumu</p>
+                <h2>Analiz Özeti</h2>
+              </div>
+              <p>{analysisSummary}</p>
+            </section>
+          ) : null}
+        </>
+      )}
+
+      {/* 3. LINEUPS & TACTICS TAB */}
+      {activeTab === "lineups" && (
         <>
           <MatchLineupsSection lineups={lineups} />
           <MatchAvailabilitySection items={availability} />
         </>
       )}
 
-      {/* Signals & Risk Factors */}
-      {(activeTab === "overview" || activeTab === "signals") && (
-        <div className="signal-grid analysis-signal-grid">
-          <ReportSignalCard title="Pozitif Sinyaller" items={report.positiveSignals.map((item) => formatSignalText(item, report))} tone="positive" />
-          <ReportSignalCard title="Risk Faktörleri" items={report.riskFactors.map((item) => formatRiskText(item, report))} tone="risk" />
-          <ReportSignalCard title="Eksik Veriler" items={report.missingDataWarnings.map((item) => formatMissingText(item, report))} tone="missing" />
-        </div>
+      {/* 4. TELEMETRY & STATS TAB */}
+      {activeTab === "stats" && (
+        <>
+          {statistics?.hasStatistics ? (
+            <MatchTelemetrySection statistics={statistics} showEmptyNotice={false} />
+          ) : (
+            <section className="panel match-telemetry-empty-panel">
+              <div className="section-header">
+                <div>
+                  <p className="eyebrow">Canlı Maç Telemetrisi</p>
+                  <h2>Karşılaşma Başlama Vuruşu Bekleniyor</h2>
+                </div>
+                <span className="badge badge-muted">Başlama Vuruşu Öncesi</span>
+              </div>
+              <p className="muted">
+                Tekil maç canlı SofaScore xG, pas haritası ve şut telemetrisi maç başladığında ve tamamlandığında canlı olarak yayınlanacaktır.
+                Aşağıda iki takımın 2026/27 sezonu SofaScore doğrulanmış sezon istatistikleri karşılaştırması yer almaktadır.
+              </p>
+            </section>
+          )}
+
+          <MatchCenterSeasonTelemetryComparison
+            homeTeam={report.match.homeTeam}
+            awayTeam={report.match.awayTeam}
+            homeProfile={homeProfile}
+            awayProfile={awayProfile}
+          />
+
+          <GoalProfileSection report={report} />
+        </>
+      )}
+
+      {/* 5. SIGNALS TAB */}
+      {activeTab === "signals" && (
+        <>
+          <div className="analysis-kpi-grid">
+            <AnalysisKpiCard title="Analiz Durumu" value={statusLabel(report.featureStatus)} body={analysisStatusHelper(report.featureStatus)} tone={report.featureStatus === "ready" ? "success" : report.featureStatus === "partial" ? "warning" : "muted"} icon="shield" />
+            <AnalysisKpiCard title="Tahmine Uygunluk" value={report.predictionEligible ? "Uygun" : "Uygun değil"} body={report.predictionEligible ? "Ön analiz üretilebilir" : "Tahmin için yeterli değil"} tone={report.predictionEligible ? "success" : "muted"} icon="star" />
+            <AnalysisKpiCard title="Güven Tavanı" value={report.confidenceCeiling} body="En yüksek güven sınırı" tone="blue" icon="trend" />
+            <AnalysisKpiCard title="Veri Kapsamı" value={formatPercent(report.combinedCoverageScore)} body="Kullanılan veri yeterliliği" tone="blue" icon="target">
+              <ProgressBar value={report.combinedCoverageScore} />
+            </AnalysisKpiCard>
+          </div>
+
+          <div className="signal-grid analysis-signal-grid">
+            <ReportSignalCard title="Pozitif Sinyaller" items={report.positiveSignals.map((item) => formatSignalText(item, report))} tone="positive" />
+            <ReportSignalCard title="Risk Faktörleri" items={report.riskFactors.map((item) => formatRiskText(item, report))} tone="risk" />
+            <ReportSignalCard title="Eksik Veriler" items={report.missingDataWarnings.map((item) => formatMissingText(item, report))} tone="missing" />
+          </div>
+
+          {analysisSummary ? (
+            <section className="panel analysis-summary-panel">
+              <div>
+                <p className="eyebrow">Rapor yorumu</p>
+                <h2>Analiz Özeti</h2>
+              </div>
+              <p>{analysisSummary}</p>
+            </section>
+          ) : null}
+        </>
       )}
 
       {user.role === "admin" ? (
@@ -2114,6 +2219,475 @@ function analysisStatusHelper(status: FootballAnalyticsMatchReport["featureStatu
   if (status === "ready") return "Analiz için yeterli veri var";
   if (status === "partial") return "Bazı veri alanları sınırlı";
   return "Analiz için veri eksik";
+}
+
+export function MatchCenterH2HFormComparison({
+  homeTeam,
+  awayTeam,
+  homeProfile,
+  awayProfile,
+  h2h,
+  navigate,
+  compact = false
+}: {
+  homeTeam: { id: string; name: string; logoUrl?: string | null };
+  awayTeam: { id: string; name: string; logoUrl?: string | null };
+  homeProfile?: FootballTeamProfileResponse | null;
+  awayProfile?: FootballTeamProfileResponse | null;
+  h2h?: FootballAnalyticsMatchReport["h2h"];
+  navigate?: (path: string) => void;
+  compact?: boolean;
+}) {
+  const homeStanding = homeProfile?.standing;
+  const awayStanding = awayProfile?.standing;
+  const homeForm = homeProfile?.formSummary?.home ?? homeProfile?.formSummary?.overall;
+  const awayForm = awayProfile?.formSummary?.away ?? awayProfile?.formSummary?.overall;
+  const homeOverall = homeProfile?.formSummary?.overall;
+  const awayOverall = awayProfile?.formSummary?.overall;
+
+  const homeRecent = homeProfile?.recentMatches?.slice(0, 5) ?? [];
+  const awayRecent = awayProfile?.recentMatches?.slice(0, 5) ?? [];
+
+  const directH2HMatches = useMemo(() => {
+    const list: FootballTeamProfileRecentMatch[] = [];
+    if (homeProfile?.recentMatches) {
+      for (const m of homeProfile.recentMatches) {
+        if (m.opponent.id === awayTeam.id) {
+          list.push(m);
+        }
+      }
+    }
+    return list;
+  }, [homeProfile, awayTeam.id]);
+
+  const hasDirectH2H = directH2HMatches.length > 0;
+  const isFirstMeetingNotice = !hasDirectH2H && (!h2h || h2h.sampleSize === 0 || h2h.h2hMissing);
+
+  return (
+    <div className="match-center-h2h-comparison">
+      {/* 1. Standings Comparison Header */}
+      {homeStanding && awayStanding ? (
+        <section className="panel h2h-standings-panel">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">Lig Sıralaması & Performans</p>
+              <h2>Puan Durumu Karşılaştırması</h2>
+            </div>
+            <span className="badge badge-accent">2026/27 Sezonu</span>
+          </div>
+
+          <div className="h2h-standings-table-wrap">
+            <table className="h2h-standings-table">
+              <thead>
+                <tr>
+                  <th className="th-rank">Sıra</th>
+                  <th className="th-team">Takım</th>
+                  <th className="th-num">OM</th>
+                  <th className="th-num">G</th>
+                  <th className="th-num">B</th>
+                  <th className="th-num">M</th>
+                  <th className="th-num">AG</th>
+                  <th className="th-num">YG</th>
+                  <th className="th-num">AV</th>
+                  <th className="th-pts">Puan</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="standing-row home-row">
+                  <td className="td-rank">
+                    <span className="rank-badge rank-top">#{homeStanding.position}</span>
+                  </td>
+                  <td className="td-team">
+                    <div className="table-team-cell">
+                      <TeamLogo name={homeTeam.name} logoUrl={homeTeam.logoUrl} size="sm" />
+                      <strong>{homeTeam.name}</strong>
+                      <span className="team-role-pill home-pill">Ev Sahibi</span>
+                    </div>
+                  </td>
+                  <td className="td-num tabular-num">{homeStanding.played}</td>
+                  <td className="td-num tabular-num">{homeStanding.wins}</td>
+                  <td className="td-num tabular-num">{homeStanding.draws}</td>
+                  <td className="td-num tabular-num">{homeStanding.losses}</td>
+                  <td className="td-num tabular-num">{homeStanding.goalsFor}</td>
+                  <td className="td-num tabular-num">{homeStanding.goalsAgainst}</td>
+                  <td className={`td-num tabular-num ${homeStanding.goalDifference > 0 ? "text-positive" : homeStanding.goalDifference < 0 ? "text-danger" : ""}`}>
+                    {homeStanding.goalDifference > 0 ? `+${homeStanding.goalDifference}` : homeStanding.goalDifference}
+                  </td>
+                  <td className="td-pts tabular-num">
+                    <strong>{homeStanding.points}</strong>
+                  </td>
+                </tr>
+                <tr className="standing-row away-row">
+                  <td className="td-rank">
+                    <span className="rank-badge">#{awayStanding.position}</span>
+                  </td>
+                  <td className="td-team">
+                    <div className="table-team-cell">
+                      <TeamLogo name={awayTeam.name} logoUrl={awayTeam.logoUrl} size="sm" />
+                      <strong>{awayTeam.name}</strong>
+                      <span className="team-role-pill away-pill">Deplasman</span>
+                    </div>
+                  </td>
+                  <td className="td-num tabular-num">{awayStanding.played}</td>
+                  <td className="td-num tabular-num">{awayStanding.wins}</td>
+                  <td className="td-num tabular-num">{awayStanding.draws}</td>
+                  <td className="td-num tabular-num">{awayStanding.losses}</td>
+                  <td className="td-num tabular-num">{awayStanding.goalsFor}</td>
+                  <td className="td-num tabular-num">{awayStanding.goalsAgainst}</td>
+                  <td className={`td-num tabular-num ${awayStanding.goalDifference > 0 ? "text-positive" : awayStanding.goalDifference < 0 ? "text-danger" : ""}`}>
+                    {awayStanding.goalDifference > 0 ? `+${awayStanding.goalDifference}` : awayStanding.goalDifference}
+                  </td>
+                  <td className="td-pts tabular-num">
+                    <strong>{awayStanding.points}</strong>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
+
+      {/* 2. Form Telemetry Comparison Grid */}
+      {(homeForm || homeOverall) && (awayForm || awayOverall) ? (
+        <section className="panel h2h-form-metrics-panel">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">Form Göstergeleri</p>
+              <h2>Son 5 Maç Performans Dengesi</h2>
+            </div>
+            <div className="h2h-legend">
+              <span className="legend-item home-item"><span className="legend-dot home-dot" /> {homeTeam.name}</span>
+              <span className="legend-item away-item"><span className="legend-dot away-dot" /> {awayTeam.name}</span>
+            </div>
+          </div>
+
+          <div className="h2h-split-metrics-grid">
+            <FormMetricSplitRow
+              label="Form Puanı (Son 5)"
+              homeVal={homeForm?.points ?? homeOverall?.points ?? 0}
+              awayVal={awayForm?.points ?? awayOverall?.points ?? 0}
+              homeStr={`${homeForm?.points ?? homeOverall?.points ?? 0} P`}
+              awayStr={`${awayForm?.points ?? awayOverall?.points ?? 0} P`}
+              maxVal={15}
+            />
+            <FormMetricSplitRow
+              label="Bilanço (G-B-M)"
+              homeVal={(homeForm?.wins ?? 0) * 3 + (homeForm?.draws ?? 0)}
+              awayVal={(awayForm?.wins ?? 0) * 3 + (awayForm?.draws ?? 0)}
+              homeStr={`${homeForm?.wins ?? 0}G ${homeForm?.draws ?? 0}B ${homeForm?.losses ?? 0}M`}
+              awayStr={`${awayForm?.wins ?? 0}G ${awayForm?.draws ?? 0}B ${awayForm?.losses ?? 0}M`}
+              maxVal={15}
+            />
+            <FormMetricSplitRow
+              label="Maç Başı Atılan Gol"
+              homeVal={homeForm?.avgGoalsFor ?? homeOverall?.avgGoalsFor ?? 0}
+              awayVal={awayForm?.avgGoalsFor ?? awayOverall?.avgGoalsFor ?? 0}
+              homeStr={formatDecimal(homeForm?.avgGoalsFor ?? homeOverall?.avgGoalsFor)}
+              awayStr={formatDecimal(awayForm?.avgGoalsFor ?? awayOverall?.avgGoalsFor)}
+              maxVal={3.5}
+            />
+            <FormMetricSplitRow
+              label="Maç Başı Yenilen Gol"
+              homeVal={homeForm?.avgGoalsAgainst ?? homeOverall?.avgGoalsAgainst ?? 0}
+              awayVal={awayForm?.avgGoalsAgainst ?? awayOverall?.avgGoalsAgainst ?? 0}
+              homeStr={formatDecimal(homeForm?.avgGoalsAgainst ?? homeOverall?.avgGoalsAgainst)}
+              awayStr={formatDecimal(awayForm?.avgGoalsAgainst ?? awayOverall?.avgGoalsAgainst)}
+              maxVal={3.5}
+              lowerIsBetter
+            />
+            <FormMetricSplitRow
+              label="2.5 Gol Üstü Oranı"
+              homeVal={(homeForm?.over25Rate ?? homeOverall?.over25Rate ?? 0) * 100}
+              awayVal={(awayForm?.over25Rate ?? awayOverall?.over25Rate ?? 0) * 100}
+              homeStr={formatRatePercent(homeForm?.over25Rate ?? homeOverall?.over25Rate)}
+              awayStr={formatRatePercent(awayForm?.over25Rate ?? awayOverall?.over25Rate)}
+              maxVal={100}
+            />
+            <FormMetricSplitRow
+              label="Karşılıklı Gol (KG Var)"
+              homeVal={(homeForm?.bothTeamsToScoreRate ?? homeOverall?.bothTeamsToScoreRate ?? 0) * 100}
+              awayVal={(awayForm?.bothTeamsToScoreRate ?? awayOverall?.bothTeamsToScoreRate ?? 0) * 100}
+              homeStr={formatRatePercent(homeForm?.bothTeamsToScoreRate ?? homeOverall?.bothTeamsToScoreRate)}
+              awayStr={formatRatePercent(awayForm?.bothTeamsToScoreRate ?? awayOverall?.bothTeamsToScoreRate)}
+              maxVal={100}
+            />
+            <FormMetricSplitRow
+              label="İlk Yarı 0.5 Üstü"
+              homeVal={(homeForm?.firstHalfOver05Rate ?? homeOverall?.firstHalfOver05Rate ?? 0) * 100}
+              awayVal={(awayForm?.firstHalfOver05Rate ?? awayOverall?.firstHalfOver05Rate ?? 0) * 100}
+              homeStr={formatRatePercent(homeForm?.firstHalfOver05Rate ?? homeOverall?.firstHalfOver05Rate)}
+              awayStr={formatRatePercent(awayForm?.firstHalfOver05Rate ?? awayOverall?.firstHalfOver05Rate)}
+              maxVal={100}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {/* 3. Recent Matches Comparison (Side-by-Side) */}
+      {!compact && (homeRecent.length > 0 || awayRecent.length > 0) ? (
+        <section className="panel h2h-recent-matches-panel">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">Puan & Sonuç Trendi</p>
+              <h2>Son Maçlar Karşılaştırması</h2>
+            </div>
+          </div>
+
+          <div className="h2h-matches-side-grid">
+            {/* Home Column */}
+            <div className="h2h-matches-col">
+              <div className="h2h-col-header">
+                <TeamLogo name={homeTeam.name} logoUrl={homeTeam.logoUrl} size="sm" />
+                <h3>{homeTeam.name}</h3>
+                <span className="h2h-count-badge">{homeRecent.length} Maç</span>
+              </div>
+              <div className="h2h-recent-list">
+                {homeRecent.map((m) => (
+                  <RecentMatchPillRow key={m.matchId} match={m} navigate={navigate} />
+                ))}
+              </div>
+            </div>
+
+            {/* Away Column */}
+            <div className="h2h-matches-col">
+              <div className="h2h-col-header">
+                <TeamLogo name={awayTeam.name} logoUrl={awayTeam.logoUrl} size="sm" />
+                <h3>{awayTeam.name}</h3>
+                <span className="h2h-count-badge">{awayRecent.length} Maç</span>
+              </div>
+              <div className="h2h-recent-list">
+                {awayRecent.map((m) => (
+                  <RecentMatchPillRow key={m.matchId} match={m} navigate={navigate} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* 4. Direct H2H or Season Notice */}
+      {hasDirectH2H ? (
+        <section className="panel direct-h2h-panel">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">Tarihsel Rekabet</p>
+              <h2>Doğrudan İkili Karşılaşmalar</h2>
+            </div>
+            <span className="badge badge-accent">{directH2HMatches.length} Maç</span>
+          </div>
+          <div className="h2h-recent-list">
+            {directH2HMatches.map((m) => (
+              <RecentMatchPillRow key={m.matchId} match={m} navigate={navigate} />
+            ))}
+          </div>
+        </section>
+      ) : isFirstMeetingNotice ? (
+        <section className="panel h2h-notice-panel">
+          <div className="h2h-notice-content">
+            <span className="h2h-notice-icon">⚡</span>
+            <div>
+              <strong>2026/27 Sezonu İlk Randevu</strong>
+              <p>
+                İki takım bu sezon ligde ilk kez karşılaşıyor. Son 5 maçlık zaman penceresinde doğrudan eşleşme bulunmadığı için modelimiz
+                takımların güncel lig formu, iç/dış saha gol ortalamaları ve SofaScore sezon telemetrisi üzerinden analizi şekillendirmektedir.
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function FormMetricSplitRow({
+  label,
+  homeVal,
+  awayVal,
+  homeStr,
+  awayStr,
+  maxVal = 100,
+  lowerIsBetter = false
+}: {
+  label: string;
+  homeVal: number;
+  awayVal: number;
+  homeStr: string;
+  awayStr: string;
+  maxVal?: number;
+  lowerIsBetter?: boolean;
+}) {
+  const sum = (homeVal || 0) + (awayVal || 0);
+  const homePct = sum > 0 ? Math.min(100, Math.max(0, Math.round((homeVal / sum) * 100))) : 50;
+  const awayPct = 100 - homePct;
+
+  const isHomeWinner = lowerIsBetter ? homeVal < awayVal : homeVal > awayVal;
+  const isAwayWinner = lowerIsBetter ? awayVal < homeVal : awayVal > homeVal;
+
+  return (
+    <div className="h2h-split-row">
+      <div className="h2h-split-header">
+        <span className={`h2h-split-val home ${isHomeWinner ? "leader" : ""}`}>{homeStr}</span>
+        <span className="h2h-split-label">{label}</span>
+        <span className={`h2h-split-val away ${isAwayWinner ? "leader" : ""}`}>{awayStr}</span>
+      </div>
+      <div className="h2h-split-bar-track">
+        <div className="h2h-bar-segment home-seg" style={{ width: `${homePct}%` }} />
+        <div className="h2h-bar-segment away-seg" style={{ width: `${awayPct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function RecentMatchPillRow({
+  match,
+  navigate
+}: {
+  match: FootballTeamProfileRecentMatch;
+  navigate?: (path: string) => void;
+}) {
+  const resultClass = match.result === "W" ? "res-w" : match.result === "D" ? "res-d" : match.result === "L" ? "res-l" : "res-u";
+  const resultText = match.result === "W" ? "G" : match.result === "D" ? "B" : match.result === "L" ? "M" : "—";
+
+  return (
+    <div className="recent-match-pill-row">
+      <span className={`match-result-pill ${resultClass}`}>{resultText}</span>
+      <div className="match-pill-opponent">
+        <TeamLogo name={match.opponent.name} logoUrl={match.opponent.logoUrl} size="sm" />
+        <span className="opponent-name">{match.opponent.name}</span>
+        <span className="opponent-ha">{match.homeAway === "home" ? "(E)" : "(D)"}</span>
+      </div>
+      <div className="match-pill-meta">
+        <span className="match-pill-date">{formatDate(match.date)}</span>
+        {match.fulltimeScore ? <span className="match-pill-score tabular-num">{match.fulltimeScore}</span> : null}
+        {navigate ? (
+          <button
+            type="button"
+            className="match-pill-link-btn"
+            onClick={() => navigate(`/football/analytics/${match.matchId}`)}
+            title="Maç analizini görüntüle"
+          >
+            →
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function seasonMetricValue(statistics: Record<string, unknown>, keys: string[]): number | null {
+  for (const key of keys) {
+    const value = statistics[key];
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function formatSeasonMetric(value: number | null): string {
+  return value === null ? "—" : String(value);
+}
+
+function seasonSingleMetric(statistics: Record<string, unknown>, label: string, totalKeys: string[], perGameLabel: string, perGameKeys: string[]) {
+  const total = seasonMetricValue(statistics, totalKeys);
+  const perGame = seasonMetricValue(statistics, perGameKeys);
+  return total !== null || perGame === null ? { label, value: total } : { label: perGameLabel, value: perGame };
+}
+
+function seasonComparisonMetric(home: Record<string, unknown>, away: Record<string, unknown>, label: string, totalKeys: string[], perGameLabel = label, perGameKeys: string[] = []) {
+  const homeTotal = seasonMetricValue(home, totalKeys);
+  const awayTotal = seasonMetricValue(away, totalKeys);
+  const homePerGame = seasonMetricValue(home, perGameKeys);
+  const awayPerGame = seasonMetricValue(away, perGameKeys);
+  if ((homeTotal === null || awayTotal === null) && (homePerGame !== null || awayPerGame !== null)) {
+    return { label: perGameLabel, home: homePerGame, away: awayPerGame };
+  }
+  return { label, home: homeTotal, away: awayTotal };
+}
+
+export function MatchCenterSeasonTelemetryComparison({
+  homeTeam,
+  awayTeam,
+  homeProfile,
+  awayProfile
+}: {
+  homeTeam: { id: string; name: string; logoUrl?: string | null };
+  awayTeam: { id: string; name: string; logoUrl?: string | null };
+  homeProfile?: FootballTeamProfileResponse | null;
+  awayProfile?: FootballTeamProfileResponse | null;
+}) {
+  const hs = (homeProfile?.team?.seasonStatistics ?? {}) as Record<string, unknown>;
+  const as = (awayProfile?.team?.seasonStatistics ?? {}) as Record<string, unknown>;
+
+  const hasStats = Object.keys(hs).length > 0 || Object.keys(as).length > 0;
+
+  if (!hasStats) {
+    return (
+      <section className="panel season-telemetry-empty-panel">
+        <div className="section-header">
+          <div>
+            <p className="eyebrow">SofaScore Sezon Telemetrisi</p>
+            <h2>Sezon İstatistikleri</h2>
+          </div>
+          <span className="badge badge-muted">Veri Bekleniyor</span>
+        </div>
+        <p className="muted">
+          Bu iki takım için sezon istatistikleri henüz mevcut değil.
+        </p>
+      </section>
+    );
+  }
+
+  const metric = (label: string, totalKeys: string[], perGameLabel?: string, perGameKeys?: string[]) =>
+    seasonComparisonMetric(hs, as, label, totalKeys, perGameLabel, perGameKeys);
+  const possession = metric("Topa Sahip Olma", ["averageBallPossession"]);
+  const goals = metric("Toplam Atılan Gol", ["goalsScored"], "Gol / maç", ["goalsScoredPerGame"]);
+  const conceded = metric("Yenilen Gol", ["goalsConceded"], "Yenilen Gol / maç", ["goalsConcededPerGame"]);
+  const shots = metric("Toplam Şut", ["shots", "shotsTotal"], "Şut / maç", ["shotsPerGame"]);
+  const onTarget = metric("İsabetli Şut", ["shotsOnTarget"], "İsabetli Şut / maç", ["shotsOnTargetPerGame"]);
+  const chances = metric("Büyük Şanslar", ["bigChances"], "Büyük Şans / maç", ["bigChancesPerGame"]);
+  const passing = metric("Pas İsabet Oranı", ["accuratePassesPercentage"]);
+  const attackRows = [goals, shots, onTarget, chances,
+    metric("Başarılı Çalım", ["successfulDribbles"], "Başarılı Çalım / maç", ["successfulDribblesPerGame"]),
+    metric("Kazanılan Korner", ["corners"], "Korner / maç", ["cornersPerGame"])];
+  const defenseRows = [conceded, metric("Gol Yememe (Clean Sheet)", ["cleanSheets"]),
+    metric("Top Çalma (Tackles)", ["tackles"], "Top Çalma / maç", ["tacklesPerGame"]),
+    metric("Pas Arası (Interceptions)", ["interceptions"], "Pas Arası / maç", ["interceptionsPerGame"]),
+    metric("Sarı Kart", ["yellowCards"], "Sarı Kart / maç", ["yellowCardsPerGame"]),
+    metric("Kırmızı Kart (toplam)", ["redCards"])];
+
+  return (
+    <section className="panel season-telemetry-panel">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">SofaScore Sezon Telemetrisi</p>
+          <h2>Sezon Telemetrisi Karşılaştırması</h2>
+        </div>
+      </div>
+
+      <div className="telemetry-key-metrics">
+        {[possession, goals, shots, onTarget, chances, passing].map((item) => {
+          const percentage = item === possession || item === passing;
+          const format = (value: number | null) => percentage && value !== null ? `%${value.toFixed(1)}` : formatSeasonMetric(value);
+          return <TelemetryComparisonBar key={item.label} label={item.label} homeValue={format(item.home)} awayValue={format(item.away)} homeNum={item.home} awayNum={item.away} highlight={item === possession} />;
+        })}
+      </div>
+
+      <div className="telemetry-details-grid">
+        <div className="telemetry-table-card">
+          <h3>Hücum & Üretkenlik (Sezon)</h3>
+          <div className="telemetry-rows">
+            {attackRows.map((item) => <TelemetryRow key={item.label} {...item} />)}
+          </div>
+        </div>
+
+        <div className="telemetry-table-card">
+          <h3>Savunma & Disiplin (Sezon)</h3>
+          <div className="telemetry-rows">
+            {defenseRows.map((item) => <TelemetryRow key={item.label} {...item} />)}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function MatchHeroTeam({ role, name, logoUrl }: { role: string; name: string; logoUrl?: string | null }) {
@@ -2156,7 +2730,7 @@ function AnalysisKpiCard({
   );
 }
 
-function AnalysisCoverageCard({ teamName, label, block, side }: { teamName: string; label: string; block: FootballAnalyticsMatchReport["homeForm"]; side: "home" | "away" }) {
+export function AnalysisCoverageCard({ teamName, label, block, side }: { teamName: string; label: string; block: FootballAnalyticsMatchReport["homeForm"]; side: "home" | "away" }) {
   return (
     <section className="analysis-form-card">
       <div>
@@ -2174,7 +2748,7 @@ function AnalysisCoverageCard({ teamName, label, block, side }: { teamName: stri
   );
 }
 
-function AnalysisH2HCard({ block }: { block: FootballAnalyticsMatchReport["h2h"] }) {
+export function AnalysisH2HCard({ block }: { block: FootballAnalyticsMatchReport["h2h"] }) {
   return (
     <section className="analysis-form-card analysis-h2h-card">
       <div>
@@ -2514,13 +3088,13 @@ function TelemetryComparisonBar({
   label: string;
   homeValue: string;
   awayValue: string;
-  homeNum: number;
-  awayNum: number;
+  homeNum: number | null;
+  awayNum: number | null;
   highlight?: boolean;
 }) {
-  const total = homeNum + awayNum || 1;
-  const homePct = Math.min(100, Math.max(0, Math.round((homeNum / total) * 100)));
-  const awayPct = 100 - homePct;
+  const comparable = homeNum !== null && awayNum !== null && Number.isFinite(homeNum) && Number.isFinite(awayNum)
+    && homeNum >= 0 && awayNum >= 0 && homeValue !== "—" && awayValue !== "—" && homeNum + awayNum > 0;
+  const homePct = comparable ? Math.round((homeNum / (homeNum + awayNum)) * 100) : null;
 
   return (
     <div className={`telemetry-bar-item ${highlight ? "highlight" : ""}`}>
@@ -2529,25 +3103,26 @@ function TelemetryComparisonBar({
         <span className="telemetry-bar-label">{label}</span>
         <strong className="telemetry-val-away">{awayValue}</strong>
       </div>
-      <div className="telemetry-dual-track">
+      {homePct !== null ? <div className="telemetry-dual-track">
         <div className="telemetry-track-home" style={{ width: `${homePct}%` }} />
-        <div className="telemetry-track-away" style={{ width: `${awayPct}%` }} />
-      </div>
+        <div className="telemetry-track-away" style={{ width: `${100 - homePct}%` }} />
+      </div> : null}
     </div>
   );
 }
 
 function TelemetryRow({ label, home, away }: { label: string; home: number | null | undefined; away: number | null | undefined }) {
-  const hVal = home ?? 0;
-  const aVal = away ?? 0;
-  const homeLeads = hVal > aVal;
-  const awayLeads = aVal > hVal;
+  const hVal = typeof home === "number" && Number.isFinite(home) ? home : null;
+  const aVal = typeof away === "number" && Number.isFinite(away) ? away : null;
+  const comparable = hVal !== null && aVal !== null;
+  const homeLeads = comparable && hVal > aVal;
+  const awayLeads = comparable && aVal > hVal;
 
   return (
     <div className="telemetry-stat-row">
-      <span className={`telemetry-side-val ${homeLeads ? "lead" : ""}`}>{home ?? "—"}</span>
+      <span className={`telemetry-side-val ${homeLeads ? "lead" : ""}`}>{hVal ?? "—"}</span>
       <span className="telemetry-stat-label">{label}</span>
-      <span className={`telemetry-side-val ${awayLeads ? "lead" : ""}`}>{away ?? "—"}</span>
+      <span className={`telemetry-side-val ${awayLeads ? "lead" : ""}`}>{aVal ?? "—"}</span>
     </div>
   );
 }
@@ -3673,16 +4248,31 @@ export function TeamSeasonTelemetrySection({ seasonStatistics }: { seasonStatist
     return null;
   }
 
-  const s = seasonStatistics as Record<string, number | undefined>;
+  const s = seasonStatistics;
+  const value = (key: string) => formatSeasonMetric(seasonMetricValue(s, [key]));
+  const metric = (label: string, totalKeys: string[], perGameLabel: string, perGameKeys: string[]) => seasonSingleMetric(s, label, totalKeys, perGameLabel, perGameKeys);
+  const shots = metric("Toplam Şut", ["shots", "shotsTotal"], "Şut / maç", ["shotsPerGame"]);
+  const onTarget = metric("İsabetli", ["shotsOnTarget"], "İsabetli / maç", ["shotsOnTargetPerGame"]);
+  const chances = metric("Büyük Şanslar", ["bigChances"], "Büyük Şans / maç", ["bigChancesPerGame"]);
+  const missed = metric("Kaçan", ["bigChancesMissed"], "Kaçan / maç", ["bigChancesMissedPerGame"]);
+  const yellow = metric("Sarı Kart (toplam)", ["yellowCards"], "Sarı Kart / maç", ["yellowCardsPerGame"]);
+  const fouls = metric("Faul", ["fouls"], "Faul / maç", ["foulsPerGame"]);
+  const percent = (key: string) => {
+    const number = seasonMetricValue(s, [key]);
+    return number === null ? "—" : `%${Math.round(number)}`;
+  };
+  const expectedGoals = seasonMetricValue(s, ["expectedGoals"]);
   const stats = [
-    { label: "Gol / xG", value: `${s.goalsScored ?? 0} / ${typeof s.expectedGoals === "number" ? s.expectedGoals.toFixed(1) : "—"}`, sub: "Atılan Gol / xG" },
-    { label: "Yenilen Gol", value: `${s.goalsConceded ?? 0}`, sub: "Kalede Görülen" },
-    { label: "Topa Sahip Olma", value: `%${typeof s.averageBallPossession === "number" ? Math.round(s.averageBallPossession) : "—"}`, sub: "Ortalama" },
-    { label: "Gol Yemeden (CS)", value: `${s.cleanSheets ?? 0}`, sub: "Temiz Sayfa" },
-    { label: "Pas İsabeti", value: `%${typeof s.accuratePassesPercentage === "number" ? Math.round(s.accuratePassesPercentage) : "—"}`, sub: "Başarılı Pas" },
-    { label: "Büyük Şanslar", value: `${s.bigChances ?? 0}`, sub: `Kaçan: ${s.bigChancesMissed ?? 0}` },
-    { label: "Toplam Şut", value: `${s.shots ?? s.shotsTotal ?? 0}`, sub: `İsabetli: ${s.shotsOnTarget ?? 0}` },
-    { label: "Disiplin", value: `${s.yellowCards ?? 0}S / ${s.redCards ?? 0}K`, sub: `${s.fouls ?? 0} Faul` }
+    { label: "Gol / xG", value: `${value("goalsScored")} / ${expectedGoals === null ? "—" : expectedGoals.toFixed(1)}`, sub: "Atılan Gol / xG" },
+    { label: "Yenilen Gol", value: value("goalsConceded"), sub: "Kalede Görülen" },
+    { label: "Topa Sahip Olma", value: percent("averageBallPossession"), sub: "Ortalama" },
+    { label: "Gol Yemeden (CS)", value: value("cleanSheets"), sub: "Temiz Sayfa" },
+    { label: "Pas İsabeti", value: percent("accuratePassesPercentage"), sub: "Başarılı Pas" },
+    { label: chances.label, value: formatSeasonMetric(chances.value), sub: `${missed.label}: ${formatSeasonMetric(missed.value)}` },
+    { label: shots.label, value: formatSeasonMetric(shots.value), sub: `${onTarget.label}: ${formatSeasonMetric(onTarget.value)}` },
+    { label: yellow.label, value: formatSeasonMetric(yellow.value), sub: "Sarı Kart" },
+    { label: "Kırmızı Kart (toplam)", value: value("redCards"), sub: "Kırmızı Kart" },
+    { label: fouls.label, value: formatSeasonMetric(fouls.value), sub: "Faul" }
   ];
 
   return (
@@ -3692,7 +4282,6 @@ export function TeamSeasonTelemetrySection({ seasonStatistics }: { seasonStatist
           <p className="eyebrow">SofaScore Sezon Metrikleri</p>
           <h2>Takım Sezon İstatistikleri & Telemetrisi</h2>
         </div>
-        <span className="live-telemetry-badge">125 Veri Noktası</span>
       </div>
       <div className="standing-stats season-telemetry-grid">
         {stats.map((item) => (
