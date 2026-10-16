@@ -50,7 +50,14 @@ export async function writeSyncRunLog(options: Options, databaseUrl: string): Pr
   if (failed && !options.error) {
     throw new Error(`--error is required for ${options.status} outcomes.`);
   }
-  const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
+  const pool = new pg.Pool({
+    connectionString: databaseUrl,
+    max: 1,
+    connectionTimeoutMillis: 5_000,
+    query_timeout: 10_000,
+    statement_timeout: 10_000,
+    keepAlive: true
+  });
   try {
     const job = await pool.query(`
       INSERT INTO sync_jobs (

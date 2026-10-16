@@ -93,7 +93,14 @@ export async function runSofaScoreMatchesSync(
   const events = validateCapture(capture);
 
   const pool = env.DATABASE_URL && !dependencies.database
-    ? new pg.Pool({ connectionString: env.DATABASE_URL, max: 2 })
+    ? new pg.Pool({
+        connectionString: env.DATABASE_URL,
+        max: 2,
+        connectionTimeoutMillis: 5_000,
+        query_timeout: 10_000,
+        statement_timeout: 10_000,
+        keepAlive: true
+      })
     : undefined;
   // Transient pool errors must never crash a long refresh run.
   pool?.on("error", () => {});
