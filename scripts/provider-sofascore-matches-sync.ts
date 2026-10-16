@@ -25,6 +25,7 @@ export interface SofaScoreMatchesReport {
   mode: "dry_run" | "execute";
   capturePath: string;
   databaseConfigured: boolean;
+  queriesExecuted: number;
   entries: MatchEntry[];
   counts: Record<string, number>;
   syncJobLogged: boolean;
@@ -99,10 +100,15 @@ export async function runSofaScoreMatchesSync(
   const database = env.DATABASE_URL ? dependencies.database ?? pool : undefined;
 
   const entries: MatchEntry[] = [];
+  // Identity anchors repeat across a run; resolve each provider id once.
+  const competitionCache = new Map<string, Resolution>();
+  const seasonCache = new Map<string, Resolution>();
+  const teamCache = new Map<string, Resolution>();
+  const startedQueries = { count: 0 };
   try {
     for (const event of events) {
       try {
-        entries.push(await importEvent(event, options, database, now));
+        entries.push(await importEvent(event, options, database, now, { competitionCache, seasonCache, teamCache, startedQueries }));
       } catch {
         // A single failed resolution must not abort the whole refresh; the
         // category is recorded without leaking database diagnostics.
@@ -121,6 +127,7 @@ export async function runSofaScoreMatchesSync(
     mode: options.execute ? "execute" : "dry_run",
     capturePath: options.capturePath,
     databaseConfigured: Boolean(database),
+    queriesExecuted: startedQueries.count,
     entries,
     counts,
     syncJobLogged: false
@@ -136,33 +143,73 @@ export async function runSofaScoreMatchesSync(
   return report;
 }
 
+type Resolution = { status: "ok"; id: string } | { status: "missing" | "conflict" };
+
+interface ImportContext {
+  competitionCache: Map<string, Resolution>;
+  seasonCache: Map<string, Resolution>;
+  teamCache: Map<string, Resolution>;
+  startedQueries: { count: number };
+}
+
+async function resolveCompetitionId(database: DatabaseClient, context: ImportContext, tournamentId: string): Promise<Resolution> {
+  const cached = context.competitionCache.get(tournamentId);
+  if (cached) return cached;
+  context.startedQueries.count++;
+  const result = resolveSingle((await database.query(resolveCompetitionSql, [tournamentId])).rows, "id");
+  context.competitionCache.set(tournamentId, result);
+  return result;
+}
+
+async function resolveSeasonId(database: DatabaseClient, context: ImportContext, competitionId: string): Promise<Resolution> {
+  const cached = context.seasonCache.get(competitionId);
+  if (cached) return cached;
+  context.startedQueries.count++;
+  const result = resolveSingle((await database.query(resolveSeasonSql, [competitionId])).rows, "id");
+  context.seasonCache.set(competitionId, result);
+  return result;
+}
+
+async function resolveTeamId(database: DatabaseClient, context: ImportContext, providerTeamId: string): Promise<{ status: "ok"; id: string } | { status: "skipped"; reason: string }> {
+  const cached = context.teamCache.get(providerTeamId);
+  if (cached) {
+    return cached.status === "ok" ? cached : { status: "skipped", reason: cached.status === "missing" ? "unknown_team" : "identity_conflict" };
+  }
+  context.startedQueries.count++;
+  const resolved = resolveTeam((await database.query(resolveTeamSql, [providerTeamId])).rows);
+  context.teamCache.set(providerTeamId, resolved.status === "ok" ? resolved : { status: resolved.reason === "unknown_team" ? "missing" : "conflict" });
+  return resolved;
+}
+
 async function importEvent(
   event: CapturedEvent,
   options: SofaScoreMatchesOptions,
   database: DatabaseClient | undefined,
-  now: () => Date
+  now: () => Date,
+  context: ImportContext
 ): Promise<MatchEntry> {
   const base: MatchEntry = { providerMatchId: event.sofascoreId, tournamentId: event.tournamentId, action: "capture_validated" };
   if (!database) {
     return base;
   }
-  const competition = resolveSingle((await database.query(resolveCompetitionSql, [event.tournamentId])).rows, "id");
+  const competition = await resolveCompetitionId(database, context, event.tournamentId);
   if (competition.status !== "ok") {
     return { ...base, action: "skipped", reason: competition.status === "missing" ? "unknown_competition" : "identity_conflict" };
   }
-  const season = resolveSingle((await database.query(resolveSeasonSql, [competition.id])).rows, "id");
+  const season = await resolveSeasonId(database, context, competition.id);
   if (season.status !== "ok") {
     return { ...base, action: "skipped", reason: "unknown_season" };
   }
-  const homeTeam = resolveTeam((await database.query(resolveTeamSql, [event.homeTeamId])).rows);
+  const homeTeam = await resolveTeamId(database, context, event.homeTeamId);
   if (homeTeam.status !== "ok") {
     return { ...base, action: "skipped", reason: homeTeam.reason };
   }
-  const awayTeam = resolveTeam((await database.query(resolveTeamSql, [event.awayTeamId])).rows);
+  const awayTeam = await resolveTeamId(database, context, event.awayTeamId);
   if (awayTeam.status !== "ok") {
     return { ...base, action: "skipped", reason: awayTeam.reason };
   }
 
+  context.startedQueries.count++;
   const existingRows = (await database.query(findMatchSql, [
     event.sofascoreId,
     competition.id,
@@ -280,6 +327,7 @@ async function recordSyncRun(database: DatabaseClient, report: SofaScoreMatchesR
     mode: report.mode,
     capturePath: report.capturePath,
     counts: report.counts,
+    queriesExecuted: report.queriesExecuted,
     entryTotal: report.entries.length
   };
   await database.query(insertSyncLogSql, [

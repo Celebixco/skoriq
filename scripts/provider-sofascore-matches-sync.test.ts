@@ -271,4 +271,18 @@ describe("SofaScore finished matches refresh", () => {
     expect(report.entries[0]).toMatchObject({ action: "query_failed", reason: "query_failed" });
     expect(JSON.stringify(report)).not.toContain("sensitive");
   });
+
+  it("memoizes identity resolution across events in one run", async () => {
+    const second = event({ sofascore_id: 6002 });
+    const data = fixture({ matchRows: scheduledExisting, captureDocument: capture([event(), second]) });
+    const report = await runSofaScoreMatchesSync({ execute: false, capturePath: "capture.json", logRun: false }, data.dependencies);
+    const teamReads = data.reads.filter((text) => /pm\.entity_type = 'team'/.test(text));
+    const competitionReads = data.reads.filter((text) => /from provider_mappings pm\s+join competitions/i.test(text));
+    const seasonReads = data.reads.filter((text) => /from seasons/i.test(text));
+    expect(report.entries).toHaveLength(2);
+    expect(teamReads).toHaveLength(2);
+    expect(competitionReads).toHaveLength(1);
+    expect(seasonReads).toHaveLength(1);
+    expect(report.queriesExecuted).toBeGreaterThan(0);
+  });
 });
