@@ -15,15 +15,21 @@ services:
       retries: 5
 
   dragonfly:
-    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    # Service name kept as "dragonfly" so REDIS_URL values stay valid.
+    # The dragonfly :latest image became unusable in this stack (its redis-cli
+    # health probe can no longer pass and dependents were blocked), so the cache
+    # runs on the proven redis:7 image. The old volume is reused; stale dragonfly
+    # files are ignored by redis.
+    image: redis:7-alpine
     restart: unless-stopped
-    command: ["dragonfly", "--cache_mode=true", "--dir=/data"]
+    command: ["redis-server", "--dir", "/data"]
     volumes:
       - dragonfly_data:/data
-    # The current dragonfly image no longer ships redis-cli, so the old
-    # healthcheck could never pass and blocked every dependent service.
-    # Dependents wait for service_started; real Redis readiness is
-    # validated by /api/health/ready after startup.
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   api:
     build:
