@@ -19,6 +19,7 @@ export interface SofaScoreMatchesDependencies {
   readCapture?: (capturePath: string) => Promise<unknown>;
   database?: DatabaseClient;
   now?: () => Date;
+  eventTimeoutMs?: number;
 }
 
 export interface SofaScoreMatchesReport {
@@ -99,6 +100,7 @@ export async function runSofaScoreMatchesSync(
         connectionTimeoutMillis: 5_000,
         query_timeout: 10_000,
         statement_timeout: 10_000,
+        idle_in_transaction_session_timeout: 10_000,
         keepAlive: true
       })
     : undefined;
@@ -123,18 +125,20 @@ export async function runSofaScoreMatchesSync(
   const teamCache = new Map<string, Resolution>();
   const startedQueries = { count: 0 };
   const progress = { lastCount: 0, lastAt: startedAt.getTime() };
+  const eventTimeoutMs = dependencies.eventTimeoutMs ?? 30_000;
   try {
     for (let index = 0; index < events.length; index++) {
       const event = events[index];
       try {
-        entries.push(await importEvent(event, options, database, now, { competitionCache, seasonCache, teamCache, startedQueries }));
-      } catch {
-        // A single failed resolution must not abort the whole refresh; the
-        // category is recorded without leaking database diagnostics.
-        entries.push({ providerMatchId: event.sofascoreId, tournamentId: event.tournamentId, action: "query_failed", reason: "query_failed" });
+        entries.push(await withTimeout(importEvent(event, options, database, now, { competitionCache, seasonCache, teamCache, startedQueries }), eventTimeoutMs));
+      } catch (error) {
+        // A single failed or wedged resolution must not abort the whole refresh;
+        // the category is recorded without leaking database diagnostics.
+        const reason = error instanceof Error && error.message === "event_timeout" ? "event_timeout" : "query_failed";
+        entries.push({ providerMatchId: event.sofascoreId, tournamentId: event.tournamentId, action: reason, reason });
       }
       if (database && syncJobId && progressDue(progress, index + 1, now())) {
-        await recordProgress(database, syncJobId, index + 1, events.length, now().getTime() - startedAt.getTime()).catch(() => {});
+        await recordProgress(database, syncJobId, index + 1, events.length, now().getTime() - startedAt.getTime(), event.sofascoreId).catch(() => {});
       }
     }
   } finally {
@@ -169,6 +173,16 @@ export async function runSofaScoreMatchesSync(
 
 const PROGRESS_EVENT_STEP = 100;
 const PROGRESS_TIME_STEP_MS = 60_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("event_timeout")), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); }
+    );
+  });
+}
 
 function progressDue(progress: { lastCount: number; lastAt: number }, processed: number, at: Date): boolean {
   if (processed - progress.lastCount >= PROGRESS_EVENT_STEP || at.getTime() - progress.lastAt >= PROGRESS_TIME_STEP_MS) {
@@ -353,17 +367,17 @@ async function beginSyncRun(database: DatabaseClient, startedAt: Date): Promise<
   return job.rows.length === 1 ? String(record(job.rows[0]).id) : undefined;
 }
 
-async function recordProgress(database: DatabaseClient, jobId: string, processed: number, total: number, elapsedMs: number): Promise<void> {
+async function recordProgress(database: DatabaseClient, jobId: string, processed: number, total: number, elapsedMs: number, lastProviderMatchId: string): Promise<void> {
   await database.query(insertSyncLogSql, [
     jobId,
     "info",
     `import_progress ${processed}/${total}`,
-    JSON.stringify({ step: "import_progress", processed, total, elapsedMs })
+    JSON.stringify({ step: "import_progress", processed, total, elapsedMs, lastProviderMatchId })
   ]);
 }
 
 async function finishSyncRun(database: DatabaseClient, jobId: string, report: SofaScoreMatchesReport, startedAt: Date, finishedAt: Date): Promise<void> {
-  const failed = (report.counts.query_failed ?? 0) > 0;
+  const failed = (report.counts.query_failed ?? 0) > 0 || (report.counts.event_timeout ?? 0) > 0;
   await database.query(finishSyncJobSql, [
     jobId,
     failed ? "failed" : "succeeded",

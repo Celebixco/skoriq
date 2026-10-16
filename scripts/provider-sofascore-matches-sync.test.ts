@@ -261,6 +261,28 @@ describe("SofaScore finished matches refresh", () => {
     expect(progress.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("bounds a wedged event with a timeout and keeps processing", async () => {
+    const data = fixture({ matchRows: scheduledExisting, captureDocument: capture([event(), event({ sofascore_id: 6002 })]) });
+    let matchLookups = 0;
+    data.dependencies.database = {
+      async query(text: string, params: unknown[] = []) {
+        if (/FROM matches m/.test(text)) {
+          matchLookups++;
+          if (matchLookups === 1) return new Promise(() => {});
+          return { rows: scheduledExisting };
+        }
+        if (/FROM provider_mappings pm\s+JOIN competitions/.test(text)) return { rows: [{ id: "comp-1" }] };
+        if (/FROM seasons/.test(text)) return { rows: [{ id: "season-1" }] };
+        if (/pm\.entity_type = 'team'/.test(text)) return { rows: [{ kind: "metadata", id: String(params[0]), team_exists: true }] };
+        return { rows: [] };
+      }
+    };
+    data.dependencies.eventTimeoutMs = 50;
+    const report = await runSofaScoreMatchesSync({ execute: false, capturePath: "capture.json", logRun: false }, data.dependencies);
+    expect(report.entries[0]).toMatchObject({ action: "event_timeout", providerMatchId: "6001" });
+    expect(report.entries[1]).toMatchObject({ action: "planned_update", providerMatchId: "6002" });
+  });
+
   it("keeps the refresh result when run logging fails", async () => {
     const data = fixture({ matchRows: scheduledExisting, loggingFailure: true });
     const report = await runSofaScoreMatchesSync({ execute: false, capturePath: "capture.json", logRun: true }, data.dependencies);
