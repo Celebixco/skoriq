@@ -11371,13 +11371,27 @@ button {
 }
 
 .nav-item.active {
-  background: rgba(250, 204, 21, 0.08);
-  border-left-color: var(--yellow);
-  color: var(--text);
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: #141003;
+  font-weight: 700;
 }
 
-.nav-item.active .nav-icon {
-  color: var(--yellow);
+.nav-item.active:hover {
+  background: var(--yellow);
+  color: #141003;
+}
+
+.nav-item.active .nav-icon,
+.nav-item.active:hover .nav-icon {
+  color: #141003;
+  opacity: 1;
+}
+
+.nav-item.active small {
+  color: #141003;
+  border-color: rgba(20, 16, 3, 0.35);
+  background: rgba(20, 16, 3, 0.12);
 }
 
 .nav-group > p {
@@ -11420,8 +11434,10 @@ button {
 .analytics-page-btn.active,
 .results-page-btn.active,
 .team-page-btn.active {
-  color: var(--yellow);
-  border-color: rgba(250, 204, 21, 0.6);
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: #141003;
+  font-weight: 800;
 }
 
 /* 10. Tablolar */
@@ -12347,4 +12363,34 @@ textarea {
 .analytics-match-row:hover .analytics-row-cta {
   color: var(--yellow);
   transform: translateX(2px);
+}
+
+/* ============================================================
+   19. SEÇİLİ = TAM SARI — silik ton yok, mürekkep metin
+   ============================================================ */
+
+.analytics-chip-active {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: #141003;
+  font-weight: 700;
+}
+
+.analytics-chip-active:hover {
+  background: var(--yellow);
+  color: #141003;
+}
+
+.analytics-chip-active .analytics-chip-count {
+  background: rgba(20, 16, 3, 0.16);
+  color: #141003;
+  border: none;
+}
+
+.alphabet-letter-btn.active,
+.country-chip.active {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: #141003;
+  font-weight: 700;
 }

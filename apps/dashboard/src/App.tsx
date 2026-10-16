@@ -7000,7 +7000,7 @@ export function Shell({
           <NavButton icon="overview" label="Genel Bakış" path="/" currentPath={currentPath} navigate={navigateFromSidebar} />
         </NavGroup>
         <NavGroup title="Futbol">
-          <NavButton icon="globe" label="Futbol Keşfi" path="/football" currentPath={currentPath} navigate={navigateFromSidebar} />
+          <NavButton icon="globe" label="Futbol Keşfi" path="/football" currentPath={currentPath} navigate={navigateFromSidebar} activeWhen={(path) => path === "/football" || path.startsWith("/football/countries")} />
           <NavButton icon="analytics" label="Maç Analizi" path="/football/analytics" currentPath={currentPath} navigate={navigateFromSidebar} />
           <NavButton icon="results" label="Sonuçlar" path="/football/prediction-results" currentPath={currentPath} navigate={navigateFromSidebar} />
           {isAdmin ? (
