@@ -102,10 +102,44 @@ function fixture(options: FixtureOptions = {}) {
 
 describe("SofaScore finished matches refresh", () => {
   it("defaults to dry-run and requires an explicit capture file", () => {
-    expect(parseSofaScoreMatchesArgs(["--capture", "capture.json"])).toEqual({ execute: false, capturePath: "capture.json", logRun: true });
-    expect(parseSofaScoreMatchesArgs(["--capture=reviewed.json", "--execute", "--no-log-run"])).toEqual({ execute: true, capturePath: "reviewed.json", logRun: false });
+    expect(parseSofaScoreMatchesArgs(["--capture", "capture.json"])).toEqual({ execute: false, capturePath: "capture.json", logRun: true, job: "finished-matches" });
+    expect(parseSofaScoreMatchesArgs(["--capture=reviewed.json", "--execute", "--no-log-run"])).toEqual({ execute: true, capturePath: "reviewed.json", logRun: false, job: "finished-matches" });
+    expect(parseSofaScoreMatchesArgs(["--capture", "capture.json", "--job", "upcoming-matches"]).job).toBe("upcoming-matches");
+    expect(() => parseSofaScoreMatchesArgs(["--capture", "capture.json", "--job", "nope"])).toThrow(/--job/);
     expect(() => parseSofaScoreMatchesArgs([])).toThrow(/capture/i);
     expect(() => parseSofaScoreMatchesArgs(["--capture", "x.json", "--bogus"])).toThrow(/unknown/i);
+  });
+
+  it("plans fixture inserts for notstarted events and inserts them on execute", async () => {
+    const futureEvent = { sofascore_id: 9001, start_timestamp: FUTURE_TS, status_type: "notstarted", round: 8, home_team_id: 101, away_team_id: 202 };
+    const planned = fixture({ matchRows: [], captureDocument: capture([futureEvent]) });
+    const plannedReport = await runSofaScoreMatchesSync({ execute: false, capturePath: "capture.json", logRun: false }, planned.dependencies);
+    expect(plannedReport.entries[0]).toMatchObject({ action: "planned_insert" });
+    expect(planned.writes).toHaveLength(0);
+
+    const executed = fixture({ matchRows: [], captureDocument: capture([futureEvent]) });
+    const executedReport = await runSofaScoreMatchesSync({ execute: true, capturePath: "capture.json", logRun: false }, executed.dependencies);
+    expect(executedReport.entries[0]).toMatchObject({ action: "inserted" });
+    const insert = executed.writes.find((write) => /INSERT INTO matches/.test(write.text));
+    expect(insert?.text).toContain("'scheduled'");
+    expect(executed.writes.some((write) => /football_match_scores/.test(write.text))).toBe(false);
+  });
+
+  it("never downgrades finished matches from a fixture capture", async () => {
+    const futureEvent = { sofascore_id: 6001, start_timestamp: FUTURE_TS, status_type: "notstarted", round: 7, home_team_id: 101, away_team_id: 202 };
+    const finishedExisting = [{ ...scheduledExisting[0], status: "finished" }];
+    const data = fixture({ matchRows: finishedExisting, captureDocument: capture([futureEvent]) });
+    const report = await runSofaScoreMatchesSync({ execute: true, capturePath: "capture.json", logRun: false }, data.dependencies);
+    expect(report.entries[0]).toMatchObject({ action: "skipped", reason: "already_finished" });
+    expect(data.writes).toHaveLength(0);
+  });
+
+  it("leaves an existing scheduled fixture unchanged", async () => {
+    const futureEvent = { sofascore_id: 6001, start_timestamp: FUTURE_TS, status_type: "notstarted", round: 7, home_team_id: 101, away_team_id: 202 };
+    const data = fixture({ matchRows: scheduledExisting, captureDocument: capture([futureEvent]) });
+    const report = await runSofaScoreMatchesSync({ execute: true, capturePath: "capture.json", logRun: false }, data.dependencies);
+    expect(report.entries[0]).toMatchObject({ action: "unchanged", matchId: "match-1" });
+    expect(data.writes).toHaveLength(0);
   });
 
   it("validates a capture without a database configuration", async () => {

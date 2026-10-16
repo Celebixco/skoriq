@@ -69,6 +69,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Optional smoke-test limit on the number of leagues to fetch.")
     parser.add_argument("--tournament-id", type=positive_argument, default=None,
                         help="Fetch a single league by SofaScore tournament id.")
+    parser.add_argument("--window", choices=["last", "next"], default="last",
+                        help="Capture recently finished matches (last) or upcoming fixtures (next).")
     return parser.parse_args(argv)
 
 
@@ -112,19 +114,23 @@ def score_field(container: Any, key: str) -> int | None:
     return value
 
 
-def validate_event(event: Any, now: datetime) -> dict[str, Any]:
+def validate_event(event: Any, now: datetime, window: str = "last") -> dict[str, Any]:
     if not isinstance(event, dict):
         raise CaptureFailure("invalid_event")
     status = event.get("status")
     status_type = status.get("type") if isinstance(status, dict) else None
-    if status_type not in ALLOWED_STATUS_TYPES:
-        raise CaptureFailure("not_finished")
+    if window == "last":
+        if status_type not in ALLOWED_STATUS_TYPES:
+            raise CaptureFailure("not_finished")
+    else:
+        if status_type != "notstarted":
+            raise CaptureFailure("not_scheduled")
     identifier = positive_id(event.get("id"))
     started = event.get("startTimestamp")
     if isinstance(started, bool) or not isinstance(started, int):
         raise CaptureFailure("invalid_start")
     start_instant = datetime.fromtimestamp(started, tz=timezone.utc)
-    if start_instant < OLDEST_EVENT or start_instant > now + timedelta(days=2):
+    if start_instant < OLDEST_EVENT or start_instant > now + timedelta(days=2 if window == "last" else 120):
         raise CaptureFailure("invalid_start")
     home_team = event.get("homeTeam")
     away_team = event.get("awayTeam")
@@ -132,12 +138,6 @@ def validate_event(event: Any, now: datetime) -> dict[str, Any]:
     away_team_id = positive_id(away_team.get("id") if isinstance(away_team, dict) else None)
     if home_team_id == away_team_id:
         raise CaptureFailure("invalid_event")
-    home_score_current = score_field(event.get("homeScore"), "current")
-    away_score_current = score_field(event.get("awayScore"), "current")
-    if home_score_current is None or away_score_current is None:
-        raise CaptureFailure("missing_score")
-    home_halftime = score_field(event.get("homeScore"), "period1")
-    away_halftime = score_field(event.get("awayScore"), "period1")
     round_info = event.get("roundInfo")
     round_number = round_info.get("round") if isinstance(round_info, dict) else None
     if round_number is not None and (isinstance(round_number, bool) or not isinstance(round_number, int)
@@ -146,17 +146,24 @@ def validate_event(event: Any, now: datetime) -> dict[str, Any]:
     captured: dict[str, Any] = {
         "sofascore_id": identifier,
         "start_timestamp": started,
-        "status_type": "finished",
+        "status_type": "finished" if window == "last" else "notstarted",
         "round": round_number,
         "home_team_id": home_team_id,
         "away_team_id": away_team_id,
-        "home_score": home_score_current,
-        "away_score": away_score_current,
     }
-    if home_halftime is not None:
-        captured["home_score_halftime"] = home_halftime
-    if away_halftime is not None:
-        captured["away_score_halftime"] = away_halftime
+    if window == "last":
+        home_score_current = score_field(event.get("homeScore"), "current")
+        away_score_current = score_field(event.get("awayScore"), "current")
+        if home_score_current is None or away_score_current is None:
+            raise CaptureFailure("missing_score")
+        home_halftime = score_field(event.get("homeScore"), "period1")
+        away_halftime = score_field(event.get("awayScore"), "period1")
+        captured["home_score"] = home_score_current
+        captured["away_score"] = away_score_current
+        if home_halftime is not None:
+            captured["home_score_halftime"] = home_halftime
+        if away_halftime is not None:
+            captured["away_score_halftime"] = away_halftime
     return captured
 
 
@@ -200,8 +207,8 @@ def default_output_path() -> Path:
     return Path(__file__).resolve().parents[1] / ".provider-runs" / "sofascore" / f"recent-matches-{stamp}-{uuid4().hex[:8]}.json"
 
 
-def events_endpoint(tournament_id: int, season_id: int) -> str:
-    return f"{API_BASE}/unique-tournament/{tournament_id}/season/{season_id}/events/last/0"
+def events_endpoint(tournament_id: int, season_id: int, window: str = "last") -> str:
+    return f"{API_BASE}/unique-tournament/{tournament_id}/season/{season_id}/events/{window}/0"
 
 
 def seasons_endpoint(tournament_id: int) -> str:
@@ -226,17 +233,17 @@ def fetch_payload(transport: Transport, endpoint: str, sleep: Callable[[float], 
         return None, "non_json", status
 
 
-def extract_finished_events(payload: Any, now: datetime) -> list[dict[str, Any]]:
+def extract_finished_events(payload: Any, now: datetime, window: str = "last") -> list[dict[str, Any]]:
     if not isinstance(payload, dict) or not isinstance(payload.get("events"), list):
         raise CaptureFailure("partial_response")
-    finished: list[dict[str, Any]] = []
+    captured: list[dict[str, Any]] = []
     for event in payload["events"]:
         try:
-            finished.append(validate_event(event, now))
+            captured.append(validate_event(event, now, window))
         except CaptureFailure:
             continue
-    finished.sort(key=lambda item: item["start_timestamp"], reverse=True)
-    return finished[:MAX_EVENTS_PER_TOURNAMENT]
+    captured.sort(key=lambda item: item["start_timestamp"], reverse=window == "last")
+    return captured[:MAX_EVENTS_PER_TOURNAMENT]
 
 
 def detect_current_season(transport: Transport, league: LeagueScope, sleep: Callable[[float], None],
@@ -272,6 +279,7 @@ def detect_current_season(transport: Transport, league: LeagueScope, sleep: Call
 def run_fetch(catalog_path: Path, output_path: Path, *, transport: Transport,
               limit_tournaments: int | None = None,
               tournament_id: int | None = None,
+              window: str = "last",
               now: Callable[[], datetime] = utc_now,
               sleep: Callable[[float], None] = time.sleep) -> dict[str, Any]:
     if limit_tournaments is not None:
@@ -299,26 +307,28 @@ def run_fetch(catalog_path: Path, output_path: Path, *, transport: Transport,
             continue
         season_id = league.season_id
         season_detected = False
-        payload, reason, status = fetch_payload(transport, events_endpoint(league.tournament_id, season_id), sleep, attempted)
+        payload, reason, status = fetch_payload(transport, events_endpoint(league.tournament_id, season_id, window), sleep, attempted)
         if status in (403, 429):
             stopped_status = status
         if reason is None:
             try:
-                events = extract_finished_events(payload, snapshot_instant)
+                events = extract_finished_events(payload, snapshot_instant, window)
             except CaptureFailure as error:
                 reason = str(error)
                 events = []
         else:
             events = []
-        latest = events[0]["start_timestamp"] if events else None
-        stale = latest is None or snapshot_instant - datetime.fromtimestamp(latest, tz=timezone.utc) > STALE_WINDOW
-        if reason is None and stale and stopped_status is None:
-            detected = detect_current_season(transport, league, sleep, attempted, snapshot_instant)
-            if detected is not None:
-                season_id, events = detected
-                season_detected = True
-                latest = events[0]["start_timestamp"] if events else None
-                stale = latest is None
+        stale = False
+        if window == "last":
+            latest = events[0]["start_timestamp"] if events else None
+            stale = latest is None or snapshot_instant - datetime.fromtimestamp(latest, tz=timezone.utc) > STALE_WINDOW
+            if reason is None and stale and stopped_status is None:
+                detected = detect_current_season(transport, league, sleep, attempted, snapshot_instant)
+                if detected is not None:
+                    season_id, events = detected
+                    season_detected = True
+                    latest = events[0]["start_timestamp"] if events else None
+                    stale = latest is None
         if reason is not None:
             failures.append({"tournamentId": league.tournament_id, "seasonId": season_id,
                              "status": status, "reason": reason})
@@ -399,7 +409,8 @@ def main(argv: list[str] | None = None) -> int:
             transport = ImpersonationTransport(session)
             summary = run_fetch(options.catalog, output, transport=transport,
                                 limit_tournaments=options.limit_tournaments,
-                                tournament_id=options.tournament_id)
+                                tournament_id=options.tournament_id,
+                                window=options.window)
     except ValueError as error:
         print(json.dumps({"error": str(error)}))
         return 2

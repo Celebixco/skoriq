@@ -62,7 +62,11 @@ class JobTests(unittest.TestCase):
         jobs = service.build_jobs({"SYNC_FINISHED_INTERVAL_MINUTES": "5"})
         self.assertEqual(jobs[0].interval_minutes, 15)
         jobs = service.build_jobs({})
+        self.assertEqual(len(jobs), 2)
         self.assertEqual(jobs[0].interval_minutes, 180)
+        self.assertEqual(jobs[1].name, "upcoming-matches")
+        self.assertEqual(jobs[1].interval_minutes, 720)
+        self.assertEqual(jobs[1].window, "next")
         self.assertTrue(str(jobs[0].fetch_script).endswith("sofascore_fetch_recent_matches.py"))
 
     def test_due_jobs_uses_last_finished_at(self):
@@ -191,6 +195,17 @@ class RunJobTests(unittest.TestCase):
         self.assertGreaterEqual(len(helper), 6)
         self.assertTrue(any("import_started" in part for part in helper))
         self.assertTrue(any("import_part_result" in part for part in helper))
+
+    def test_upcoming_job_uses_the_next_window_and_job_flag(self):
+        runner = FakeRunner()
+        upcoming_job = service.build_jobs({})[1]
+        service.run_job(upcoming_job, dict(self.base_env), self.state_dir, NOW, runner=runner)
+        fetch_commands = [command for command in runner.commands if "sofascore_fetch_recent_matches.py" in command[1]]
+        import_commands = [command for command in runner.commands if any("provider-sofascore-matches-sync.ts" in part for part in command)]
+        self.assertEqual(len(fetch_commands), 2)
+        self.assertTrue(all("--window" in command and "next" in command for command in fetch_commands))
+        self.assertEqual(len(import_commands), 2)
+        self.assertTrue(all("--job" in command and "upcoming-matches" in command for command in import_commands))
 
     def test_containment_keeps_service_alive_and_updates_state(self):
         def failing_runner(command, **kwargs):

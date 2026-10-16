@@ -12,6 +12,7 @@ export interface SofaScoreMatchesOptions {
   execute: boolean;
   capturePath: string;
   logRun: boolean;
+  job?: string;
 }
 
 export interface SofaScoreMatchesDependencies {
@@ -45,11 +46,12 @@ interface CapturedEvent {
   sofascoreId: string;
   tournamentId: string;
   startTimestamp: number;
+  statusType: "finished" | "notstarted";
   round: number | null;
   homeTeamId: string;
   awayTeamId: string;
-  homeScore: number;
-  awayScore: number;
+  homeScore: number | null;
+  awayScore: number | null;
   homeScoreHalftime: number | null;
   awayScoreHalftime: number | null;
 }
@@ -57,13 +59,22 @@ interface CapturedEvent {
 const MAX_GOALS = 30;
 const KICKOFF_FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
 
+const JOB_IDENTITIES: Record<string, { jobKey: string; jobName: string }> = {
+  "finished-matches": { jobKey: "sofascore.finished-matches", jobName: "finished-matches-sync" },
+  "upcoming-matches": { jobKey: "sofascore.upcoming-matches", jobName: "upcoming-matches-sync" }
+};
+
 export function parseSofaScoreMatchesArgs(args: string[]): SofaScoreMatchesOptions {
-  const options: SofaScoreMatchesOptions = { execute: false, capturePath: "", logRun: true };
+  const options: SofaScoreMatchesOptions = { execute: false, capturePath: "", logRun: true, job: "finished-matches" };
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
     if (arg === "--execute") options.execute = true;
     else if (arg === "--no-log-run") options.logRun = false;
-    else if (arg === "--capture" || arg.startsWith("--capture=")) {
+    else if (arg === "--job" || arg.startsWith("--job=")) {
+      const value = arg === "--job" ? args[++index] : arg.slice("--job=".length);
+      if (!value || !JOB_IDENTITIES[value]) throw new Error(`--job must be one of: ${Object.keys(JOB_IDENTITIES).join(", ")}.`);
+      options.job = value;
+    } else if (arg === "--capture" || arg.startsWith("--capture=")) {
       const value = arg === "--capture" ? args[++index] : arg.slice("--capture=".length);
       if (!value || value.startsWith("--")) throw new Error("--capture requires a file path.");
       options.capturePath = value;
@@ -115,7 +126,7 @@ export async function runSofaScoreMatchesSync(
   let loggingError: string | undefined;
   if (database && options.logRun) {
     try {
-      syncJobId = await beginSyncRun(database, startedAt);
+      syncJobId = await beginSyncRun(database, startedAt, options.job ?? "finished-matches");
       await beacon("begin_logged");
     } catch (error) {
       loggingError = error instanceof Error ? error.message : "sync run logging failed";
@@ -200,6 +211,46 @@ function progressDue(progress: { lastCount: number; lastAt: number }, processed:
 
 type Resolution = { status: "ok"; id: string } | { status: "missing" | "conflict" };
 
+const FINISHED_STATUSES = new Set(["finished", "after_extra_time", "after_penalties"]);
+
+async function importFixture(
+  event: CapturedEvent,
+  options: SofaScoreMatchesOptions,
+  database: DatabaseClient,
+  existingRows: JsonRecord[],
+  base: MatchEntry,
+  competitionId: string,
+  seasonId: string,
+  homeTeamId: string,
+  awayTeamId: string
+): Promise<MatchEntry> {
+  // Fixtures refresh only ever adds missing scheduled matches; a finished row is never touched.
+  if (existingRows.length === 1) {
+    const existing = existingRows[0];
+    const matchId = String(existing.id);
+    if (typeof existing.status === "string" && FINISHED_STATUSES.has(existing.status)) {
+      return { ...base, action: "skipped", reason: "already_finished", matchId };
+    }
+    return { ...base, action: "unchanged", matchId };
+  }
+  if (!options.execute) {
+    return { ...base, action: "planned_insert" };
+  }
+  const inserted = await database.query(insertFixtureSql, [
+    competitionId,
+    seasonId,
+    event.round,
+    homeTeamId,
+    awayTeamId,
+    event.startTimestamp,
+    JSON.stringify(metadataPatch(event))
+  ]);
+  if (inserted.rows.length !== 1) {
+    return { ...base, action: "skipped", reason: "insert_conflict" };
+  }
+  return { ...base, action: "inserted", matchId: String(record(inserted.rows[0]).id) };
+}
+
 interface ImportContext {
   competitionCache: Map<string, Resolution>;
   seasonCache: Map<string, Resolution>;
@@ -276,8 +327,11 @@ async function importEvent(
   if (existingRows.length > 1) {
     return { ...base, action: "skipped", reason: "identity_conflict" };
   }
-  const winnerTeamId = event.homeScore > event.awayScore ? homeTeam.id : event.awayScore > event.homeScore ? awayTeam.id : null;
-  const finishedStatuses = new Set(["finished", "after_extra_time", "after_penalties"]);
+  if (event.statusType === "notstarted") {
+    return importFixture(event, options, database, existingRows, base, competition.id, season.id, homeTeam.id, awayTeam.id);
+  }
+  const winnerTeamId = event.homeScore! > event.awayScore! ? homeTeam.id : event.awayScore! > event.homeScore! ? awayTeam.id : null;
+  const finishedStatuses = FINISHED_STATUSES;
 
   if (existingRows.length === 1) {
     const existing = existingRows[0];
@@ -358,18 +412,20 @@ async function upsertScores(
 }
 
 function metadataPatch(event: CapturedEvent): JsonRecord {
-  const patch: JsonRecord = {
-    sofascoreId: Number(event.sofascoreId),
-    homeScore: event.homeScore,
-    awayScore: event.awayScore
-  };
+  const patch: JsonRecord = { sofascoreId: Number(event.sofascoreId) };
+  if (event.statusType === "finished") {
+    patch.homeScore = event.homeScore;
+    patch.awayScore = event.awayScore;
+  }
   if (event.round !== null) patch.round = event.round;
   return patch;
 }
 
-async function beginSyncRun(database: DatabaseClient, startedAt: Date): Promise<string | undefined> {
-  const job = await database.query(beginSyncJobSql, [startedAt.toISOString()]);
-  return job.rows.length === 1 ? String(record(job.rows[0]).id) : undefined;
+async function beginSyncRun(database: DatabaseClient, startedAt: Date, job: string): Promise<string | undefined> {
+  const identity = JOB_IDENTITIES[job];
+  if (!identity) throw new Error(`Unknown sync job "${job}".`);
+  const result = await database.query(beginSyncJobSql, [identity.jobName, identity.jobKey, startedAt.toISOString()]);
+  return result.rows.length === 1 ? String(record(result.rows[0]).id) : undefined;
 }
 
 async function recordProgress(database: DatabaseClient, jobId: string, processed: number, total: number, elapsedMs: number, lastProviderMatchId: string): Promise<void> {
@@ -464,7 +520,8 @@ function validateCapture(capture: unknown): CapturedEvent[] {
       const sofascoreId = positiveIntegerString(rawEvent.sofascore_id, "event id");
       if (seen.has(sofascoreId)) continue;
       seen.add(sofascoreId);
-      if (rawEvent.status_type !== "finished") throw new Error("Capture events must be finished.");
+      const statusType = rawEvent.status_type;
+      if (statusType !== "finished" && statusType !== "notstarted") throw new Error("Capture events must be finished or notstarted.");
       const startTimestamp = rawEvent.start_timestamp;
       if (typeof startTimestamp !== "number" || !Number.isSafeInteger(startTimestamp) || startTimestamp <= 0) {
         throw new Error("Capture events must include a valid start timestamp.");
@@ -473,11 +530,12 @@ function validateCapture(capture: unknown): CapturedEvent[] {
         sofascoreId,
         tournamentId,
         startTimestamp,
+        statusType,
         round: optionalRound(rawEvent.round),
         homeTeamId: positiveIntegerString(rawEvent.home_team_id, "home team id"),
         awayTeamId: positiveIntegerString(rawEvent.away_team_id, "away team id"),
-        homeScore: goalCount(rawEvent.home_score),
-        awayScore: goalCount(rawEvent.away_score),
+        homeScore: statusType === "finished" ? goalCount(rawEvent.home_score) : optionalGoalCount(rawEvent.home_score),
+        awayScore: statusType === "finished" ? goalCount(rawEvent.away_score) : optionalGoalCount(rawEvent.away_score),
         homeScoreHalftime: optionalGoalCount(rawEvent.home_score_halftime),
         awayScoreHalftime: optionalGoalCount(rawEvent.away_score_halftime)
       });
@@ -620,10 +678,20 @@ const insertMatchSql = `INSERT INTO matches (
   ON CONFLICT ON CONSTRAINT "matches_natural_uidx" DO NOTHING
   RETURNING id`;
 
+const insertFixtureSql = `INSERT INTO matches (
+    sport_id, competition_id, season_id, round, home_team_id, away_team_id,
+    scheduled_start_at, status, metadata_json
+  )
+  SELECT s.id, $1::uuid, $2::uuid, $3, $4::uuid, $5::uuid,
+    to_timestamp($6::bigint), 'scheduled', $7::jsonb
+  FROM sports s WHERE s.slug = 'football'
+  ON CONFLICT ON CONSTRAINT "matches_natural_uidx" DO NOTHING
+  RETURNING id`;
+
 const beginSyncJobSql = `INSERT INTO sync_jobs (
     queue_name, job_name, job_key, provider, entity_type, status, attempt_count, started_at
   )
-  VALUES ('sync-service', 'finished-matches-sync', 'sofascore.finished-matches', 'sofascore', 'match', 'running', 1, $1)
+  VALUES ('sync-service', $1, $2, 'sofascore', 'match', 'running', 1, $3)
   ON CONFLICT (job_key) DO UPDATE SET
     status = 'running',
     attempt_count = sync_jobs.attempt_count + 1,

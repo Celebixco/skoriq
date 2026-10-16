@@ -52,16 +52,18 @@ class Job:
     interval_minutes: int
     fetch_script: Path
     import_script: Path
+    window: str = "last"
 
 
 def build_jobs(env: dict[str, str]) -> list[Job]:
     interval = int(env.get("SYNC_FINISHED_INTERVAL_MINUTES", "180"))
-    return [Job(
-        name="finished-matches",
-        interval_minutes=max(15, interval),
-        fetch_script=ROOT / "scripts" / "sofascore_fetch_recent_matches.py",
-        import_script=ROOT / "scripts" / "provider-sofascore-matches-sync.ts",
-    )]
+    upcoming_interval = int(env.get("SYNC_UPCOMING_INTERVAL_MINUTES", "720"))
+    fetch_script = ROOT / "scripts" / "sofascore_fetch_recent_matches.py"
+    import_script = ROOT / "scripts" / "provider-sofascore-matches-sync.ts"
+    return [
+        Job("finished-matches", max(15, interval), fetch_script, import_script, window="last"),
+        Job("upcoming-matches", max(15, upcoming_interval), fetch_script, import_script, window="next"),
+    ]
 
 
 def utc_now() -> datetime:
@@ -202,6 +204,8 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
         command = [sys.executable, str(job.fetch_script), "--output", str(part), "--tournament-id", str(tournament_id)]
         if catalog:
             command += ["--catalog", catalog]
+        if job.window != "last":
+            command += ["--window", job.window]
         result = runner(command, capture_output=True, text=True, timeout=fetch_timeout)
         part_summary = parse_last_json_line(result.stdout or "")
         published = part.exists()
@@ -276,7 +280,7 @@ def import_part(job: Job, part_path: Path, env: dict[str, str], execute: bool, t
     tournament_id = int(part_path.stem.rsplit("-t", 1)[1])
     progress_path = Path(f"{part_path}.progress")
     progress_path.unlink(missing_ok=True)
-    command = [node_binary(), str(job.import_script), "--capture", str(part_path)]
+    command = [node_binary(), str(job.import_script), "--capture", str(part_path), "--job", job.name]
     if execute:
         command.append("--execute")
 
