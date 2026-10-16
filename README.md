@@ -63,7 +63,7 @@ This command is dry-run only. It reports eligible/excluded settled outputs and s
 
 ## Persistence Foundation
 
-The current repository layer supports the pipeline foundation only. It does not fetch Sofascore or any real provider data yet.
+The repository includes provider ingestion foundations, controlled APIFootball.com workflows, and a legacy SofaScore catalog import. The legacy SofaScore rebuild is restricted to disposable local test databases; it is not a production refresh mechanism.
 
 Raw payload lifecycle:
 
@@ -129,7 +129,7 @@ Mock provider isolation policy:
 - Coolify services force `MOCK_PROVIDER_ENABLED=false` by default.
 - Do not write mock provider data into a Neon production database.
 
-Real provider integration is still not implemented.
+The generic normalizer shells are not evidence that every provider operation is implemented. Consult each provider workflow and its tests for supported operations and target restrictions.
 
 ## Provider Adapter Shell
 
@@ -144,7 +144,7 @@ The provider adapter shell defines the infrastructure future real providers must
 - local no-op adapter for tests/local development only
 - adapter-to-ingestion bridge into `ProviderIngestionService`
 
-The local no-op adapter and legacy mock provider are forbidden in production. No adapter currently calls external URLs, and no Sofascore adapter, scraping code, scheduled provider ingestion, or real provider fetching exists yet.
+The local no-op adapter and legacy mock provider are forbidden in production. Real provider workflows are described below. The standalone SofaScore scraper and destructive rebuild daemon are separate from the adapter pipeline; their presence does not establish a working scheduled production sync.
 
 Provider discovery must happen before real adapter work. Evidence and readiness gates live in:
 
@@ -583,6 +583,42 @@ npm run db:check
 npm run db:migrate
 ```
 
+The container migration entrypoints apply schema migrations only. They do not seed records or provision administrator accounts. `scripts/db-seed.ts`, its JavaScript counterpart, and the legacy SofaScore daemon are destructive rebuild tools for disposable local test databases only. They refuse production and remote databases and require both `DB_EXECUTION_TARGET=local` and `ALLOW_DESTRUCTIVE_SEED=true`; `FORCE_SEED` alone is insufficient. Do not use these tools for production refreshes. Incremental refresh must preserve provider mappings, canonical identifiers and prediction history.
+
+Production services require `AUTH_ENABLED=true`, a non-placeholder JWT secret of at least 32 characters, and a configured frontend origin. Both Coolify Compose files require deployment secrets instead of supplying default database/JWT credentials, and a failed migration prevents API startup. API/provider tokens and cookie files must stay out of source control, frontend bundles and Docker build contexts.
+
+### Controlled SofaScore team-season refresh
+
+SofaScore remains the selected source. Public team Statistics pages were readable in a normal browser for Manchester City (Premier League 26/27) and Amed (Süper Lig 26/27). This is a supervised capture workflow, not a verified scheduled production scraper. Ordinary direct HTTP requests returned 403 and stopped; no retry or access workaround followed.
+
+Convert a saved visible-page capture without network or database access (Python required):
+
+```bash
+npm run provider:sofascore:public-page:convert -- --input=<visible-page-capture.json>
+```
+
+The converter validates the team and selected league/season against the catalog, preserves the capture time and public source URL, and writes a separate snapshot. Per-game values retain explicit `PerGame` names; unavailable xG and other metrics are omitted. See [the public-page capture workflow](docs/providers/sofascore-public-page-capture.md) for the input contract and scope evidence.
+
+The direct endpoint capture remains available for a bounded access check (Python and `curl_cffi` required):
+
+```bash
+npm run provider:sofascore:team-statistics:fetch -- --limit=1
+```
+
+The capture writes a separate file under ignored `.provider-samples/sofascore/`. It contains only successful team/tournament/season responses and their actual fetch times. It cannot overwrite the input catalog. A failed request does not become a saved empty success.
+
+Validate that saved snapshot without writes:
+
+```bash
+npm run provider:sofascore:team-statistics:sync -- --catalog-path=<captured-file.json>
+```
+
+Without `DATABASE_URL`, dry-run validates the catalog only; it does not prove canonical team identity. With an approved local or explicitly opted-in Neon test database, it resolves existing football teams and reports a write plan. Add `--execute` only on that test target after reviewing the plan. Production execution is refused. The importer creates no entities, runs no seed, and preserves canonical identifiers, unrelated metadata and prediction history.
+
+Each competition/season snapshot replaces its own statistics object. Other scopes remain intact. The flat compatibility summary is refreshed only when its existing provenance identifies the same provider/team/tournament/season; an unverified legacy summary remains unchanged. Team profiles select one scoped snapshot matching the team's provider identity, primary competition and exact season name. Ambiguous or unverifiable scoped data returns no season statistics. Legacy summaries remain readable only before scoped storage exists. Scheduled production refresh and actual database persistence still require verification.
+
+Run `npm run test:sofascore` for transport, visible-page conversion, scope and file-safety tests. TypeScript importer and API selection tests are included in `npm test`.
+
 `npm run db:check` is read-only. It reports the sanitized target host, port, database name, SSL mode, classification, connectivity, and whether expected tables exist. It never prints credentials. Classifications are `local`, `neon-test`, `remote-unsafe`, and `unknown`.
 
 - Start local PostgreSQL manually and create `sports_data`.
@@ -615,14 +651,16 @@ npm run test:integration
 
 The local test service uses `postgres:16-alpine`, while the schema remains standard PostgreSQL 15+/16 compatible. The integration suite validates that migrations apply cleanly, `pgcrypto` UUID generation works, `UNIQUE NULLS NOT DISTINCT` constraints are enforced, static normalizers are idempotent, provider mappings are created/reused, transaction rollback prevents partial writes, and raw payload processing updates status correctly.
 
-Current limitation: integration tests use local fixtures only. Real provider integration is still not implemented, and mock/test data must not be written to Neon production.
+Current limitation: integration tests use local fixtures only. Passing these tests does not establish live provider availability or production sync readiness. Mock/test data must not be written to Neon production.
 
 For Coolify, deploy `api`, `worker`, `scheduler`, and self-hosted `redis` as separate services. PostgreSQL should remain external through Neon for MVP. Run migrations as an explicit release step before routing traffic to a new API version; do not run migrations implicitly inside every service container.
 
 Health endpoints:
 
 - `/api/health/live`: process liveness.
-- `/api/health/ready`: readiness scaffold; database and Redis checks will be enabled when persistence wiring is added.
+- `/api/health/ready`: bounded PostgreSQL `SELECT 1` and Redis `PING` checks; returns HTTP 503 when either dependency is unavailable. Connectivity readiness does not establish that migrations, provider freshness or analytics coverage are complete.
+
+`GET /api/sync/status` counts team season statistics under both supported metadata keys. It reports daemon automation as unverified until runtime evidence exists; a database count or a checked-in scraping script is not evidence of an active refresh schedule. There is no HTTP seed endpoint.
 
 ## Dependency Audit
 

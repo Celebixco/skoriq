@@ -1,17 +1,49 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomBytes, scrypt as scryptCallback } from "node:crypto";
-import { promisify } from "node:util";
 import pg from "pg";
 
-const scrypt = promisify(scryptCallback);
-const keyLength = 64;
+// This legacy catalog importer clears dependent analytics and predictions. It is
+// intentionally stricter than the ingestion readiness guard, which permits Neon
+// test branches: destructive catalog rebuilds are for disposable local DBs only.
+// Keep this guard in the emitted JS so the plain Node deployment path uses it too.
+export function assertLegacySeedAllowed(env: NodeJS.ProcessEnv, databaseUrl = env.DATABASE_URL): string {
+  if (env.NODE_ENV === "production") {
+    throw new Error("Legacy SofaScore rebuild is forbidden in production; use incremental provider ingestion.");
+  }
+  if (env.DB_EXECUTION_TARGET !== "local") {
+    throw new Error("Legacy SofaScore rebuild requires explicit DB_EXECUTION_TARGET=local.");
+  }
+  if (env.ALLOW_DESTRUCTIVE_SEED !== "true") {
+    throw new Error("Legacy SofaScore rebuild requires ALLOW_DESTRUCTIVE_SEED=true; FORCE_SEED is not consent.");
+  }
+  if (!databaseUrl) throw new Error("DATABASE_URL is required for a disposable local legacy rebuild.");
 
-export async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16).toString("base64url");
-  const derived = (await scrypt(password, salt, keyLength)) as Buffer;
-  return `scrypt$${salt}$${derived.toString("base64url")}`;
+  let parsed: URL;
+  try {
+    parsed = new URL(databaseUrl);
+  } catch {
+    throw new Error("Legacy SofaScore rebuild requires a valid local PostgreSQL URL.");
+  }
+  // pg accepts host overrides in query parameters; checking only URL.hostname
+  // would let a URL that appears local connect to a remote database instead.
+  if (["host", "hostaddr", "service", "servicefile"].some((key) => parsed.searchParams.has(key))) {
+    throw new Error("Legacy SofaScore rebuild refuses connection target overrides.");
+  }
+  const allowedHosts = new Set(["localhost", "127.0.0.1", "[::1]", "::1", "postgres", "postgres-test"]);
+  if (!["postgres:", "postgresql:"].includes(parsed.protocol) || !allowedHosts.has(parsed.hostname)) {
+    throw new Error("Legacy SofaScore rebuild is restricted to local PostgreSQL databases; remote targets are forbidden.");
+  }
+  let databaseName: string;
+  try {
+    databaseName = decodeURIComponent(parsed.pathname.slice(1));
+  } catch {
+    throw new Error("Legacy SofaScore rebuild requires a disposable local database name.");
+  }
+  if (!/(^|[-_.])(?:test|disposable)(?:[-_.]|$)/i.test(databaseName) || /(^|[-_.])(?:main|prod|production)(?:[-_.]|$)/i.test(databaseName)) {
+    throw new Error("Legacy SofaScore rebuild requires a clearly disposable local database name containing test or disposable, without main/prod/production.");
+  }
+  return databaseUrl;
 }
 
 export function slugify(text: string): string {
@@ -219,8 +251,12 @@ export async function insertTeamStats(
 }
 
 export async function seedInitialData(pool: pg.Pool) {
+  if (!pool.options?.connectionString) {
+    throw new Error("Legacy SofaScore rebuild requires the supplied pool's explicit local connectionString.");
+  }
+  assertLegacySeedAllowed(process.env, pool.options.connectionString);
   console.log("=================================================");
-  console.log("STARTING SOFASCORE ADVANCED DATA & TELEMETRY INGESTION");
+  console.log("STARTING LEGACY SOFASCORE DISPOSABLE TEST DATABASE REBUILD");
   console.log("=================================================");
 
   // Fast-path: check if authentic current season 26/27 matches are already seeded
@@ -233,7 +269,7 @@ export async function seedInitialData(pool: pg.Pool) {
       console.log(`Current season 26/27 matches already seeded (${currentSeasonMatchesCount} matches found). Skipping seed. Use FORCE_SEED=true to override.`);
       return;
     }
-  } catch (checkErr) {
+  } catch {
     // If table doesn't exist yet, proceed with migration/seed
   }
 
@@ -248,7 +284,7 @@ export async function seedInitialData(pool: pg.Pool) {
   const catalog: SofaScoreLeague[] = JSON.parse(fs.readFileSync(catalogPath, "utf-8"));
   console.log(`Loaded catalog with ${catalog.length} leagues.`);
 
-  // 2. Clean stale mock records
+  // 2. Destructively replace the explicitly opted-in disposable local catalog.
   await pool.query(`
     TRUNCATE TABLE football_match_team_statistics, football_match_scores, football_standings, matches, teams CASCADE;
     DELETE FROM provider_mappings WHERE entity_type IN ('team', 'match', 'competition', 'country', 'standing', 'football_match_team_statistics');
@@ -276,7 +312,7 @@ export async function seedInitialData(pool: pg.Pool) {
       if (c.slug) countryIdCache.set(c.slug, c.id);
       if (c.code) countryIdCache.set(c.code.toUpperCase(), c.id);
     }
-  } catch (err) {
+  } catch {
     // Ignore cache load failure
   }
 
@@ -387,7 +423,7 @@ export async function seedInitialData(pool: pg.Pool) {
         );
 
         // Generate unique slug
-        let baseSlug = slugify(team.slug || team.name);
+        const baseSlug = slugify(team.slug || team.name);
         const currentCount = slugCountMap.get(baseSlug) || 0;
         let uniqueSlug = baseSlug;
         if (currentCount > 0) {
@@ -542,7 +578,7 @@ export async function seedInitialData(pool: pg.Pool) {
           }
 
           if (playerRows.length > 0) {
-            const pValues: any[] = [];
+            const pValues: unknown[] = [];
             const pPlaceholders: string[] = [];
             let pIdx = 1;
 
@@ -573,7 +609,7 @@ export async function seedInitialData(pool: pg.Pool) {
               RETURNING id;
             `, pValues);
 
-            const mValues: any[] = [];
+            const mValues: unknown[] = [];
             const mPlaceholders: string[] = [];
             let mIdx = 1;
 
@@ -597,7 +633,7 @@ export async function seedInitialData(pool: pg.Pool) {
               `, mValues);
             }
           }
-        } catch (playerErr) {
+        } catch {
           // Ignore player batch error
         }
       }
@@ -695,7 +731,7 @@ export async function seedInitialData(pool: pg.Pool) {
                 totalMatchesIngested++;
               }
             }
-          } catch (rmErr) {
+          } catch {
             // Ignore single match error
           }
         }
@@ -859,18 +895,7 @@ export async function seedInitialData(pool: pg.Pool) {
   // 10. Generate and Populate Football Team Form Features
   await generateTeamFormFeatures(pool);
 
-  // 11. Ensure Admin User
-  const adminEmail = (process.env.ADMIN_EMAIL || "admin@skoriq.local").trim().toLowerCase();
-  const adminPassword = process.env.ADMIN_PASSWORD || "AdminPassword123!";
-  const passwordHash = await hashPassword(adminPassword);
-
-  await pool.query(`
-    INSERT INTO users (email, first_name, last_name, phone_number, password_hash, role, status)
-    VALUES ($1, 'SkorIQ', 'Admin', '+905550000000', $2, 'admin', 'active')
-    ON CONFLICT (email) DO UPDATE
-    SET role = 'admin', status = 'active', password_hash = EXCLUDED.password_hash, updated_at = now();
-  `, [adminEmail, passwordHash]);
-  console.log(`Admin user verified: ${adminEmail}`);
+  // Account provisioning belongs to auth:create-admin, never catalog ingestion.
 
   console.log("=================================================");
   console.log("INGESTION SUMMARY:");
@@ -893,7 +918,7 @@ async function generateTeamFormFeatures(pool: pg.Pool) {
   `);
 
   let featuresCreated = 0;
-  const featureRows: any[][] = [];
+  const featureRows: unknown[][] = [];
   for (const team of teamsRes.rows) {
     const matchesRes = await pool.query(`
       SELECT
@@ -930,8 +955,8 @@ async function generateTeamFormFeatures(pool: pg.Pool) {
 
     for (const scope of scopes) {
       let filtered = allMatches;
-      if (scope === "home") filtered = allMatches.filter((m: any) => m.is_home);
-      else if (scope === "away") filtered = allMatches.filter((m: any) => !m.is_home);
+      if (scope === "home") filtered = allMatches.filter((m: { is_home: boolean }) => m.is_home);
+      else if (scope === "away") filtered = allMatches.filter((m: { is_home: boolean }) => !m.is_home);
 
       if (filtered.length === 0) continue;
 
@@ -1059,7 +1084,7 @@ async function generateTeamFormFeatures(pool: pg.Pool) {
   for (let i = 0; i < featureRows.length; i += batchSize) {
     const chunk = featureRows.slice(i, i + batchSize);
     const placeholders: string[] = [];
-    const values: any[] = [];
+    const values: unknown[] = [];
     let pIdx = 1;
 
     for (const row of chunk) {
@@ -1120,7 +1145,7 @@ async function generateTeamFormFeatures(pool: pg.Pool) {
           updated_at = NOW();
       `, values);
       featuresCreated += chunk.length;
-    } catch (batchErr) {
+    } catch {
       // Continue on chunk error
     }
   }
@@ -1129,11 +1154,8 @@ async function generateTeamFormFeatures(pool: pg.Pool) {
 }
 
 async function main() {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    console.error("DATABASE_URL is required to run seed.");
-    process.exit(1);
-  }
+  // Refuse unsafe targets before even constructing a connection pool.
+  const databaseUrl = assertLegacySeedAllowed(process.env);
 
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 2 });
   try {
@@ -1148,5 +1170,8 @@ async function main() {
 
 const isDirectExecution = process.argv[1] && (process.argv[1].endsWith("db-seed.js") || process.argv[1].endsWith("db-seed.ts"));
 if (isDirectExecution) {
-  main();
+  main().catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : "Legacy SofaScore rebuild refused.");
+    process.exitCode = 1;
+  });
 }

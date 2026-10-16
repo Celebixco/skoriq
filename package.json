@@ -52,9 +52,13 @@
     "provider:football:player-availability-sync": "tsx scripts/provider-football-player-availability-sync.ts",
     "provider:football:upcoming-sync": "tsx scripts/provider-football-upcoming-sync.ts",
     "provider:raw-payload:reprocess": "tsx scripts/provider-raw-payload-reprocess.ts",
+    "provider:sofascore:team-statistics:fetch": "python scripts/sofascore_fetch_team_statistics.py",
+    "provider:sofascore:public-page:convert": "python scripts/sofascore_public_page_capture.py",
+    "provider:sofascore:team-statistics:sync": "tsx scripts/provider-sofascore-team-statistics-sync.ts",
     "sync:sofascore": "python scripts/sofascore_sync_daemon.py --once",
     "sync:sofascore:daemon": "python scripts/sofascore_sync_daemon.py",
     "test": "vitest run",
+    "test:sofascore": "python -m unittest discover -s scripts -p test_sofascore*.py",
     "test:integration": "npm run db:test:reset && npm run db:test:migrate && vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc -b"
   },

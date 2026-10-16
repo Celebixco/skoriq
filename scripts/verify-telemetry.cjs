@@ -34,10 +34,15 @@ function request(path, method = 'GET', data = null, cookie = null) {
 }
 
 async function run() {
+  const adminPassword = process.env.SKORIQ_ADMIN_PASSWORD;
+  if (!adminPassword) {
+    console.error('Set SKORIQ_ADMIN_PASSWORD to run this script.');
+    process.exit(1);
+  }
   console.log('1. Logging in as admin...');
   const loginRes = await request('/api/auth/login', 'POST', JSON.stringify({
     email: 'admin@skoriq.local',
-    password: 'AdminPassword123!'
+    password: adminPassword
   }));
   console.log('Login Status:', loginRes.status);
   const cookies = (loginRes.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');

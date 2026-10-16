@@ -51,7 +51,8 @@ export function buildSyncJobKey(payload: SyncJobPayload): string {
 }
 
 export function buildRawPayloadProcessingJobKey(payload: RawPayloadProcessingJobPayload): string {
-  return ["raw-payload", payload.entityType, payload.rawPayloadId, payload.syncJobId ?? "no-sync-job"].join(":");
+  const identityHash = sha256Hash([payload.entityType, payload.rawPayloadId, payload.syncJobId ?? null]);
+  return `raw-payload-${identityHash}`;
 }
 
 export interface QueueRegistration {

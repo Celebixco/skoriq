@@ -1,5 +1,10 @@
 const https = require('https');
 const depId = process.argv[2] || 'dhh0vl0mwu9xztkqoahwkgg4';
+const token = process.env.COOLIFY_API_TOKEN;
+if (!token) {
+  console.error('Set COOLIFY_API_TOKEN to run this script.');
+  process.exit(1);
+}
 
 async function check() {
   for (let i = 0; i < 40; i++) {
@@ -9,7 +14,7 @@ async function check() {
         hostname: 'coolify.flixify.vip',
         path: '/api/v1/deployments/' + depId,
         headers: {
-          'Authorization': 'Bearer 7|93JYnrLwU6hDp9fbzXBVXzFvcmfLuodnN94I7RVc02282450',
+          'Authorization': `Bearer ${token}`,
           'Accept': 'application/json'
         }
       }, (res) => {

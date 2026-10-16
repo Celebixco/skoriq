@@ -16,3 +16,7 @@ logs/
 .provider-samples/
 .provider-runs/
 .secrets/
+cookies.txt
+*.cookies.txt
+__pycache__/
+*.pyc

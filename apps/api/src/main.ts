@@ -20,6 +20,7 @@ function resolveCorsOrigins() {
 }
 
 app.setGlobalPrefix("api");
+app.enableShutdownHooks();
 app.enableCors({
   origin: resolveCorsOrigins(),
   methods: ["GET", "POST"],

@@ -157,7 +157,7 @@ export class FootballMemberPredictionPreviewService {
           m.id as match_id,
           m.scheduled_start_at as kickoff_at,
           m.status as match_status,
-          f.feature_status
+          coalesce(f.feature_status, case when dyn_hf.id is not null and dyn_af.id is not null then 'ready' else 'partial' end) as feature_status
         from matches m
         inner join sports s on s.id = m.sport_id and s.slug = 'football'
         left join lateral (
@@ -167,6 +167,16 @@ export class FootballMemberPredictionPreviewService {
           order by updated_at desc nulls last, created_at desc
           limit 1
         ) f on true
+        left join lateral (
+          select id from football_team_form_features
+          where team_id = m.home_team_id and window_size = 5
+          limit 1
+        ) dyn_hf on true
+        left join lateral (
+          select id from football_team_form_features
+          where team_id = m.away_team_id and window_size = 5
+          limit 1
+        ) dyn_af on true
         where m.id = ${matchId}
         limit 1
       `

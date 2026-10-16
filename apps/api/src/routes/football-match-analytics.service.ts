@@ -188,19 +188,34 @@ export class FootballMatchAnalyticsService {
           away.id as away_team_id,
           away.name as away_team,
           away.logo_url as away_team_logo_url,
-          f.feature_status,
-          f.home_form_feature_id,
-          f.away_form_feature_id,
-          f.h2h_feature_id,
-          f.home_form_coverage_score,
-          f.away_form_coverage_score,
-          f.h2h_coverage_score,
-          f.combined_coverage_score,
-          f.metadata_json,
-          home_form.scope as home_form_scope,
-          home_form.window_size as home_form_window_size,
-          away_form.scope as away_form_scope,
-          away_form.window_size as away_form_window_size,
+          coalesce(f.feature_status, 'ready') as feature_status,
+          coalesce(f.home_form_feature_id, dyn_hf.id) as home_form_feature_id,
+          coalesce(f.away_form_feature_id, dyn_af.id) as away_form_feature_id,
+          coalesce(f.h2h_feature_id, dyn_h2h.id) as h2h_feature_id,
+          coalesce(f.home_form_coverage_score, dyn_hf.coverage_score, 100) as home_form_coverage_score,
+          coalesce(f.away_form_coverage_score, dyn_af.coverage_score, 100) as away_form_coverage_score,
+          coalesce(f.h2h_coverage_score, dyn_h2h.coverage_score) as h2h_coverage_score,
+          coalesce(
+            f.combined_coverage_score,
+            round(
+              (coalesce(dyn_hf.coverage_score, 100) + coalesce(dyn_af.coverage_score, 100) + coalesce(dyn_h2h.coverage_score, 0)) /
+              (case when dyn_h2h.id is not null then 3.0 else 2.0 end),
+              2
+            )
+          ) as combined_coverage_score,
+          coalesce(
+            f.metadata_json,
+            jsonb_build_object(
+              'homeFormSampleSize', coalesce(dyn_hf.sample_size, 0),
+              'awayFormSampleSize', coalesce(dyn_af.sample_size, 0),
+              'h2hSampleSize', coalesce(dyn_h2h.sample_size, 0),
+              'h2hMissing', dyn_h2h.id is null or coalesce(dyn_h2h.sample_size, 0) = 0
+            )
+          ) as metadata_json,
+          coalesce(home_form.scope, dyn_hf.scope, 'overall') as home_form_scope,
+          coalesce(home_form.window_size, dyn_hf.window_size, 5) as home_form_window_size,
+          coalesce(away_form.scope, dyn_af.scope, 'overall') as away_form_scope,
+          coalesce(away_form.window_size, dyn_af.window_size, 5) as away_form_window_size,
           exists (${safePredictionExistsSql()}) as has_prediction_preview
         from matches m
         inner join sports s on s.id = m.sport_id and s.slug = 'football'
@@ -211,6 +226,28 @@ export class FootballMatchAnalyticsService {
         left join football_match_prediction_features f on f.match_id = m.id
           and f.form_window_size = 5
           and f.h2h_window_size = 5
+        left join lateral (
+          select id, scope, window_size, sample_size, coverage_score
+          from football_team_form_features
+          where team_id = home.id and window_size = 5
+          order by (case when scope = 'home' then 1 when scope = 'overall' then 2 else 3 end) asc, as_of_date desc
+          limit 1
+        ) dyn_hf on true
+        left join lateral (
+          select id, scope, window_size, sample_size, coverage_score
+          from football_team_form_features
+          where team_id = away.id and window_size = 5
+          order by (case when scope = 'away' then 1 when scope = 'overall' then 2 else 3 end) asc, as_of_date desc
+          limit 1
+        ) dyn_af on true
+        left join lateral (
+          select id, window_size, sample_size, coverage_score
+          from football_h2h_features
+          where ((team_a_id = home.id and team_b_id = away.id) or (team_a_id = away.id and team_b_id = home.id))
+            and window_size = 5
+          order by as_of_date desc
+          limit 1
+        ) dyn_h2h on true
         left join football_team_form_features home_form on home_form.id = f.home_form_feature_id
         left join football_team_form_features away_form on away_form.id = f.away_form_feature_id
         where m.id = ${matchId}
@@ -238,18 +275,27 @@ export class FootballMatchAnalyticsService {
           away.name as away_team,
           away.logo_url as away_team_logo_url,
           'ready' as feature_status,
-          null::uuid as home_form_feature_id,
-          null::uuid as away_form_feature_id,
-          null::uuid as h2h_feature_id,
-          100 as home_form_coverage_score,
-          100 as away_form_coverage_score,
-          null::numeric as h2h_coverage_score,
-          100 as combined_coverage_score,
-          '{}'::jsonb as metadata_json,
-          'overall' as home_form_scope,
-          5 as home_form_window_size,
-          'overall' as away_form_scope,
-          5 as away_form_window_size,
+          dyn_hf.id as home_form_feature_id,
+          dyn_af.id as away_form_feature_id,
+          dyn_h2h.id as h2h_feature_id,
+          coalesce(dyn_hf.coverage_score, 100) as home_form_coverage_score,
+          coalesce(dyn_af.coverage_score, 100) as away_form_coverage_score,
+          dyn_h2h.coverage_score as h2h_coverage_score,
+          round(
+            (coalesce(dyn_hf.coverage_score, 100) + coalesce(dyn_af.coverage_score, 100) + coalesce(dyn_h2h.coverage_score, 0)) /
+            (case when dyn_h2h.id is not null then 3.0 else 2.0 end),
+            2
+          ) as combined_coverage_score,
+          jsonb_build_object(
+            'homeFormSampleSize', coalesce(dyn_hf.sample_size, 0),
+            'awayFormSampleSize', coalesce(dyn_af.sample_size, 0),
+            'h2hSampleSize', coalesce(dyn_h2h.sample_size, 0),
+            'h2hMissing', dyn_h2h.id is null or coalesce(dyn_h2h.sample_size, 0) = 0
+          ) as metadata_json,
+          coalesce(dyn_hf.scope, 'overall') as home_form_scope,
+          coalesce(dyn_hf.window_size, 5) as home_form_window_size,
+          coalesce(dyn_af.scope, 'overall') as away_form_scope,
+          coalesce(dyn_af.window_size, 5) as away_form_window_size,
           false as has_prediction_preview
         from matches m
         inner join sports s on s.id = m.sport_id and s.slug = 'football'
@@ -257,6 +303,28 @@ export class FootballMatchAnalyticsService {
         left join countries co on co.id = c.country_id
         inner join teams home on home.id = m.home_team_id
         inner join teams away on away.id = m.away_team_id
+        left join lateral (
+          select id, scope, window_size, sample_size, coverage_score
+          from football_team_form_features
+          where team_id = home.id and window_size = 5
+          order by (case when scope = 'home' then 1 when scope = 'overall' then 2 else 3 end) asc, as_of_date desc
+          limit 1
+        ) dyn_hf on true
+        left join lateral (
+          select id, scope, window_size, sample_size, coverage_score
+          from football_team_form_features
+          where team_id = away.id and window_size = 5
+          order by (case when scope = 'away' then 1 when scope = 'overall' then 2 else 3 end) asc, as_of_date desc
+          limit 1
+        ) dyn_af on true
+        left join lateral (
+          select id, window_size, sample_size, coverage_score
+          from football_h2h_features
+          where ((team_a_id = home.id and team_b_id = away.id) or (team_a_id = away.id and team_b_id = home.id))
+            and window_size = 5
+          order by as_of_date desc
+          limit 1
+        ) dyn_h2h on true
         where m.id = ${matchId}
         limit 1
       `
@@ -282,19 +350,27 @@ export class FootballMatchAnalyticsService {
           away.id as away_team_id,
           away.name as away_team,
           away.logo_url as away_team_logo_url,
-          f.feature_status,
-          f.home_form_feature_id,
-          f.away_form_feature_id,
-          f.h2h_feature_id,
-          f.home_form_coverage_score,
-          f.away_form_coverage_score,
-          f.h2h_coverage_score,
-          f.combined_coverage_score,
-          f.metadata_json,
-          home_form.scope as home_form_scope,
-          home_form.window_size as home_form_window_size,
-          away_form.scope as away_form_scope,
-          away_form.window_size as away_form_window_size,
+          coalesce(f.feature_status, 'ready') as feature_status,
+          coalesce(f.home_form_feature_id, dyn_hf.id) as home_form_feature_id,
+          coalesce(f.away_form_feature_id, dyn_af.id) as away_form_feature_id,
+          coalesce(f.h2h_feature_id, dyn_h2h.id) as h2h_feature_id,
+          coalesce(f.home_form_coverage_score, dyn_hf.coverage_score, 100) as home_form_coverage_score,
+          coalesce(f.away_form_coverage_score, dyn_af.coverage_score, 100) as away_form_coverage_score,
+          coalesce(f.h2h_coverage_score, dyn_h2h.coverage_score) as h2h_coverage_score,
+          coalesce(f.combined_coverage_score, 100) as combined_coverage_score,
+          coalesce(
+            f.metadata_json,
+            jsonb_build_object(
+              'homeFormSampleSize', coalesce(dyn_hf.sample_size, 0),
+              'awayFormSampleSize', coalesce(dyn_af.sample_size, 0),
+              'h2hSampleSize', coalesce(dyn_h2h.sample_size, 0),
+              'h2hMissing', dyn_h2h.id is null or coalesce(dyn_h2h.sample_size, 0) = 0
+            )
+          ) as metadata_json,
+          coalesce(home_form.scope, dyn_hf.scope, 'overall') as home_form_scope,
+          coalesce(home_form.window_size, dyn_hf.window_size, 5) as home_form_window_size,
+          coalesce(away_form.scope, dyn_af.scope, 'overall') as away_form_scope,
+          coalesce(away_form.window_size, dyn_af.window_size, 5) as away_form_window_size,
           exists (${safePredictionExistsSql()}) as has_prediction_preview
         from football_match_prediction_features f
         inner join matches m on m.id = f.match_id
@@ -303,6 +379,28 @@ export class FootballMatchAnalyticsService {
         left join countries co on co.id = c.country_id
         inner join teams home on home.id = m.home_team_id
         inner join teams away on away.id = m.away_team_id
+        left join lateral (
+          select id, scope, window_size, sample_size, coverage_score
+          from football_team_form_features
+          where team_id = home.id and window_size = 5
+          order by (case when scope = 'home' then 1 when scope = 'overall' then 2 else 3 end) asc, as_of_date desc
+          limit 1
+        ) dyn_hf on true
+        left join lateral (
+          select id, scope, window_size, sample_size, coverage_score
+          from football_team_form_features
+          where team_id = away.id and window_size = 5
+          order by (case when scope = 'away' then 1 when scope = 'overall' then 2 else 3 end) asc, as_of_date desc
+          limit 1
+        ) dyn_af on true
+        left join lateral (
+          select id, window_size, sample_size, coverage_score
+          from football_h2h_features
+          where ((team_a_id = home.id and team_b_id = away.id) or (team_a_id = away.id and team_b_id = home.id))
+            and window_size = 5
+          order by as_of_date desc
+          limit 1
+        ) dyn_h2h on true
         left join football_team_form_features home_form on home_form.id = f.home_form_feature_id
         left join football_team_form_features away_form on away_form.id = f.away_form_feature_id
         where ${where}

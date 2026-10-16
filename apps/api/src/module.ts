@@ -5,6 +5,7 @@ import { AuthGuard } from "./auth/auth.guard.js";
 import { AuthService } from "./auth/auth.service.js";
 import { DashboardOverviewController } from "./routes/dashboard-overview.controller.js";
 import { DashboardOverviewService } from "./routes/dashboard-overview.service.js";
+import { DependencyReadinessService } from "./routes/dependency-readiness.service.js";
 import { FootballCatalogController } from "./routes/football-catalog.controller.js";
 import { FootballCatalogService } from "./routes/football-catalog.service.js";
 import { FootballMatchAnalyticsController } from "./routes/football-match-analytics.controller.js";
@@ -36,6 +37,7 @@ import { SyncStatusController } from "./routes/sync-status.controller.js";
     FootballPredictionSettlementsController
   ],
   providers: [
+    DependencyReadinessService,
     AuthService,
     AuthGuard,
     AdminGuard,

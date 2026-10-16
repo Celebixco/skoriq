@@ -1,5 +1,6 @@
 import urllib.request
 import json
+import os
 import ssl
 import http.cookiejar
 
@@ -10,7 +11,10 @@ cj = http.cookiejar.CookieJar()
 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj), urllib.request.HTTPSHandler(context=ctx))
 
 # Login
-login_data = json.dumps({'email': 'admin@skoriq.local', 'password': 'AdminPassword123!'}).encode()
+admin_password = os.environ.get('SKORIQ_ADMIN_PASSWORD')
+if not admin_password:
+    raise SystemExit('Set SKORIQ_ADMIN_PASSWORD to run this script.')
+login_data = json.dumps({'email': 'admin@skoriq.local', 'password': admin_password}).encode()
 req = urllib.request.Request('https://skoriq-api.87.76.130.252.sslip.io/api/auth/login', data=login_data, headers={'Content-Type': 'application/json'})
 try:
     with opener.open(req) as resp:

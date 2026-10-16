@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_secure_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}
       POSTGRES_DB: ${POSTGRES_DB:-sports_data}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -31,23 +31,21 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
-    command: ["sh", "-c", "node scripts/db-migrate.js; node apps/api/dist/main.js"]
+    command: ["sh", "-c", "node scripts/db-migrate.js && node apps/api/dist/main.js"]
     environment:
       NODE_ENV: production
       API_PORT: 3000
-      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres_secure_password}@postgres:5432/${POSTGRES_DB:-sports_data}
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
       REDIS_URL: redis://dragonfly:6379
       LOG_LEVEL: ${LOG_LEVEL:-info}
       AUTH_ENABLED: "true"
-      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-change_this_jwt_secret_in_coolify}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Set a random AUTH_JWT_SECRET of at least 32 characters}
       AUTH_COOKIE_NAME: betify_auth
       AUTH_TOKEN_TTL_SECONDS: ${AUTH_TOKEN_TTL_SECONDS:-86400}
-      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set the deployed frontend origin}
       MOCK_PROVIDER_ENABLED: "false"
       APIFOOTBALL_COM_ENABLED: ${APIFOOTBALL_COM_ENABLED:-false}
       APIFOOTBALL_COM_API_KEY: ${APIFOOTBALL_COM_API_KEY:-}
-      FORCE_SEED: ${FORCE_SEED:-false}
     expose:
       - "3000"
     ports:
@@ -80,11 +78,14 @@ services:
     command: ["node", "apps/worker/dist/main.js"]
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres_secure_password}@postgres:5432/${POSTGRES_DB:-sports_data}
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
       REDIS_URL: redis://dragonfly:6379
       LOG_LEVEL: ${LOG_LEVEL:-info}
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-3}
       MOCK_PROVIDER_ENABLED: "false"
+      AUTH_ENABLED: "true"
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Set a random AUTH_JWT_SECRET of at least 32 characters}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set the deployed frontend origin}
     depends_on:
       postgres:
         condition: service_healthy
@@ -99,12 +100,15 @@ services:
     command: ["node", "apps/scheduler/dist/main.js"]
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres_secure_password}@postgres:5432/${POSTGRES_DB:-sports_data}
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
       REDIS_URL: redis://dragonfly:6379
       LOG_LEVEL: ${LOG_LEVEL:-info}
       SCHEDULER_TICK_CRON: ${SCHEDULER_TICK_CRON:-*/15 * * * *}
       CLEANUP_CRON: ${CLEANUP_CRON:-0 3 * * *}
       MOCK_PROVIDER_ENABLED: "false"
+      AUTH_ENABLED: "true"
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Set a random AUTH_JWT_SECRET of at least 32 characters}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set the deployed frontend origin}
     depends_on:
       postgres:
         condition: service_healthy

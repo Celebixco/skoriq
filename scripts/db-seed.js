@@ -1,16 +1,42 @@
-// scripts/db-seed.ts
+// Generated from scripts/db-seed.ts; keep safety behavior synchronized.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomBytes, scrypt as scryptCallback } from "node:crypto";
-import { promisify } from "node:util";
 import pg from "pg";
-var scrypt = promisify(scryptCallback);
-var keyLength = 64;
-async function hashPassword(password) {
-  const salt = randomBytes(16).toString("base64url");
-  const derived = await scrypt(password, salt, keyLength);
-  return `scrypt$${salt}$${derived.toString("base64url")}`;
+function assertLegacySeedAllowed(env, databaseUrl = env.DATABASE_URL) {
+  if (env.NODE_ENV === "production") {
+    throw new Error("Legacy SofaScore rebuild is forbidden in production; use incremental provider ingestion.");
+  }
+  if (env.DB_EXECUTION_TARGET !== "local") {
+    throw new Error("Legacy SofaScore rebuild requires explicit DB_EXECUTION_TARGET=local.");
+  }
+  if (env.ALLOW_DESTRUCTIVE_SEED !== "true") {
+    throw new Error("Legacy SofaScore rebuild requires ALLOW_DESTRUCTIVE_SEED=true; FORCE_SEED is not consent.");
+  }
+  if (!databaseUrl) throw new Error("DATABASE_URL is required for a disposable local legacy rebuild.");
+  let parsed;
+  try {
+    parsed = new URL(databaseUrl);
+  } catch {
+    throw new Error("Legacy SofaScore rebuild requires a valid local PostgreSQL URL.");
+  }
+  if (["host", "hostaddr", "service", "servicefile"].some((key) => parsed.searchParams.has(key))) {
+    throw new Error("Legacy SofaScore rebuild refuses connection target overrides.");
+  }
+  const allowedHosts = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]", "::1", "postgres", "postgres-test"]);
+  if (!["postgres:", "postgresql:"].includes(parsed.protocol) || !allowedHosts.has(parsed.hostname)) {
+    throw new Error("Legacy SofaScore rebuild is restricted to local PostgreSQL databases; remote targets are forbidden.");
+  }
+  let databaseName;
+  try {
+    databaseName = decodeURIComponent(parsed.pathname.slice(1));
+  } catch {
+    throw new Error("Legacy SofaScore rebuild requires a disposable local database name.");
+  }
+  if (!/(^|[-_.])(?:test|disposable)(?:[-_.]|$)/i.test(databaseName) || /(^|[-_.])(?:main|prod|production)(?:[-_.]|$)/i.test(databaseName)) {
+    throw new Error("Legacy SofaScore rebuild requires a clearly disposable local database name containing test or disposable, without main/prod/production.");
+  }
+  return databaseUrl;
 }
 function slugify(text) {
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -95,8 +121,12 @@ async function insertTeamStats(pool, matchId, tId, oppId, s, rawItems) {
   ]);
 }
 async function seedInitialData(pool) {
+  if (!pool.options?.connectionString) {
+    throw new Error("Legacy SofaScore rebuild requires the supplied pool's explicit local connectionString.");
+  }
+  assertLegacySeedAllowed(process.env, pool.options.connectionString);
   console.log("=================================================");
-  console.log("STARTING SOFASCORE ADVANCED DATA & TELEMETRY INGESTION");
+  console.log("STARTING LEGACY SOFASCORE DISPOSABLE TEST DATABASE REBUILD");
   console.log("=================================================");
   const forceSeed = process.env.FORCE_SEED === "true";
   try {
@@ -106,7 +136,7 @@ async function seedInitialData(pool) {
       console.log(`Current season 26/27 matches already seeded (${currentSeasonMatchesCount} matches found). Skipping seed. Use FORCE_SEED=true to override.`);
       return;
     }
-  } catch (checkErr) {
+  } catch {
   }
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const catalogPath = path.resolve(__dirname, "sofascore_catalog.json");
@@ -137,7 +167,7 @@ async function seedInitialData(pool) {
       if (c.slug) countryIdCache.set(c.slug, c.id);
       if (c.code) countryIdCache.set(c.code.toUpperCase(), c.id);
     }
-  } catch (err) {
+  } catch {
   }
   async function getOrCreateCountry(name, code, slug) {
     const cleanSlug = slugify(slug || name);
@@ -222,7 +252,7 @@ async function seedInitialData(pool) {
           team.country_code || league.country_code,
           team.country_slug || league.country_slug
         );
-        let baseSlug = slugify(team.slug || team.name);
+        const baseSlug = slugify(team.slug || team.name);
         const currentCount = slugCountMap.get(baseSlug) || 0;
         let uniqueSlug = baseSlug;
         if (currentCount > 0) {
@@ -403,7 +433,7 @@ async function seedInitialData(pool) {
               `, mValues);
             }
           }
-        } catch (playerErr) {
+        } catch {
         }
       }
       if (team.recent_matches && Array.isArray(team.recent_matches)) {
@@ -487,7 +517,7 @@ async function seedInitialData(pool) {
                 totalMatchesIngested++;
               }
             }
-          } catch (rmErr) {
+          } catch {
           }
         }
       }
@@ -624,16 +654,6 @@ async function seedInitialData(pool) {
     console.log(`[INGESTED] ${league.country}: ${league.league_name} (${league.teams.length} teams, ${league.recent_matches?.length || 0} finished, ${league.upcoming_matches?.length || 0} upcoming)`);
   }
   await generateTeamFormFeatures(pool);
-  const adminEmail = (process.env.ADMIN_EMAIL || "admin@skoriq.local").trim().toLowerCase();
-  const adminPassword = process.env.ADMIN_PASSWORD || "AdminPassword123!";
-  const passwordHash = await hashPassword(adminPassword);
-  await pool.query(`
-    INSERT INTO users (email, first_name, last_name, phone_number, password_hash, role, status)
-    VALUES ($1, 'SkorIQ', 'Admin', '+905550000000', $2, 'admin', 'active')
-    ON CONFLICT (email) DO UPDATE
-    SET role = 'admin', status = 'active', password_hash = EXCLUDED.password_hash, updated_at = now();
-  `, [adminEmail, passwordHash]);
-  console.log(`Admin user verified: ${adminEmail}`);
   console.log("=================================================");
   console.log("INGESTION SUMMARY:");
   console.log(`  Total Competitions Ingested: ${catalog.length}`);
@@ -904,17 +924,13 @@ async function generateTeamFormFeatures(pool) {
           updated_at = NOW();
       `, values);
       featuresCreated += chunk.length;
-    } catch (batchErr) {
+    } catch {
     }
   }
   console.log(`Team form features generation complete! (${featuresCreated} feature rows written)`);
 }
 async function main() {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    console.error("DATABASE_URL is required to run seed.");
-    process.exit(1);
-  }
+  const databaseUrl = assertLegacySeedAllowed(process.env);
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 2 });
   try {
     await seedInitialData(pool);
@@ -927,10 +943,13 @@ async function main() {
 }
 const isDirectExecution = process.argv[1] && (process.argv[1].endsWith("db-seed.js") || process.argv[1].endsWith("db-seed.ts"));
 if (isDirectExecution) {
-  main();
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : "Legacy SofaScore rebuild refused.");
+    process.exitCode = 1;
+  });
 }
 export {
-  hashPassword,
+  assertLegacySeedAllowed,
   insertTeamStats,
   seedInitialData,
   slugify

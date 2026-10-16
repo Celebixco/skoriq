@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "./env.js";
 
+const productionAuth = {
+  AUTH_ENABLED: "true",
+  AUTH_JWT_SECRET: "production-signing-key-validation-fixture"
+};
+
 describe("loadConfig", () => {
   it("fails fast when mock provider is enabled in production", () => {
     expect(() =>
@@ -80,6 +85,7 @@ describe("loadConfig", () => {
 
   it("allows APIFootball.com provider usage in production when explicitly approved", () => {
     const config = loadConfig({
+      ...productionAuth,
       NODE_ENV: "production",
       DATABASE_URL: "postgres://postgres:postgres@localhost:5432/sports_data",
       REDIS_URL: "redis://localhost:6379",
@@ -105,6 +111,7 @@ describe("loadConfig", () => {
 
   it("allows production config with an explicit frontend origin", () => {
     const config = loadConfig({
+      ...productionAuth,
       NODE_ENV: "production",
       DATABASE_URL: "postgres://postgres:postgres@localhost:5432/sports_data",
       REDIS_URL: "redis://localhost:6379",
@@ -112,5 +119,90 @@ describe("loadConfig", () => {
     });
 
     expect(config.FRONTEND_ORIGIN).toBe("https://skoriq.com");
+  });
+
+  it.each([undefined, "false"])("rejects production with AUTH_ENABLED=%s", (authEnabled) => {
+    expect(() =>
+      loadConfig({
+        NODE_ENV: "production",
+        DATABASE_URL: "postgres://postgres:postgres@localhost:5432/sports_data",
+        REDIS_URL: "redis://localhost:6379",
+        FRONTEND_ORIGIN: "https://skoriq.com",
+        AUTH_ENABLED: authEnabled,
+        AUTH_JWT_SECRET: productionAuth.AUTH_JWT_SECRET
+      })
+    ).toThrow("AUTH_ENABLED must be true in production.");
+  });
+
+  it("rejects production auth without a JWT secret", () => {
+    expect(() =>
+      loadConfig({
+        NODE_ENV: "production",
+        DATABASE_URL: "postgres://postgres:postgres@localhost:5432/sports_data",
+        REDIS_URL: "redis://localhost:6379",
+        FRONTEND_ORIGIN: "https://skoriq.com",
+        AUTH_ENABLED: "true"
+      })
+    ).toThrow("AUTH_JWT_SECRET is required when AUTH_ENABLED=true.");
+  });
+
+  it.each(["x".repeat(31), " ".repeat(32), ` ${"x".repeat(30)} `])("rejects short or blank production JWT secrets", (secret) => {
+    expect(() =>
+      loadConfig({
+        ...productionAuth,
+        NODE_ENV: "production",
+        DATABASE_URL: "postgres://postgres:postgres@localhost:5432/sports_data",
+        REDIS_URL: "redis://localhost:6379",
+        FRONTEND_ORIGIN: "https://skoriq.com",
+        AUTH_JWT_SECRET: secret
+      })
+    ).toThrow("AUTH_JWT_SECRET must contain at least 32 non-padding characters in production.");
+  });
+
+  it.each([
+    "change_this_jwt_secret_in_coolify",
+    "change-me-production-signing-key-fixture",
+    "changeme-production-signing-key-fixture",
+    "replace-me-production-signing-key-fixture",
+    "placeholder-production-signing-key-fixture",
+    "example-production-signing-key-fixture",
+    "test-secret-production-signing-key-fixture"
+  ])("rejects placeholder production JWT secrets", (secret) => {
+    expect(() =>
+      loadConfig({
+        ...productionAuth,
+        NODE_ENV: "production",
+        DATABASE_URL: "postgres://postgres:postgres@localhost:5432/sports_data",
+        REDIS_URL: "redis://localhost:6379",
+        FRONTEND_ORIGIN: "https://skoriq.com",
+        AUTH_JWT_SECRET: secret
+      })
+    ).toThrow("AUTH_JWT_SECRET cannot be a placeholder in production.");
+  });
+
+  it("accepts production auth with a 32-character secret and an explicit CORS origin", () => {
+    const config = loadConfig({
+      NODE_ENV: "production",
+      DATABASE_URL: "postgres://postgres:postgres@localhost:5432/sports_data",
+      REDIS_URL: "redis://localhost:6379",
+      CORS_ORIGIN: "https://skoriq.com",
+      AUTH_ENABLED: "true",
+      AUTH_JWT_SECRET: "0123456789abcdef0123456789abcdef"
+    });
+
+    expect(config.AUTH_ENABLED).toBe(true);
+    expect(config.CORS_ORIGIN).toBe("https://skoriq.com");
+  });
+
+  it.each(["development", "test"])("preserves short JWT secrets in %s", (nodeEnv) => {
+    const config = loadConfig({
+      NODE_ENV: nodeEnv,
+      DATABASE_URL: "postgres://postgres:postgres@localhost:5432/sports_data",
+      REDIS_URL: "redis://localhost:6379",
+      AUTH_ENABLED: "true",
+      AUTH_JWT_SECRET: "test-secret"
+    });
+
+    expect(config.AUTH_ENABLED).toBe(true);
   });
 });

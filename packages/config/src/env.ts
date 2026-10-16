@@ -88,8 +88,22 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error("FRONTEND_ORIGIN or CORS_ORIGIN is required in production.");
   }
 
+  if (config.NODE_ENV === "production" && !config.AUTH_ENABLED) {
+    throw new Error("AUTH_ENABLED must be true in production.");
+  }
+
   if (config.AUTH_ENABLED && !config.AUTH_JWT_SECRET) {
     throw new Error("AUTH_JWT_SECRET is required when AUTH_ENABLED=true.");
+  }
+
+  if (config.NODE_ENV === "production") {
+    const secret = config.AUTH_JWT_SECRET?.trim() ?? "";
+    if (secret.length < 32) {
+      throw new Error("AUTH_JWT_SECRET must contain at least 32 non-padding characters in production.");
+    }
+    if (/^(?:change[-_\s]*(?:me|this)|replace[-_\s]*me|placeholder|example|test[-_\s]*secret)(?:$|[-_\s])/i.test(secret)) {
+      throw new Error("AUTH_JWT_SECRET cannot be a placeholder in production.");
+    }
   }
 
   return config;

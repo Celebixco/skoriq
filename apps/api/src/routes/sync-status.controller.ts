@@ -1,4 +1,4 @@
-import { Controller, Get, Post, UseGuards } from "@nestjs/common";
+import { Controller, Get } from "@nestjs/common";
 import { allQueueNames } from "@sports-data/queue";
 import { loadConfig } from "@sports-data/config";
 import pg from "pg";
@@ -16,7 +16,14 @@ export class SyncStatusController {
     try {
       const [compRes, teamRes, matchRes, statRes, playerRes] = await Promise.all([
         pool.query("SELECT COUNT(*) AS total FROM competitions"),
-        pool.query("SELECT COUNT(*) AS total, COUNT(CASE WHEN metadata_json->'season_statistics' IS NOT NULL THEN 1 END) AS with_stats FROM teams"),
+        pool.query(`
+          SELECT COUNT(*) AS total,
+            COUNT(CASE WHEN
+              jsonb_typeof(coalesce(nullif(metadata_json->'seasonStatistics', 'null'::jsonb), metadata_json->'season_statistics')) = 'object'
+              AND coalesce(nullif(metadata_json->'seasonStatistics', 'null'::jsonb), metadata_json->'season_statistics') <> '{}'::jsonb
+              THEN 1 END) AS with_stats
+          FROM teams
+        `),
         pool.query("SELECT COUNT(*) AS total, COUNT(CASE WHEN status = 'finished' THEN 1 END) AS finished, COUNT(CASE WHEN status = 'scheduled' THEN 1 END) AS scheduled FROM matches"),
         pool.query("SELECT COUNT(DISTINCT match_id) AS matches_with_stats, COUNT(*) AS total_records FROM football_match_team_statistics"),
         pool.query("SELECT COUNT(*) AS total FROM players").catch(() => ({ rows: [{ total: 0 }] }))
@@ -39,9 +46,9 @@ export class SyncStatusController {
           playersCount: Number(playerRes.rows[0]?.total || 0)
         },
         automation: {
-          daemonEnabled: true,
-          mode: "continuous",
-          intervalHours: 3,
+          daemonEnabled: null,
+          mode: "not_verified",
+          intervalHours: null,
           source: "sofascore_catalog.json"
         },
         timestamp: new Date().toISOString()

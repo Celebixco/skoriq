@@ -8,3 +8,13 @@ coverage
 !.env.example
 npm-debug.log*
 .DS_Store
+.secrets
+**/.secrets
+.provider-samples
+.provider-runs
+cookies.txt
+**/cookies.txt
+*.cookies.txt
+**/*.cookies.txt
+**/__pycache__
+**/*.pyc

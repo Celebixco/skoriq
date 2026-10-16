@@ -3,6 +3,7 @@ import { loadConfig } from "@sports-data/config";
 import { createDatabase } from "@sports-data/database";
 import type { Database } from "@sports-data/database";
 import { sql } from "drizzle-orm";
+import { selectFootballTeamSeasonStatistics } from "./football-team-season-statistics.js";
 
 export interface FootballCatalogPagination {
   limit: number;
@@ -469,6 +470,7 @@ export interface TeamProfileIdentityRow {
   primary_competition_id: string | null;
   primary_competition_name: string | null;
   primary_competition_country: string | null;
+  primary_competition_metadata_json?: Record<string, unknown> | null;
   metadata_json?: Record<string, unknown> | null;
 }
 
@@ -1295,7 +1297,8 @@ export class FootballCatalogService {
           co.name as country,
           pc.competition_id as primary_competition_id,
           pc.competition_name as primary_competition_name,
-          pc.competition_country as primary_competition_country
+          pc.competition_country as primary_competition_country,
+          pc.competition_metadata_json as primary_competition_metadata_json
         from teams t
         inner join sports s on s.id = t.sport_id and s.slug = 'football'
         left join countries co on co.id = t.country_id
@@ -1303,7 +1306,8 @@ export class FootballCatalogService {
           select
             c.id as competition_id,
             c.name as competition_name,
-            cco.name as competition_country
+            cco.name as competition_country,
+            c.metadata_json as competition_metadata_json
           from (
             select fs.competition_id, 2 as priority, fs.updated_at as sort_date
             from football_standings fs
@@ -2064,7 +2068,7 @@ export function mapTeamProfileIdentityRow(row: TeamProfileIdentityRow): Football
             country: row.primary_competition_country
           }
         : null,
-    seasonStatistics: (row.metadata_json?.seasonStatistics as Record<string, unknown>) ?? null
+    seasonStatistics: selectFootballTeamSeasonStatistics(row.metadata_json, row.primary_competition_metadata_json)
   };
 }
 

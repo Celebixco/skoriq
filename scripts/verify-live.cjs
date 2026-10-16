@@ -1,7 +1,13 @@
 const https = require('https');
 
+const adminPassword = process.env.SKORIQ_ADMIN_PASSWORD;
+if (!adminPassword) {
+  console.error('Set SKORIQ_ADMIN_PASSWORD to run this script.');
+  process.exit(1);
+}
+
 function postLogin() {
-  const data = JSON.stringify({ email: 'admin@skoriq.local', password: 'AdminPassword123!' });
+  const data = JSON.stringify({ email: 'admin@skoriq.local', password: adminPassword });
   const req = https.request({
     hostname: 'skoriq-api.87.76.130.252.sslip.io',
     path: '/api/auth/login',
