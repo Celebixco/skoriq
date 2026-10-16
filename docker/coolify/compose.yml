@@ -20,11 +20,10 @@ services:
     command: ["dragonfly", "--cache_mode=true", "--dir=/data"]
     volumes:
       - dragonfly_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+    # The current dragonfly image no longer ships redis-cli, so the old
+    # healthcheck could never pass and blocked every dependent service.
+    # Dependents wait for service_started; real Redis readiness is
+    # validated by /api/health/ready after startup.
 
   api:
     build:
@@ -54,7 +53,7 @@ services:
       postgres:
         condition: service_healthy
       dragonfly:
-        condition: service_healthy
+        condition: service_started
 
   dashboard:
     build:
@@ -90,7 +89,7 @@ services:
       postgres:
         condition: service_healthy
       dragonfly:
-        condition: service_healthy
+        condition: service_started
 
   scheduler:
     build:
@@ -113,7 +112,7 @@ services:
       postgres:
         condition: service_healthy
       dragonfly:
-        condition: service_healthy
+        condition: service_started
 
 volumes:
   postgres_data:
