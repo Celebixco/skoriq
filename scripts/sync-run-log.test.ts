@@ -5,6 +5,8 @@ describe("sync run log helper", () => {
   it("parses all required flags", () => {
     const options = parseSyncRunLogArgs(["--job", "finished-matches", "--status", "fetch_failed", "--mode", "dry_run", "--summary", '{"a":1}', "--error", "fetch_failed"]);
     expect(options).toEqual({ job: "finished-matches", status: "fetch_failed", mode: "dry_run", summary: '{"a":1}', error: "fetch_failed" });
+    expect(parseSyncRunLogArgs(["--job", "finished-matches", "--status", "running", "--mode", "dry_run", "--summary", "{}", "--message", "fetch_completed"]))
+      .toEqual({ job: "finished-matches", status: "running", mode: "dry_run", summary: "{}", message: "fetch_completed" });
   });
 
   it.each([

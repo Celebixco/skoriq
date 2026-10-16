@@ -136,6 +136,7 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
         fetch_command += ["--catalog", catalog]
     fetch_result = runner(fetch_command, capture_output=True, text=True, timeout=timeout)
     fetch_summary = parse_last_json_line(fetch_result.stdout or "")
+    log_step(job, env, "fetch_completed", {"fetchSummary": fetch_summary, "captureExists": capture.exists()}, runner=runner)
 
     import_summary: dict[str, Any] | None = None
     import_status = "skipped_no_capture"
@@ -199,6 +200,20 @@ def log_run_outcome(job: Job, env: dict[str, str], summary: dict[str, Any], *, r
 def node_binary() -> str:
     # Node runs the TypeScript entry points natively (type stripping); tsx is not required.
     return shutil.which("node") or "node"
+
+
+def log_step(job: Job, env: dict[str, str], step: str, payload: dict[str, Any], *, runner: Runner) -> None:
+    # Step markers make a slow fetch or importer visible while it is still running.
+    if not env.get("DATABASE_URL"):
+        return
+    command = [node_binary(), str(ROOT / "scripts" / "sync-run-log.ts"), "--job", job.name,
+               "--status", "running",
+               "--mode", "execute" if env.get("SYNC_EXECUTE", "0").strip().lower() in {"1", "true", "yes"} else "dry_run",
+               "--summary", json.dumps(payload, ensure_ascii=False), "--message", step]
+    try:
+        runner(command, capture_output=True, text=True, timeout=60)
+    except Exception:
+        return
 
 
 def send_heartbeat(env: dict[str, str], *, runner: Runner = subprocess.run) -> None:

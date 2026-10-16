@@ -115,23 +115,27 @@ class RunJobTests(unittest.TestCase):
         summary = service.run_job(self.job, {"DATABASE_URL": "postgres://example"}, self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["status"], "fetch_failed")
         helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
-        self.assertEqual(len(helper), 1)
-        self.assertIn("fetch_failed", helper[0])
-        self.assertIn("--error", helper[0])
+        self.assertEqual(len(helper), 2)
+        self.assertIn("fetch_completed", helper[0])
+        self.assertIn("fetch_failed", helper[-1])
+        self.assertIn("--error", helper[-1])
 
     def test_import_failure_is_recorded_via_run_log_helper(self):
         runner = FakeRunner(import_returncode=1)
         summary = service.run_job(self.job, {"DATABASE_URL": "postgres://example"}, self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["status"], "import_failed")
         helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
-        self.assertEqual(len(helper), 1)
-        self.assertIn("import_failed", helper[0])
+        self.assertEqual(len(helper), 2)
+        self.assertIn("fetch_completed", helper[0])
+        self.assertIn("import_failed", helper[-1])
 
     def test_executed_run_is_not_double_logged(self):
         runner = FakeRunner()
         summary = service.run_job(self.job, {"DATABASE_URL": "postgres://example"}, self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["status"], "succeeded")
-        self.assertEqual([command for command in runner.commands if any("sync-run-log.ts" in part for part in command)], [])
+        helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
+        self.assertEqual(len(helper), 1)
+        self.assertIn("fetch_completed", helper[0])
 
     def test_containment_keeps_service_alive_and_updates_state(self):
         def failing_runner(command, **kwargs):

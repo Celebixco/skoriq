@@ -7,6 +7,7 @@ interface Options {
   mode: string;
   summary: string;
   error?: string;
+  message?: string;
 }
 
 interface JobIdentity {
@@ -24,7 +25,7 @@ export function parseSyncRunLogArgs(args: string[]): Options {
   const options: Partial<Options> = {};
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
-    if (["--job", "--status", "--mode", "--summary", "--error"].includes(arg)) {
+    if (["--job", "--status", "--mode", "--summary", "--error", "--message"].includes(arg)) {
       const value = args[++index];
       if (!value) throw new Error(`${arg} requires a value.`);
       (options as Record<string, string>)[arg.slice(2)] = value;
@@ -75,8 +76,8 @@ export async function writeSyncRunLog(options: Options, databaseUrl: string): Pr
     `, [
       jobId,
       failed ? "error" : "info",
-      `${options.job} ${options.status} (${options.mode})`,
-      JSON.stringify({ status: options.status, mode: options.mode, error: options.error ?? null, summary })
+      options.message ?? `${options.job} ${options.status} (${options.mode})`,
+      JSON.stringify({ status: options.status, mode: options.mode, error: options.error ?? null, message: options.message ?? null, summary })
     ]);
   } finally {
     await pool.end().catch(() => {});
