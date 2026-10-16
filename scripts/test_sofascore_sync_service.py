@@ -48,6 +48,7 @@ class FakeRunner:
         if any("provider-sofascore-matches-sync.ts" in part for part in command):
             capture_arg = command[command.index("--capture") + 1]
             tournament_id = int(Path(capture_arg).stem.rsplit("-t", 1)[1])
+            Path(f"{capture_arg}.progress").write_text("2026-10-16T12:00:00.000Z cli_start\n2026-10-16T12:00:00.100Z begin_logged\n", encoding="utf-8")
             if tournament_id in self.fail_tournaments or self.import_returncode != 0:
                 return completed(command, 1, "", stderr="boom postgres://user:secret@db:5432/x failed")
             return completed(command, 0, json.dumps(self.import_summary) + "\nnoise line")
@@ -110,6 +111,7 @@ class RunJobTests(unittest.TestCase):
         self.assertEqual(summary["fetchSummary"]["partsPublished"], 2)
         self.assertEqual(len(summary["importSummary"]["parts"]), 2)
         self.assertEqual(summary["importSummary"]["counts"], {"planned_update": 4})
+        self.assertIn("begin_logged", summary["importSummary"]["parts"][0]["progressTail"])
         fetch_commands = [command for command in runner.commands if "sofascore_fetch_recent_matches.py" in command[1]]
         import_commands = [command for command in runner.commands if any("provider-sofascore-matches-sync.ts" in part for part in command)]
         self.assertEqual(len(fetch_commands), 2)

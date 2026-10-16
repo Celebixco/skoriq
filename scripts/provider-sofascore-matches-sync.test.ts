@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { parseSofaScoreMatchesArgs, runSofaScoreMatchesSync } from "./provider-sofascore-matches-sync.js";
 import type { SofaScoreMatchesDependencies } from "./provider-sofascore-matches-sync.js";
 
@@ -281,6 +284,19 @@ describe("SofaScore finished matches refresh", () => {
     const report = await runSofaScoreMatchesSync({ execute: false, capturePath: "capture.json", logRun: false }, data.dependencies);
     expect(report.entries[0]).toMatchObject({ action: "event_timeout", providerMatchId: "6001" });
     expect(report.entries[1]).toMatchObject({ action: "planned_update", providerMatchId: "6002" });
+  });
+
+  it("writes stage beacons next to the capture file", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "sofascore-beacon-"));
+    const capturePath = join(directory, "capture.json");
+    await writeFile(capturePath, JSON.stringify(capture()));
+    const data = fixture({ env: {} });
+    await runSofaScoreMatchesSync({ execute: false, capturePath, logRun: false }, data.dependencies);
+    const progress = await readFile(`${capturePath}.progress`, "utf8");
+    expect(progress).toContain("pool_setup");
+    expect(progress).toContain("database_configured");
+    expect(progress).toContain("capture_validated events=1");
+    expect(progress).toContain("loop_done");
   });
 
   it("keeps the refresh result when run logging fails", async () => {

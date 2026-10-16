@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { appendFile, readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
 
@@ -90,9 +90,8 @@ export async function runSofaScoreMatchesSync(
   }
 
   const startedAt = now();
-  const capture = await (dependencies.readCapture ?? readCaptureFile)(options.capturePath);
-  const events = validateCapture(capture);
-
+  const beacon = createBeacon(options.capturePath);
+  await beacon("pool_setup");
   const pool = env.DATABASE_URL && !dependencies.database
     ? new pg.Pool({
         connectionString: env.DATABASE_URL,
@@ -107,12 +106,17 @@ export async function runSofaScoreMatchesSync(
   // Transient pool errors must never crash a long refresh run.
   pool?.on("error", () => {});
   const database = env.DATABASE_URL ? dependencies.database ?? pool : undefined;
+  await beacon("database_configured");
+  const capture = await (dependencies.readCapture ?? readCaptureFile)(options.capturePath);
+  const events = validateCapture(capture);
+  await beacon(`capture_validated events=${events.length}`);
 
   let syncJobId: string | undefined;
   let loggingError: string | undefined;
   if (database && options.logRun) {
     try {
       syncJobId = await beginSyncRun(database, startedAt);
+      await beacon("begin_logged");
     } catch (error) {
       loggingError = error instanceof Error ? error.message : "sync run logging failed";
     }
@@ -144,6 +148,7 @@ export async function runSofaScoreMatchesSync(
   } finally {
     await pool?.end();
   }
+  await beacon("loop_done");
 
   const counts = entries.reduce<Record<string, number>>((accumulator, entry) => {
     accumulator[entry.action] = (accumulator[entry.action] ?? 0) + 1;
@@ -415,6 +420,17 @@ function validateDatabaseUrl(databaseUrl: string): void {
   }
 }
 
+function createBeacon(capturePath: string) {
+  const progressPath = `${capturePath}.progress`;
+  return async (stage: string): Promise<void> => {
+    try {
+      await appendFile(progressPath, `${new Date().toISOString()} ${stage}\n`, "utf8");
+    } catch {
+      // Beacons are diagnostics only; a failure to write must never matter.
+    }
+  };
+}
+
 async function readCaptureFile(capturePath: string): Promise<unknown> {
   let raw: string;
   try {
@@ -625,7 +641,10 @@ const insertSyncLogSql = `INSERT INTO sync_job_logs (sync_job_id, level, message
   VALUES ($1::uuid, $2, $3, $4::jsonb)`;
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  runSofaScoreMatchesSync(parseSofaScoreMatchesArgs(process.argv.slice(2)))
+  const options = parseSofaScoreMatchesArgs(process.argv.slice(2));
+  const beacon = createBeacon(options.capturePath);
+  beacon("cli_start")
+    .then(() => runSofaScoreMatchesSync(options))
     .then((report) => console.log(JSON.stringify(report)))
     .catch((error: unknown) => {
       console.error(error instanceof Error ? error.message.replace(/postgres(?:ql)?:\/\/[^\s]+/gi, "DATABASE_URL=<redacted>") : "SofaScore matches refresh failed.");

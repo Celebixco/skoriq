@@ -245,18 +245,31 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
 
 def import_part(job: Job, part_path: Path, env: dict[str, str], execute: bool, timeout: int, runner: Runner) -> dict[str, Any]:
     tournament_id = int(part_path.stem.rsplit("-t", 1)[1])
+    progress_path = Path(f"{part_path}.progress")
+    progress_path.unlink(missing_ok=True)
     command = [node_binary(), str(job.import_script), "--capture", str(part_path)]
     if execute:
         command.append("--execute")
+
+    def progress_tail() -> str | None:
+        try:
+            lines = progress_path.read_text(encoding="utf-8").strip().splitlines()
+        except OSError:
+            return None
+        return redact(" | ".join(lines[-5:])) if lines else None
+
     try:
         result = runner(command, capture_output=True, text=True, timeout=timeout)
     except Exception as error:
-        return {"tournamentId": tournament_id, "status": "import_timeout", "error": type(error).__name__}
+        return {"tournamentId": tournament_id, "status": "import_timeout",
+                "error": type(error).__name__, "progressTail": progress_tail()}
     summary = parse_last_json_line(result.stdout or "")
     if result.returncode == 0 and summary:
-        return {"tournamentId": tournament_id, "status": "executed", "counts": summary.get("counts"), "queriesExecuted": summary.get("queriesExecuted")}
+        return {"tournamentId": tournament_id, "status": "executed", "counts": summary.get("counts"),
+                "queriesExecuted": summary.get("queriesExecuted"), "progressTail": progress_tail()}
     stderr_tail = redact((result.stderr or "").strip()[-400:])
-    return {"tournamentId": tournament_id, "status": "import_failed", "error": stderr_tail or f"exit {result.returncode}"}
+    return {"tournamentId": tournament_id, "status": "import_failed",
+            "error": stderr_tail or f"exit {result.returncode}", "progressTail": progress_tail()}
 
 
 def classify_run_status(fetched_any: bool, import_status: str) -> str:
