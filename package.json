@@ -57,6 +57,8 @@
     "provider:sofascore:team-statistics:sync": "tsx scripts/provider-sofascore-team-statistics-sync.ts",
     "provider:sofascore:matches:fetch": "python scripts/sofascore_fetch_recent_matches.py",
     "provider:sofascore:matches:sync": "tsx scripts/provider-sofascore-matches-sync.ts",
+    "provider:sofascore:standings:fetch": "python scripts/sofascore_fetch_standings.py",
+    "provider:sofascore:standings:sync": "tsx scripts/provider-sofascore-standings-sync.ts",
     "sync:service": "python scripts/sofascore_sync_service.py",
     "sync:sofascore": "python scripts/sofascore_sync_daemon.py --once",
     "sync:sofascore:daemon": "python scripts/sofascore_sync_daemon.py",

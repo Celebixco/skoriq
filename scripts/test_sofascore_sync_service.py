@@ -32,20 +32,24 @@ class FakeRunner:
 
     def __call__(self, command, **kwargs):
         self.commands.append(list(command))
-        if "sofascore_fetch_recent_matches.py" in command[1]:
+        if "sofascore_fetch_" in command[1]:
             tournament_id = int(command[command.index("--tournament-id") + 1])
             if self.publish:
                 output = Path(command[command.index("--output") + 1])
                 output.parent.mkdir(parents=True, exist_ok=True)
-                output.write_text(json.dumps({
-                    "source": "sofascore",
-                    "capturedAt": "2026-10-16T12:00:00.000Z",
-                    "tournaments": [{"sofascore_tournament_id": tournament_id, "season_id": 1,
-                                     "events": [{"sofascore_id": tournament_id * 100 + 1}]}],
-                }), encoding="utf-8")
+                if "standings" in command[1]:
+                    document = {"source": "sofascore-standings", "capturedAt": "2026-10-16T12:00:00.000Z",
+                                "tournaments": [{"sofascore_tournament_id": tournament_id, "season_id": 1, "standings": [
+                                    {"team_id": tournament_id * 100 + 1, "position": 1, "played": 8, "wins": 6, "draws": 1,
+                                     "losses": 1, "goals_for": 18, "goals_against": 6, "points": 19}]}]}
+                else:
+                    document = {"source": "sofascore", "capturedAt": "2026-10-16T12:00:00.000Z",
+                                "tournaments": [{"sofascore_tournament_id": tournament_id, "season_id": 1,
+                                                 "events": [{"sofascore_id": tournament_id * 100 + 1}]}]}
+                output.write_text(json.dumps(document), encoding="utf-8")
             return completed(command, 0, json.dumps({"fetched_leagues": 1 if self.publish else 0,
                                                      "events_total": 1 if self.publish else 0}))
-        if any("provider-sofascore-matches-sync.ts" in part for part in command):
+        if any("provider-sofascore-matches-sync.ts" in part or "provider-sofascore-standings-sync.ts" in part for part in command):
             capture_arg = command[command.index("--capture") + 1]
             tournament_id = int(Path(capture_arg).stem.rsplit("-t", 1)[1])
             Path(f"{capture_arg}.progress").write_text("2026-10-16T12:00:00.000Z cli_start\n2026-10-16T12:00:00.100Z begin_logged\n", encoding="utf-8")
@@ -62,11 +66,12 @@ class JobTests(unittest.TestCase):
         jobs = service.build_jobs({"SYNC_FINISHED_INTERVAL_MINUTES": "5"})
         self.assertEqual(jobs[0].interval_minutes, 15)
         jobs = service.build_jobs({})
-        self.assertEqual(len(jobs), 2)
+        self.assertEqual(len(jobs), 3)
         self.assertEqual(jobs[0].interval_minutes, 180)
         self.assertEqual(jobs[1].name, "upcoming-matches")
-        self.assertEqual(jobs[1].interval_minutes, 720)
-        self.assertEqual(jobs[1].window, "next")
+        self.assertEqual(jobs[1].fetch_args, ("--window", "next"))
+        self.assertEqual(jobs[2].name, "standings")
+        self.assertTrue(str(jobs[2].fetch_script).endswith("sofascore_fetch_standings.py"))
         self.assertTrue(str(jobs[0].fetch_script).endswith("sofascore_fetch_recent_matches.py"))
 
     def test_due_jobs_uses_last_finished_at(self):
@@ -195,6 +200,16 @@ class RunJobTests(unittest.TestCase):
         self.assertGreaterEqual(len(helper), 6)
         self.assertTrue(any("import_started" in part for part in helper))
         self.assertTrue(any("import_part_result" in part for part in helper))
+
+    def test_standings_job_uses_the_standings_scripts(self):
+        runner = FakeRunner()
+        standings_job = service.build_jobs({})[2]
+        service.run_job(standings_job, dict(self.base_env), self.state_dir, NOW, runner=runner)
+        fetch_commands = [command for command in runner.commands if "sofascore_fetch_standings.py" in command[1]]
+        import_commands = [command for command in runner.commands if any("provider-sofascore-standings-sync.ts" in part for part in command)]
+        self.assertEqual(len(fetch_commands), 2)
+        self.assertEqual(len(import_commands), 2)
+        self.assertFalse(any("--job" in command for command in import_commands))
 
     def test_upcoming_job_uses_the_next_window_and_job_flag(self):
         runner = FakeRunner()

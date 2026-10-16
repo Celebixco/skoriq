@@ -18,7 +18,8 @@ interface JobIdentity {
 
 const jobs: Record<string, JobIdentity> = {
   "finished-matches": { jobKey: "sofascore.finished-matches", jobName: "finished-matches-sync", entityType: "match" },
-  "upcoming-matches": { jobKey: "sofascore.upcoming-matches", jobName: "upcoming-matches-sync", entityType: "match" }
+  "upcoming-matches": { jobKey: "sofascore.upcoming-matches", jobName: "upcoming-matches-sync", entityType: "match" },
+  "standings": { jobKey: "sofascore.standings", jobName: "standings-sync", entityType: "standing" }
 };
 const failedStatuses = new Set(["fetch_failed", "import_failed", "service_error"]);
 
