@@ -1,0 +1,24 @@
+# SofaScore sync service: fetch (Python + curl_cffi) and import (Node + tsx) refresh jobs.
+# Runs the incremental refresh loop; no destructive rebuild is ever performed here.
+FROM node:24-bookworm-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-pip ca-certificates \
+    && pip3 install --no-cache-dir --break-system-packages curl_cffi \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY package.json ./
+RUN npm install --workspaces=false --omit=dev --ignore-scripts --no-audit --no-fund
+
+COPY scripts ./scripts
+
+ENV SYNC_STATE_DIR=/var/lib/skoriq-sync
+RUN mkdir -p /var/lib/skoriq-sync
+
+CMD ["python3", "scripts/sofascore_sync_service.py"]

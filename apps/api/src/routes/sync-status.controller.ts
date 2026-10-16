@@ -3,6 +3,18 @@ import { allQueueNames } from "@sports-data/queue";
 import { loadConfig } from "@sports-data/config";
 import pg from "pg";
 
+interface SyncRunRow {
+  job_key?: string;
+  job_name?: string;
+  status?: string;
+  attempt_count?: number;
+  last_error?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  duration_ms?: number | null;
+  latest_log?: { message?: string; metadata?: unknown; createdAt?: string } | null;
+}
+
 @Controller("sync")
 export class SyncStatusController {
   @Get("status")
@@ -14,7 +26,7 @@ export class SyncStatusController {
     });
 
     try {
-      const [compRes, teamRes, matchRes, statRes, playerRes] = await Promise.all([
+      const [compRes, teamRes, matchRes, statRes, playerRes, runsRes] = await Promise.all([
         pool.query("SELECT COUNT(*) AS total FROM competitions"),
         pool.query(`
           SELECT COUNT(*) AS total,
@@ -26,8 +38,31 @@ export class SyncStatusController {
         `),
         pool.query("SELECT COUNT(*) AS total, COUNT(CASE WHEN status = 'finished' THEN 1 END) AS finished, COUNT(CASE WHEN status = 'scheduled' THEN 1 END) AS scheduled FROM matches"),
         pool.query("SELECT COUNT(DISTINCT match_id) AS matches_with_stats, COUNT(*) AS total_records FROM football_match_team_statistics"),
-        pool.query("SELECT COUNT(*) AS total FROM players").catch(() => ({ rows: [{ total: 0 }] }))
+        pool.query("SELECT COUNT(*) AS total FROM players").catch(() => ({ rows: [{ total: 0 }] })),
+        pool.query(`
+          SELECT j.job_key, j.job_name, j.status, j.attempt_count, j.last_error, j.started_at, j.finished_at, j.duration_ms,
+            (SELECT jsonb_build_object('message', l.message, 'metadata', l.metadata_json, 'createdAt', l.created_at)
+              FROM sync_job_logs l WHERE l.sync_job_id = j.id ORDER BY l.created_at DESC LIMIT 1) AS latest_log
+          FROM sync_jobs j
+          WHERE j.queue_name = 'sync-service'
+          ORDER BY j.updated_at DESC
+          LIMIT 5
+        `)
       ]);
+
+      const syncRuns = (runsRes.rows as SyncRunRow[]).map((row) => ({
+        jobKey: row.job_key ?? null,
+        jobName: row.job_name ?? null,
+        status: row.status ?? null,
+        attemptCount: Number(row.attempt_count ?? 0),
+        lastError: row.last_error ?? null,
+        startedAt: row.started_at ?? null,
+        finishedAt: row.finished_at ?? null,
+        durationMs: row.duration_ms ?? null,
+        lastMessage: row.latest_log?.message ?? null,
+        lastMetadata: row.latest_log?.metadata ?? null
+      }));
+      const latestRun = syncRuns[0] ?? null;
 
       return {
         status: "operational",
@@ -47,10 +82,13 @@ export class SyncStatusController {
         },
         automation: {
           daemonEnabled: null,
-          mode: "not_verified",
+          mode: latestRun ? "scheduled_service" : "not_verified",
           intervalHours: null,
-          source: "sofascore_catalog.json"
+          source: "sofascore_api",
+          lastRunStatus: latestRun?.status ?? null,
+          lastRunAt: latestRun?.finishedAt ?? null
         },
+        syncRuns,
         timestamp: new Date().toISOString()
       };
     } catch (err: unknown) {
@@ -59,6 +97,7 @@ export class SyncStatusController {
         status: "degraded",
         error: msg,
         queues: allQueueNames,
+        syncRuns: [],
         timestamp: new Date().toISOString()
       };
     } finally {
