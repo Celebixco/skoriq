@@ -4638,22 +4638,22 @@ export function TeamFormTrendChart({
                 <stop offset="100%" stopColor="#facc15" stopOpacity="0.0" />
               </linearGradient>
             </defs>
-            <line x1={paddingX} y1={paddingY} x2={svgWidth - paddingX} y2={paddingY} stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
-            <line x1={paddingX} y1={svgHeight / 2} x2={svgWidth - paddingX} y2={svgHeight / 2} stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
-            <line x1={paddingX} y1={svgHeight - paddingY} x2={svgWidth - paddingX} y2={svgHeight - paddingY} stroke="rgba(255,255,255,0.12)" />
+            <line x1={paddingX} y1={paddingY} x2={svgWidth - paddingX} y2={paddingY} stroke="rgba(28,24,12,0.06)" strokeDasharray="3 3" />
+            <line x1={paddingX} y1={svgHeight / 2} x2={svgWidth - paddingX} y2={svgHeight / 2} stroke="rgba(28,24,12,0.06)" strokeDasharray="3 3" />
+            <line x1={paddingX} y1={svgHeight - paddingY} x2={svgWidth - paddingX} y2={svgHeight - paddingY} stroke="rgba(28,24,12,0.12)" />
 
             <path d={areaD} fill="url(#formMomentumGrad)" />
             <path d={pathD} fill="none" stroke="#facc15" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
             {pointsCoords.map((pt, idx) => {
-              const color = pt.match.result === "W" ? "#facc15" : pt.match.result === "L" ? "#f87171" : "#9a9a96";
+              const color = pt.match.result === "W" ? "#facc15" : pt.match.result === "L" ? "#f87171" : "#63635c";
               return (
                 <g
                   key={idx}
                   style={navigate ? { cursor: "pointer" } : undefined}
                   onClick={() => navigate?.(`/football/analytics/${pt.match.matchId}`)}
                 >
-                  <circle cx={pt.x} cy={pt.y} r="5" fill="#141413" stroke={color} strokeWidth="2.5" />
+                  <circle cx={pt.x} cy={pt.y} r="5" fill="#ffffff" stroke={color} strokeWidth="2.5" />
                   <circle cx={pt.x} cy={pt.y} r="2" fill={color} />
                   <title>{`${pt.match.opponent.name} (${pt.match.homeAway === "home" ? "İç" : "Dış"}) ${pt.match.fulltimeScore || ""}`}</title>
                 </g>
@@ -6244,10 +6244,10 @@ function ResultsSkeleton() {
         <div key={i} className="league-group">
           <div className="league-group-header skeleton-shimmer">
             <div className="league-group-identity">
-              <span className="league-group-initials" style={{ background: "rgba(255,255,255,0.12)" }} />
+              <span className="league-group-initials" style={{ background: "rgba(28,24,12,0.12)" }} />
               <div className="league-group-names">
-                <span className="league-group-name" style={{ width: "8rem", height: "0.9rem", background: "rgba(255,255,255,0.12)", borderRadius: "0.3rem" }} />
-                <span className="league-group-country" style={{ width: "5rem", height: "0.7rem", background: "rgba(255,255,255,0.08)", borderRadius: "0.3rem" }} />
+                <span className="league-group-name" style={{ width: "8rem", height: "0.9rem", background: "rgba(28,24,12,0.12)", borderRadius: "0.3rem" }} />
+                <span className="league-group-country" style={{ width: "5rem", height: "0.7rem", background: "rgba(28,24,12,0.08)", borderRadius: "0.3rem" }} />
               </div>
             </div>
           </div>
@@ -6256,20 +6256,20 @@ function ResultsSkeleton() {
               <div key={j} className="match-result-row skeleton-shimmer">
                 <div className="match-result-main">
                   <div className="match-result-left">
-                    <span style={{ width: "3rem", height: "0.75rem", background: "rgba(255,255,255,0.1)", borderRadius: "0.2rem" }} />
+                    <span style={{ width: "3rem", height: "0.75rem", background: "rgba(28,24,12,0.1)", borderRadius: "0.2rem" }} />
                   </div>
                   <div className="match-result-teams">
                     <div className="match-result-team">
-                      <span style={{ width: "1.5rem", height: "1.5rem", borderRadius: "0.3rem", background: "rgba(255,255,255,0.1)" }} />
-                      <span style={{ width: "6rem", height: "0.85rem", background: "rgba(255,255,255,0.1)", borderRadius: "0.2rem" }} />
+                      <span style={{ width: "1.5rem", height: "1.5rem", borderRadius: "0.3rem", background: "rgba(28,24,12,0.1)" }} />
+                      <span style={{ width: "6rem", height: "0.85rem", background: "rgba(28,24,12,0.1)", borderRadius: "0.2rem" }} />
                     </div>
                     <div className="match-result-team">
-                      <span style={{ width: "1.5rem", height: "1.5rem", borderRadius: "0.3rem", background: "rgba(255,255,255,0.1)" }} />
-                      <span style={{ width: "6rem", height: "0.85rem", background: "rgba(255,255,255,0.1)", borderRadius: "0.2rem" }} />
+                      <span style={{ width: "1.5rem", height: "1.5rem", borderRadius: "0.3rem", background: "rgba(28,24,12,0.1)" }} />
+                      <span style={{ width: "6rem", height: "0.85rem", background: "rgba(28,24,12,0.1)", borderRadius: "0.2rem" }} />
                     </div>
                   </div>
                   <div className="match-result-score">
-                    <span style={{ width: "2rem", height: "1.2rem", background: "rgba(255,255,255,0.1)", borderRadius: "0.2rem" }} />
+                    <span style={{ width: "2rem", height: "1.2rem", background: "rgba(28,24,12,0.1)", borderRadius: "0.2rem" }} />
                   </div>
                 </div>
               </div>
@@ -7546,8 +7546,8 @@ export function LandingPage({ navigate }: { navigate: (path: string) => void }) 
               <svg className="tk-pitch" viewBox="0 0 560 840" role="img" aria-label="Yarım saha taktik tahtası: sinyal hattı orta sahadan forvete ilerliyor, 9 numara aday">
                 <defs>
                   <linearGradient id="tkSheen" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stopColor="rgba(255,255,255,0.035)" />
-                    <stop offset="0.45" stopColor="rgba(255,255,255,0)" />
+                    <stop offset="0" stopColor="rgba(28,24,12,0.035)" />
+                    <stop offset="0.45" stopColor="rgba(28,24,12,0)" />
                   </linearGradient>
                   <radialGradient id="tkGlow9" cx="0.5" cy="0.5" r="0.5">
                     <stop offset="0" stopColor="rgba(250,204,21,0.16)" />
@@ -7567,13 +7567,13 @@ export function LandingPage({ navigate }: { navigate: (path: string) => void }) 
 
                 <g clipPath="url(#tkFieldClip)">
                   <rect x="20" y="20" width="520" height="800" fill="url(#tkSheen)" />
-                  <rect x="20" y="180" width="520" height="80" fill="rgba(255,255,255,0.012)" />
-                  <rect x="20" y="340" width="520" height="80" fill="rgba(255,255,255,0.012)" />
-                  <rect x="20" y="500" width="520" height="80" fill="rgba(255,255,255,0.012)" />
-                  <rect x="20" y="660" width="520" height="80" fill="rgba(255,255,255,0.012)" />
+                  <rect x="20" y="180" width="520" height="80" fill="rgba(28,24,12,0.012)" />
+                  <rect x="20" y="340" width="520" height="80" fill="rgba(28,24,12,0.012)" />
+                  <rect x="20" y="500" width="520" height="80" fill="rgba(28,24,12,0.012)" />
+                  <rect x="20" y="660" width="520" height="80" fill="rgba(28,24,12,0.012)" />
                 </g>
 
-                <rect x="12" y="12" width="536" height="816" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
+                <rect x="12" y="12" width="536" height="816" fill="none" stroke="rgba(28,24,12,0.07)" strokeWidth="1" />
 
                 <rect className="frame frame-outer" x="20" y="20" width="520" height="800" />
                 <path className="frame" d="M 20 34 Q 20 20 34 20" />
@@ -7581,7 +7581,7 @@ export function LandingPage({ navigate }: { navigate: (path: string) => void }) 
                 <rect className="frame frame-goal" x="252" y="8" width="56" height="12" />
                 <rect className="frame" x="210" y="20" width="140" height="84" />
                 <rect className="frame" x="120" y="20" width="320" height="210" />
-                <circle cx="280" cy="188" r="3.5" fill="rgba(255,255,255,0.4)" />
+                <circle cx="280" cy="188" r="3.5" fill="rgba(28,24,12,0.4)" />
                 <path className="frame" d="M 206 230 Q 280 316 354 230" />
                 <path className="frame" d="M 189 820 Q 280 650 371 820" />
 
@@ -7625,8 +7625,8 @@ export function LandingPage({ navigate }: { navigate: (path: string) => void }) 
               <span className="tk-note n4">ileri pas hattı açık</span>
 
               <svg className="tk-doodle" viewBox="0 0 80 60" fill="none" aria-hidden="true">
-                <path d="M74 8 C 46 2, 14 16, 8 42" stroke="rgba(255,255,255,0.4)" strokeWidth="1.6" strokeLinecap="round" />
-                <path d="M15 37 L 8 43 L 16 49" stroke="rgba(255,255,255,0.4)" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+                <path d="M74 8 C 46 2, 14 16, 8 42" stroke="rgba(28,24,12,0.4)" strokeWidth="1.6" strokeLinecap="round" />
+                <path d="M15 37 L 8 43 L 16 49" stroke="rgba(28,24,12,0.4)" strokeWidth="1.6" strokeLinecap="round" fill="none" />
               </svg>
 
               <span className="tk-tag t1">Aday · 2,5 Üst</span>
