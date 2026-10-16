@@ -206,6 +206,15 @@ class StateAndLockTests(unittest.TestCase):
         self.assertEqual(payload["pid"], os.getpid())
         service.release_lock(self.state_dir)
 
+    def test_legacy_plain_text_lock_is_stolen(self):
+        self.state_dir.mkdir(parents=True, exist_ok=True)
+        lock = self.state_dir / "sync.lock"
+        lock.write_text("1", encoding="utf-8")
+        self.assertTrue(service.acquire_lock(self.state_dir, NOW, stale_after_seconds=99999))
+        payload = json.loads(lock.read_text(encoding="utf-8"))
+        self.assertEqual(payload["pid"], os.getpid())
+        service.release_lock(self.state_dir)
+
     def test_run_once_updates_state(self):
         runner = FakeRunner()
         catalog = self.state_dir / "catalog.json"

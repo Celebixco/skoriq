@@ -333,9 +333,9 @@ def acquire_lock(state_dir: Path, now: datetime, stale_after_seconds: int) -> bo
     except FileExistsError:
         try:
             payload = json.loads(lock.read_text(encoding="utf-8"))
-            owner_started = float(payload.get("processStartedAt", 0))
         except (OSError, ValueError):
-            owner_started = 0.0
+            payload = None
+        owner_started = float(payload.get("processStartedAt", 0)) if isinstance(payload, dict) else 0.0
         try:
             age = now.timestamp() - lock.stat().st_mtime
         except OSError:
@@ -383,18 +383,25 @@ def run_loop(env: dict[str, str], state_dir: Path, *, runner: Runner = subproces
     signal.signal(signal.SIGINT, request_stop)
     print(json.dumps({"event": "sync_service_started", "jobs": [job.name for job in jobs], "execute": env.get("SYNC_EXECUTE", "0")}), flush=True)
     while not stop:
-        now = utc_now()
-        state = load_state(state_dir)
-        pending = due_jobs(jobs, state, now)
-        if pending and acquire_lock(state_dir, now, stale_after_seconds=timeout * 2):
+        try:
+            now = utc_now()
+            state = load_state(state_dir)
+            pending = due_jobs(jobs, state, now)
+            if pending and acquire_lock(state_dir, now, stale_after_seconds=timeout * 2):
+                try:
+                    for job in pending:
+                        if stop:
+                            break
+                        summary = execute_job_with_containment(job, env, state_dir, runner=runner)
+                        print(json.dumps({"event": "sync_run", **summary}, ensure_ascii=False), flush=True)
+                finally:
+                    release_lock(state_dir)
+        except Exception as error:
+            # The loop must never die silently; record the controlled category and continue.
             try:
-                for job in pending:
-                    if stop:
-                        break
-                    summary = execute_job_with_containment(job, env, state_dir, runner=runner)
-                    print(json.dumps({"event": "sync_run", **summary}, ensure_ascii=False), flush=True)
-            finally:
-                release_lock(state_dir)
+                log_step(jobs[0], env, "loop_error", {"error": type(error).__name__}, runner=runner)
+            except Exception:
+                pass
         for _ in range(poll):
             if stop:
                 break
