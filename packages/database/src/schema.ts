@@ -181,7 +181,8 @@ export const teams = pgTable(
   },
   (table) => [
     uniqueIndex("teams_sport_slug_uidx").on(table.sportId, table.slug),
-    index("teams_country_idx").on(table.countryId)
+    index("teams_country_idx").on(table.countryId),
+    index("teams_sofascore_id_idx").using("btree", sql`(metadata_json->>'sofascoreId')`)
   ]
 );
 
@@ -269,7 +270,8 @@ export const matches = pgTable(
     index("matches_finished_idx").on(table.scheduledStartAt).where(sql`${table.status} in ('finished', 'after_extra_time', 'after_penalties', 'abandoned')`),
     index("matches_competition_date_idx").on(table.competitionId, table.scheduledStartAt),
     index("matches_home_team_date_idx").on(table.homeTeamId, table.scheduledStartAt),
-    index("matches_away_team_date_idx").on(table.awayTeamId, table.scheduledStartAt)
+    index("matches_away_team_date_idx").on(table.awayTeamId, table.scheduledStartAt),
+    index("matches_sofascore_id_idx").using("btree", sql`(metadata_json->>'sofascoreId')`)
   ]
 );
 
