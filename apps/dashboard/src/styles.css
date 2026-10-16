@@ -4422,7 +4422,7 @@ p {
 }
 
 .dashboard-stat-purple .dashboard-stat-icon {
-  background: #8b5cf6;
+  background: #eab308;
 }
 
 .dashboard-stat-purple strong {
@@ -7948,9 +7948,9 @@ p {
 .league-ready-pill {
   border-radius: 0.25rem;
   padding: 0.08rem 0.35rem;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  color: #34d399;
+  background: rgba(250, 204, 21, 0.1);
+  border: 1px solid rgba(250, 204, 21, 0.25);
+  color: #fde047;
   font-size: 0.68rem;
   font-weight: 700;
 }
@@ -8878,9 +8878,9 @@ p {
   letter-spacing: 0.06em;
   padding: 0.28rem 0.65rem;
   border-radius: 999px;
-  background: rgba(16, 185, 129, 0.12);
+  background: rgba(250, 204, 21, 0.12);
   color: var(--green);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(250, 204, 21, 0.3);
 }
 
 .telemetry-key-metrics {
@@ -9556,7 +9556,7 @@ p {
   font-family: var(--font-mono, monospace);
 }
 
-.text-emerald { color: #10b981; }
+.text-emerald { color: #facc15; }
 .text-rose { color: #f87171; }
 
 .form-results-strip {
@@ -9599,10 +9599,10 @@ p {
 }
 
 .res-win .form-result-pill {
-  background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+  background: rgba(250, 204, 21, 0.2);
+  color: #fde047;
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.15);
 }
 
 .res-draw .form-result-pill {
@@ -10072,9 +10072,9 @@ p {
 }
 
 .streak-dot.streak-win {
-  background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.45);
+  background: rgba(250, 204, 21, 0.2);
+  color: #fde047;
+  border: 1px solid rgba(250, 204, 21, 0.45);
 }
 
 .streak-dot.streak-draw {
@@ -10436,9 +10436,9 @@ p {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.3);
   padding: 0.1rem 0.45rem;
   border-radius: 0.25rem;
 }
@@ -10656,7 +10656,7 @@ p {
 }
 
 .text-positive {
-  color: #10b981;
+  color: #facc15;
 }
 
 .text-danger {
@@ -10861,9 +10861,9 @@ p {
 }
 
 .match-result-pill.res-w {
-  background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.4);
+  background: rgba(250, 204, 21, 0.2);
+  color: #facc15;
+  border: 1px solid rgba(250, 204, 21, 0.4);
 }
 
 .match-result-pill.res-d {
