@@ -35,9 +35,9 @@ class FakeRunner:
                 output.parent.mkdir(parents=True, exist_ok=True)
                 output.write_text(json.dumps({"source": "sofascore", "capturedAt": "2026-10-16T12:00:00.000Z", "tournaments": []}), encoding="utf-8")
             return completed(command, 0, json.dumps({"fetched_leagues": 16, "events_total": 240}))
-        if "provider-sofascore-matches-sync.ts" in command[2]:
+        if any("provider-sofascore-matches-sync.ts" in part for part in command):
             return completed(command, self.import_returncode, json.dumps(self.import_summary) + "\nnoise line")
-        if "sync-run-log.ts" in command[2]:
+        if any("sync-run-log.ts" in part for part in command):
             return completed(command, 0, json.dumps({"logged": True}))
         raise AssertionError(f"Unexpected command: {command}")
 
@@ -114,7 +114,7 @@ class RunJobTests(unittest.TestCase):
         runner = FakeRunner(publish=False)
         summary = service.run_job(self.job, {"DATABASE_URL": "postgres://example"}, self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["status"], "fetch_failed")
-        helper = [command for command in runner.commands if "sync-run-log.ts" in command[2]]
+        helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
         self.assertEqual(len(helper), 1)
         self.assertIn("fetch_failed", helper[0])
         self.assertIn("--error", helper[0])
@@ -123,7 +123,7 @@ class RunJobTests(unittest.TestCase):
         runner = FakeRunner(import_returncode=1)
         summary = service.run_job(self.job, {"DATABASE_URL": "postgres://example"}, self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["status"], "import_failed")
-        helper = [command for command in runner.commands if "sync-run-log.ts" in command[2]]
+        helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
         self.assertEqual(len(helper), 1)
         self.assertIn("import_failed", helper[0])
 
@@ -131,7 +131,7 @@ class RunJobTests(unittest.TestCase):
         runner = FakeRunner()
         summary = service.run_job(self.job, {"DATABASE_URL": "postgres://example"}, self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["status"], "succeeded")
-        self.assertEqual([command for command in runner.commands if "sync-run-log.ts" in command[2]], [])
+        self.assertEqual([command for command in runner.commands if any("sync-run-log.ts" in part for part in command)], [])
 
     def test_containment_keeps_service_alive_and_updates_state(self):
         def failing_runner(command, **kwargs):

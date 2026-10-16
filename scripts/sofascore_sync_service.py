@@ -140,8 +140,7 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
     import_summary: dict[str, Any] | None = None
     import_status = "skipped_no_capture"
     if capture.exists():
-        npx = shutil.which("npx") or "npx"
-        import_command = [npx, "tsx", str(job.import_script), "--capture", str(capture)]
+        import_command = [node_binary(), str(job.import_script), "--capture", str(capture)]
         if execute:
             import_command.append("--execute")
         import_result = runner(import_command, capture_output=True, text=True, timeout=timeout)
@@ -179,13 +178,12 @@ def log_run_outcome(job: Job, env: dict[str, str], summary: dict[str, Any], *, r
     # and import failures visible in sync_jobs even when no importer ever ran.
     if not env.get("DATABASE_URL") or summary.get("importStatus") == "executed":
         return
-    npx = shutil.which("npx") or "npx"
     payload = {
         "fetchSummary": summary.get("fetchSummary"),
         "importStatus": summary.get("importStatus"),
         "capture": summary.get("capture"),
     }
-    command = [npx, "tsx", str(ROOT / "scripts" / "sync-run-log.ts"),
+    command = [node_binary(), str(ROOT / "scripts" / "sync-run-log.ts"),
                "--job", job.name, "--status", str(summary.get("status", "service_error")),
                "--mode", str(summary.get("mode", "dry_run")),
                "--summary", json.dumps(payload, ensure_ascii=False),
@@ -195,6 +193,25 @@ def log_run_outcome(job: Job, env: dict[str, str], summary: dict[str, Any], *, r
                timeout=int(env.get("SYNC_JOB_TIMEOUT_SECONDS", str(DEFAULT_JOB_TIMEOUT_SECONDS))))
     except Exception:
         # Logging is best effort; the refresh loop must keep running.
+        return
+
+
+def node_binary() -> str:
+    # Node runs the TypeScript entry points natively (type stripping); tsx is not required.
+    return shutil.which("node") or "node"
+
+
+def send_heartbeat(env: dict[str, str], *, runner: Runner = subprocess.run) -> None:
+    # A single start marker makes a dead service or a broken node chain visible
+    # in sync telemetry instead of silence.
+    if not env.get("DATABASE_URL"):
+        return
+    command = [node_binary(), str(ROOT / "scripts" / "sync-run-log.ts"), "--job", "finished-matches",
+               "--status", "running", "--mode", "execute" if env.get("SYNC_EXECUTE", "0").strip().lower() in {"1", "true", "yes"} else "dry_run",
+               "--summary", json.dumps({"event": "service_started"})]
+    try:
+        runner(command, capture_output=True, text=True, timeout=60)
+    except Exception:
         return
 
 
@@ -305,6 +322,7 @@ def main(argv: list[str] | None = None) -> int:
     env = dict(os.environ)
     state_dir = Path(env.get("SYNC_STATE_DIR", str(ROOT / ".provider-runs")))
     jobs = build_jobs(env)
+    send_heartbeat(env)
     if options.once:
         job = next((candidate for candidate in jobs if candidate.name == options.once), None)
         if job is None:
