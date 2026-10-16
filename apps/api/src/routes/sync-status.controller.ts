@@ -51,7 +51,7 @@ export class SyncStatusController {
             (SELECT jsonb_build_object('message', l.message, 'metadata', l.metadata_json, 'createdAt', l.created_at)
               FROM sync_job_logs l WHERE l.sync_job_id = j.id ORDER BY l.created_at DESC LIMIT 1) AS latest_log,
             (SELECT jsonb_agg(jsonb_build_object('message', l.message, 'metadata', l.metadata_json, 'createdAt', l.created_at) ORDER BY l.created_at DESC)
-              FROM (SELECT message, metadata_json, created_at FROM sync_job_logs WHERE sync_job_id = j.id ORDER BY created_at DESC LIMIT 20) l) AS recent_logs
+              FROM (SELECT message, metadata_json, created_at FROM sync_job_logs WHERE sync_job_id = j.id ORDER BY created_at DESC LIMIT 200) l) AS recent_logs
           FROM sync_jobs j
           WHERE j.queue_name = 'sync-service'
           ORDER BY j.updated_at DESC
