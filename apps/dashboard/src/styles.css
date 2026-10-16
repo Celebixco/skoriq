@@ -12394,3 +12394,320 @@ textarea {
   color: #141003;
   font-weight: 700;
 }
+
+/* ============================================================
+   20. ÜST BANT SHELL — yayın bandı navigasyonu (sade, içerik odaklı)
+   Apple HIG ilkeleri: netlik (tek bakışta okunur), teveccüh (krom geri
+   çekilir, içerik öne çıkar), derinlik (katman yalnızca hiyerarşi için).
+   ============================================================ */
+
+.topshell {
+  min-height: 100dvh;
+}
+
+.topband {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: rgba(6, 6, 6, 0.94);
+  border-bottom: 1px solid var(--line);
+}
+
+.topband-in {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  width: min(1640px, calc(100% - 2rem));
+  margin: 0 auto;
+  min-height: 3.9rem;
+}
+
+.tb-brand {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tb-brand .brand-text {
+  font-size: 1.35rem;
+}
+
+.tb-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.tb-link {
+  border: 1px solid transparent;
+  border-radius: 2px;
+  padding: 0.5rem 0.85rem;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.16s ease, background 0.16s ease;
+}
+
+.tb-link:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tb-link-active,
+.tb-link-active:hover {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: #141003;
+  font-weight: 700;
+}
+
+.tb-soon {
+  margin-left: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 2px;
+  color: var(--neutral);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tb-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.tb-menu,
+.tb-user {
+  position: relative;
+}
+
+.tb-menu-btn,
+.tb-user-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--text);
+  padding: 0.42rem 0.7rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.tb-menu-btn:hover,
+.tb-user-btn:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tb-user-btn .user-avatar {
+  width: 1.65rem;
+  height: 1.65rem;
+  font-size: 0.72rem;
+}
+
+.tb-user-mail {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-strong);
+  font-weight: 600;
+}
+
+.tb-role {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.16rem 0.36rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+  color: var(--muted);
+}
+
+.tb-role-admin {
+  color: var(--yellow);
+  border-color: rgba(250, 204, 21, 0.5);
+}
+
+.tb-caret {
+  font-size: 0.6rem;
+  opacity: 0.7;
+}
+
+.tb-pop {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 15rem;
+  display: none;
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+  background: #0d0d0c;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+  padding: 0.4rem;
+  z-index: 70;
+}
+
+.tb-menu.open .tb-pop,
+.tb-user.open .tb-pop {
+  display: block;
+}
+
+.tb-pop-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  padding: 0.55rem 0.65rem;
+  background: transparent;
+  color: var(--muted-strong);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tb-pop-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+.tb-pop-item-active,
+.tb-pop-item-active:hover {
+  background: var(--yellow);
+  color: #141003;
+  font-weight: 700;
+}
+
+.tb-pop-note {
+  margin: 0.35rem 0.4rem 0.25rem;
+  color: var(--neutral);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  line-height: 1.6;
+}
+
+.tb-pop-info {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem 0.65rem 0.7rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 0.35rem;
+}
+
+.tb-pop-info strong {
+  font-size: 0.85rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tb-pop-info span {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tb-logout {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  padding: 0.55rem 0.65rem;
+  background: transparent;
+  color: var(--red);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tb-logout:hover {
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.page-container {
+  width: min(1640px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1rem 0 4rem;
+  position: relative;
+  min-width: 0;
+}
+
+@media (max-width: 1280px) {
+  .tb-user-mail {
+    max-width: 8rem;
+  }
+}
+
+@media (max-width: 1080px) {
+  .tb-user-mail {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .topband-in {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding: 0.6rem 0 0.4rem;
+  }
+
+  .tb-nav {
+    order: 3;
+    flex: 1 1 100%;
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 0.35rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .tb-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .page-container {
+    width: min(100% - 1.25rem, 920px);
+    padding-top: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-container {
+    width: min(100% - 1rem, 640px);
+  }
+
+  .tb-soon {
+    display: none;
+  }
+}

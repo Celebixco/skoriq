@@ -6957,114 +6957,154 @@ export function Shell({
   onLogout: () => Promise<void>;
   routeLoading: boolean;
 }) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userInitial = user.email.trim().charAt(0).toUpperCase() || "S";
   const isAdmin = user.role === "admin";
-  const navigateFromSidebar = (path: string) => {
+  const closeMenus = () => {
+    setAdminMenuOpen(false);
+    setUserMenuOpen(false);
+  };
+
+  useEffect(() => {
+    if (!adminMenuOpen && !userMenuOpen) return;
+    const onPointerDown = (event: globalThis.MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.closest(".tb-menu") || target.closest(".tb-user"))) return;
+      closeMenus();
+    };
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") closeMenus();
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [adminMenuOpen, userMenuOpen]);
+
+  const go = (path: string) => {
+    closeMenus();
     navigate(path);
-    setMobileSidebarOpen(false);
   };
 
   return (
-    <div className={`dashboard-frame${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
-      <button className="mobile-menu-button" type="button" onClick={() => setMobileSidebarOpen(true)} aria-label="Menüyü aç">
-        <NavIcon name="menu" />
-        <span>Menü</span>
-      </button>
-      {mobileSidebarOpen ? <button className="sidebar-overlay" type="button" aria-label="Menüyü kapat" onClick={() => setMobileSidebarOpen(false)} /> : null}
-      <aside className={`sidebar${mobileSidebarOpen ? " mobile-open" : ""}`} aria-label="Dashboard navigation">
-        <div className="sidebar-top">
-          <div className="brand">
+    <div className="topshell">
+      <header className="topband">
+        <div className="topband-in">
+          <button className="tb-brand" type="button" onClick={() => go("/")} aria-label="SkorIQ ana sayfa">
             <span className="brand-text">Skor<i>IQ</i></span>
-            <span>Veri Destekli Maç Analizi</span>
-          </div>
-          <div className="user-card">
-            <span className="user-avatar" aria-hidden="true">
-              {userInitial}
-            </span>
-            <div>
-              <span>{user.email}</span>
-              <small>
-                <i aria-hidden="true" />
-                {user.role}
-              </small>
-            </div>
-            <button type="button" onClick={() => void onLogout()} aria-label="Çıkış yap">
-              <NavIcon name="logout" />
-              <span>Çıkış</span>
-            </button>
-          </div>
-        </div>
-        <NavGroup title="Genel">
-          <NavButton icon="overview" label="Genel Bakış" path="/" currentPath={currentPath} navigate={navigateFromSidebar} />
-        </NavGroup>
-        <NavGroup title="Futbol">
-          <NavButton icon="globe" label="Futbol Keşfi" path="/football" currentPath={currentPath} navigate={navigateFromSidebar} activeWhen={(path) => path === "/football" || path.startsWith("/football/countries")} />
-          <NavButton icon="analytics" label="Maç Analizi" path="/football/analytics" currentPath={currentPath} navigate={navigateFromSidebar} />
-          <NavButton icon="results" label="Sonuçlar" path="/football/prediction-results" currentPath={currentPath} navigate={navigateFromSidebar} />
-          {isAdmin ? (
-            <>
-              <NavButton
-                icon="drafts"
-                label="Draft Tahminler"
-                path="/football/predictions/drafts"
-                currentPath={currentPath}
-                navigate={navigateFromSidebar}
-                activeWhen={(path) => path.startsWith("/football/predictions/drafts") || path.includes("/prediction-drafts")}
-              />
-              <NavButton
-                icon="results"
-                label="Tahmin Sonuçları"
-                path="/football/predictions/settlements"
-                currentPath={currentPath}
-                navigate={navigateFromSidebar}
-                activeWhen={(path) => path.startsWith("/football/predictions/settlements") || path.includes("/prediction-settlements")}
-              />
-              <NavButton
-                icon="shield"
-                label="Public Uygunluk"
-                path="/football/public-eligibility"
-                currentPath={currentPath}
-                navigate={navigateFromSidebar}
-                activeWhen={(path) => path.startsWith("/football/public-eligibility") || path.includes("/public-eligibility")}
-              />
-            </>
-          ) : null}
-          <NavButton icon="teams" label="Takımlar" path="/football/teams" currentPath={currentPath} navigate={navigateFromSidebar} />
-          <NavButton icon="leagues" label="Ligler" path="/football/competitions" currentPath={currentPath} navigate={navigateFromSidebar} />
-        </NavGroup>
-        <NavGroup title="Basketbol">
-          <DisabledNav icon="basketball" label="Maç Analizi" />
-          <DisabledNav icon="teams" label="Takımlar" />
-          <DisabledNav icon="leagues" label="Ligler" />
-        </NavGroup>
-        {isAdmin ? (
-          <>
-            <NavGroup title="Sistem">
-              <DisabledNav icon="provider" label="Sağlayıcı Raporları" />
-              <DisabledNav icon="users" label="Kullanıcılar" />
-              <DisabledNav icon="settings" label="Ayarlar" />
-            </NavGroup>
-            <div className="internal-review-card">
-              <NavIcon name="shield" />
-              <div>
-                <strong>İç Denetim Modu</strong>
-                <p>Bu panel yalnızca iç analiz ve denetim amaçlıdır. Public yayın veya tahmin kombini işlemi yapılmaz.</p>
+          </button>
+          <nav className="tb-nav" aria-label="Dashboard navigation">
+            <TopNavLink label="Genel Bakış" path="/" currentPath={currentPath} navigate={go} />
+            <TopNavLink label="Maç Analizi" path="/football/analytics" currentPath={currentPath} navigate={go} />
+            <TopNavLink label="Futbol Keşfi" path="/football" currentPath={currentPath} navigate={go} activeWhen={(path) => path === "/football" || path.startsWith("/football/countries")} />
+            <TopNavLink label="Takımlar" path="/football/teams" currentPath={currentPath} navigate={go} />
+            <TopNavLink label="Ligler" path="/football/competitions" currentPath={currentPath} navigate={go} />
+            <TopNavLink label="Sonuçlar" path="/football/prediction-results" currentPath={currentPath} navigate={go} />
+            <span className="tb-soon" title="Basketbol modülü yakında">Basketbol · yakında</span>
+          </nav>
+          <div className="tb-actions">
+            {isAdmin ? (
+              <div className={`tb-menu${adminMenuOpen ? " open" : ""}`}>
+                <button
+                  type="button"
+                  className="tb-menu-btn"
+                  aria-expanded={adminMenuOpen}
+                  aria-haspopup="true"
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    setAdminMenuOpen((value) => !value);
+                  }}
+                >
+                  <NavIcon name="shield" />
+                  <span>İç Denetim</span>
+                  <span className="tb-caret" aria-hidden="true">▾</span>
+                </button>
+                <div className="tb-pop" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={`tb-pop-item${currentPath.startsWith("/football/predictions/drafts") || currentPath.includes("/prediction-drafts") ? " tb-pop-item-active" : ""}`}
+                    onClick={() => go("/football/predictions/drafts")}
+                  >
+                    Draft Tahminler
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={`tb-pop-item${currentPath.startsWith("/football/predictions/settlements") || currentPath.includes("/prediction-settlements") ? " tb-pop-item-active" : ""}`}
+                    onClick={() => go("/football/predictions/settlements")}
+                  >
+                    Tahmin Sonuçları
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={`tb-pop-item${currentPath.startsWith("/football/public-eligibility") || currentPath.includes("/public-eligibility") ? " tb-pop-item-active" : ""}`}
+                    onClick={() => go("/football/public-eligibility")}
+                  >
+                    Public Uygunluk
+                  </button>
+                  <p className="tb-pop-note">Bu panel yalnızca iç analiz ve denetim amaçlıdır. Public yayın yapılmaz.</p>
+                </div>
+              </div>
+            ) : null}
+            <div className={`tb-user${userMenuOpen ? " open" : ""}`}>
+              <button
+                type="button"
+                className="tb-user-btn"
+                aria-expanded={userMenuOpen}
+                aria-haspopup="true"
+                onClick={() => {
+                  setAdminMenuOpen(false);
+                  setUserMenuOpen((value) => !value);
+                }}
+              >
+                <span className="user-avatar" aria-hidden="true">{userInitial}</span>
+                <span className="tb-user-mail">{user.email}</span>
+                <span className={`tb-role${isAdmin ? " tb-role-admin" : ""}`}>{user.role}</span>
+              </button>
+              <div className="tb-pop tb-pop-right" role="menu">
+                <div className="tb-pop-info">
+                  <strong>{user.email}</strong>
+                  <span>{isAdmin ? "İç denetim yetkisi" : "Üye hesabı"}</span>
+                </div>
+                <button type="button" className="tb-logout" onClick={() => void onLogout()}>
+                  <NavIcon name="logout" />
+                  <span>Çıkış Yap</span>
+                </button>
               </div>
             </div>
-          </>
-        ) : null}
-        <button className="sidebar-toggle" type="button" onClick={() => setSidebarCollapsed((value) => !value)} aria-label={sidebarCollapsed ? "Menüyü genişlet" : "Menüyü daralt"}>
-          <NavIcon name={sidebarCollapsed ? "expand" : "collapse"} />
-          <span>{sidebarCollapsed ? "Menüyü Genişlet" : "Menüyü Daralt"}</span>
-        </button>
-      </aside>
-      <main className="app-shell">
+          </div>
+        </div>
+      </header>
+      <main className="page-container">
         {children}
         {routeLoading ? <RouteTransitionLoader /> : null}
       </main>
     </div>
+  );
+}
+
+function TopNavLink({ label, path, currentPath, navigate, activeWhen }: {
+  label: string;
+  path: string;
+  currentPath: string;
+  navigate: (path: string) => void;
+  activeWhen?: (path: string) => boolean;
+}) {
+  const active = activeWhen ? activeWhen(currentPath) : path === "/" ? currentPath === "/" : currentPath.startsWith(path);
+  return (
+    <button
+      type="button"
+      className={`tb-link${active ? " tb-link-active" : ""}`}
+      onClick={() => navigate(path)}
+      aria-current={active ? "page" : undefined}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -7078,15 +7118,6 @@ function RouteTransitionLoader() {
         </div>
         <strong>Yükleniyor</strong>
       </div>
-    </div>
-  );
-}
-
-function NavGroup({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="nav-group">
-      <p>{title}</p>
-      {children}
     </div>
   );
 }
@@ -7132,18 +7163,6 @@ function NavButton({
         <span>{label}</span>
       </span>
     </button>
-  );
-}
-
-function DisabledNav({ icon, label }: { icon: NavIconName; label: string }) {
-  return (
-    <span className="nav-item disabled" aria-disabled="true">
-      <span className="nav-label">
-        <NavIcon name={icon} />
-        <span>{label}</span>
-      </span>
-      <small>yakında</small>
-    </span>
   );
 }
 
