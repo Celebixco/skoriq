@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -99,6 +100,13 @@ def parse_last_json_line(output: str) -> dict[str, Any] | None:
         if isinstance(document, dict):
             return document
     return None
+
+
+_POSTGRES_URL_PATTERN = re.compile(r"postgres(?:ql)?://[^\s]+", re.IGNORECASE)
+
+
+def redact(text: str) -> str:
+    return _POSTGRES_URL_PATTERN.sub("DATABASE_URL=<redacted>", text)
 
 
 def capture_path_for(state_dir: Path, job: Job, now: datetime) -> Path:
@@ -208,6 +216,7 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
     }
 
     import_summary: dict[str, Any] | None = None
+    import_error: str | None = None
     import_status = "skipped_no_capture"
     if capture.exists():
         import_command = [node_binary(), str(job.import_script), "--capture", str(capture)]
@@ -216,6 +225,9 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
         import_result = runner(import_command, capture_output=True, text=True, timeout=timeout)
         import_summary = parse_last_json_line(import_result.stdout or "")
         import_status = "executed" if import_result.returncode == 0 and import_summary else "import_failed"
+        if import_status == "import_failed":
+            stderr_tail = (import_result.stderr or "").strip()[-600:]
+            import_error = redact(f"exit {import_result.returncode}: {stderr_tail}") if stderr_tail else f"exit {import_result.returncode}"
 
     removed = prune_captures(capture.parent, int(env.get("SYNC_CAPTURE_RETENTION_DAYS", str(DEFAULT_CAPTURE_RETENTION_DAYS))), now)
     summary = {
@@ -224,6 +236,7 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
         "mode": "execute" if execute else "dry_run",
         "capture": str(capture) if capture.exists() else None,
         "importStatus": import_status,
+        "importError": import_error,
         "fetchSummary": fetch_summary,
         "importSummary": import_summary,
         "prunedCaptures": removed,
@@ -251,6 +264,7 @@ def log_run_outcome(job: Job, env: dict[str, str], summary: dict[str, Any], *, r
     payload = {
         "fetchSummary": summary.get("fetchSummary"),
         "importStatus": summary.get("importStatus"),
+        "importError": summary.get("importError"),
         "capture": summary.get("capture"),
     }
     command = [node_binary(), str(ROOT / "scripts" / "sync-run-log.ts"),

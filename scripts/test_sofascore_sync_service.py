@@ -17,8 +17,8 @@ import sofascore_sync_service as service  # noqa: E402
 NOW = datetime(2026, 10, 16, 12, 0, tzinfo=timezone.utc)
 
 
-def completed(command: list[str], returncode: int, stdout: str) -> subprocess.CompletedProcess:
-    return subprocess.CompletedProcess(command, returncode, stdout=stdout, stderr="")
+def completed(command: list[str], returncode: int, stdout: str, stderr: str = "") -> subprocess.CompletedProcess:
+    return subprocess.CompletedProcess(command, returncode, stdout=stdout, stderr=stderr)
 
 
 class FakeRunner:
@@ -44,7 +44,8 @@ class FakeRunner:
             return completed(command, 0, json.dumps({"fetched_leagues": 1 if self.publish else 0,
                                                      "events_total": 1 if self.publish else 0}))
         if any("provider-sofascore-matches-sync.ts" in part for part in command):
-            return completed(command, self.import_returncode, json.dumps(self.import_summary) + "\nnoise line")
+            stderr = "" if self.import_returncode == 0 else "boom postgres://user:secret@db:5432/sports failed"
+            return completed(command, self.import_returncode, json.dumps(self.import_summary) + "\nnoise line", stderr=stderr)
         if any("sync-run-log.ts" in part for part in command):
             return completed(command, 0, json.dumps({"logged": True}))
         raise AssertionError(f"Unexpected command: {command}")
@@ -149,10 +150,13 @@ class RunJobTests(unittest.TestCase):
         env = {**self.base_env, "DATABASE_URL": "postgres://example"}
         summary = service.run_job(self.job, env, self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["status"], "import_failed")
+        self.assertIn("DATABASE_URL=<redacted>", summary["importError"])
+        self.assertNotIn("secret", summary["importError"])
         helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
         self.assertEqual(len(helper), 3)
         self.assertIn("fetch_completed", helper[0])
         self.assertIn("import_failed", helper[-1])
+        self.assertTrue(any("DATABASE_URL=<redacted>" in part for part in helper[-1]))
 
     def test_executed_run_is_not_double_logged(self):
         runner = FakeRunner()
