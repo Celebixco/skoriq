@@ -99,20 +99,35 @@ export async function runSofaScoreMatchesSync(
   pool?.on("error", () => {});
   const database = env.DATABASE_URL ? dependencies.database ?? pool : undefined;
 
+  let syncJobId: string | undefined;
+  let loggingError: string | undefined;
+  if (database && options.logRun) {
+    try {
+      syncJobId = await beginSyncRun(database, startedAt);
+    } catch (error) {
+      loggingError = error instanceof Error ? error.message : "sync run logging failed";
+    }
+  }
+
   const entries: MatchEntry[] = [];
   // Identity anchors repeat across a run; resolve each provider id once.
   const competitionCache = new Map<string, Resolution>();
   const seasonCache = new Map<string, Resolution>();
   const teamCache = new Map<string, Resolution>();
   const startedQueries = { count: 0 };
+  const progress = { lastCount: 0, lastAt: startedAt.getTime() };
   try {
-    for (const event of events) {
+    for (let index = 0; index < events.length; index++) {
+      const event = events[index];
       try {
         entries.push(await importEvent(event, options, database, now, { competitionCache, seasonCache, teamCache, startedQueries }));
       } catch {
         // A single failed resolution must not abort the whole refresh; the
         // category is recorded without leaking database diagnostics.
         entries.push({ providerMatchId: event.sofascoreId, tournamentId: event.tournamentId, action: "query_failed", reason: "query_failed" });
+      }
+      if (database && syncJobId && progressDue(progress, index + 1, now())) {
+        await recordProgress(database, syncJobId, index + 1, events.length, now().getTime() - startedAt.getTime()).catch(() => {});
       }
     }
   } finally {
@@ -132,15 +147,29 @@ export async function runSofaScoreMatchesSync(
     counts,
     syncJobLogged: false
   };
-  if (database && options.logRun) {
+  if (database && options.logRun && syncJobId) {
     try {
-      await recordSyncRun(database, report, startedAt, now());
+      await finishSyncRun(database, syncJobId, report, startedAt, now());
       report.syncJobLogged = true;
     } catch (error) {
       report.loggingError = error instanceof Error ? error.message : "sync run logging failed";
     }
+  } else if (loggingError) {
+    report.loggingError = loggingError;
   }
   return report;
+}
+
+const PROGRESS_EVENT_STEP = 100;
+const PROGRESS_TIME_STEP_MS = 60_000;
+
+function progressDue(progress: { lastCount: number; lastAt: number }, processed: number, at: Date): boolean {
+  if (processed - progress.lastCount >= PROGRESS_EVENT_STEP || at.getTime() - progress.lastAt >= PROGRESS_TIME_STEP_MS) {
+    progress.lastCount = processed;
+    progress.lastAt = at.getTime();
+    return true;
+  }
+  return false;
 }
 
 type Resolution = { status: "ok"; id: string } | { status: "missing" | "conflict" };
@@ -312,17 +341,29 @@ function metadataPatch(event: CapturedEvent): JsonRecord {
   return patch;
 }
 
-async function recordSyncRun(database: DatabaseClient, report: SofaScoreMatchesReport, startedAt: Date, finishedAt: Date): Promise<void> {
+async function beginSyncRun(database: DatabaseClient, startedAt: Date): Promise<string | undefined> {
+  const job = await database.query(beginSyncJobSql, [startedAt.toISOString()]);
+  return job.rows.length === 1 ? String(record(job.rows[0]).id) : undefined;
+}
+
+async function recordProgress(database: DatabaseClient, jobId: string, processed: number, total: number, elapsedMs: number): Promise<void> {
+  await database.query(insertSyncLogSql, [
+    jobId,
+    "info",
+    `import_progress ${processed}/${total}`,
+    JSON.stringify({ step: "import_progress", processed, total, elapsedMs })
+  ]);
+}
+
+async function finishSyncRun(database: DatabaseClient, jobId: string, report: SofaScoreMatchesReport, startedAt: Date, finishedAt: Date): Promise<void> {
   const failed = (report.counts.query_failed ?? 0) > 0;
-  const job = await database.query(recordSyncJobSql, [
+  await database.query(finishSyncJobSql, [
+    jobId,
     failed ? "failed" : "succeeded",
     failed ? "one or more refresh queries failed" : null,
-    startedAt.toISOString(),
     finishedAt.toISOString(),
     Math.max(0, finishedAt.getTime() - startedAt.getTime())
   ]);
-  const jobId = job.rows.length === 1 ? record(job.rows[0]).id : undefined;
-  if (!jobId) return;
   const summary = {
     mode: report.mode,
     capturePath: report.capturePath,
@@ -331,9 +372,9 @@ async function recordSyncRun(database: DatabaseClient, report: SofaScoreMatchesR
     entryTotal: report.entries.length
   };
   await database.query(insertSyncLogSql, [
-    String(jobId),
+    jobId,
     failed ? "error" : "info",
-    `finished-matches ${report.mode} run: ${report.entries.length} events`,
+    `${report.mode} run: ${report.entries.length} events`,
     JSON.stringify(summary)
   ]);
 }
@@ -542,19 +583,21 @@ const insertMatchSql = `INSERT INTO matches (
   ON CONFLICT ON CONSTRAINT "matches_natural_uidx" DO NOTHING
   RETURNING id`;
 
-const recordSyncJobSql = `INSERT INTO sync_jobs (
-    queue_name, job_name, job_key, provider, entity_type, status,
-    attempt_count, last_error, started_at, finished_at, duration_ms
+const beginSyncJobSql = `INSERT INTO sync_jobs (
+    queue_name, job_name, job_key, provider, entity_type, status, attempt_count, started_at
   )
-  VALUES ('sync-service', 'finished-matches-sync', 'sofascore.finished-matches', 'sofascore', 'match', $1, 1, $2, $3, $4, $5)
+  VALUES ('sync-service', 'finished-matches-sync', 'sofascore.finished-matches', 'sofascore', 'match', 'running', 1, $1)
   ON CONFLICT (job_key) DO UPDATE SET
-    status = EXCLUDED.status,
+    status = 'running',
     attempt_count = sync_jobs.attempt_count + 1,
-    last_error = EXCLUDED.last_error,
     started_at = EXCLUDED.started_at,
-    finished_at = EXCLUDED.finished_at,
-    duration_ms = EXCLUDED.duration_ms,
+    last_error = NULL,
     updated_at = now()
+  RETURNING id`;
+
+const finishSyncJobSql = `UPDATE sync_jobs
+  SET status = $2, last_error = $3, finished_at = $4, duration_ms = $5, updated_at = now()
+  WHERE id = $1::uuid
   RETURNING id`;
 
 const insertSyncLogSql = `INSERT INTO sync_job_logs (sync_job_id, level, message, metadata_json)

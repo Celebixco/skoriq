@@ -87,6 +87,7 @@ function fixture(options: FixtureOptions = {}) {
           if (options.loggingFailure) throw new Error("sync job logging is down");
           return { rows: [{ id: "job-1" }] };
         }
+        if (/UPDATE sync_jobs/.test(text)) return { rows: [{ id: "job-1" }] };
         if (/UPDATE matches/.test(text)) return { rows: options.updateRows ?? [{ id: "match-1" }] };
         if (/INSERT INTO matches/.test(text)) return { rows: [{ id: "match-new" }] };
         return { rows: [] };
@@ -241,13 +242,23 @@ describe("SofaScore finished matches refresh", () => {
     const data = fixture({ matchRows: scheduledExisting });
     const report = await runSofaScoreMatchesSync({ execute: false, capturePath: "capture.json", logRun: true }, data.dependencies);
     expect(report.syncJobLogged).toBe(true);
-    const job = data.writes.find((write) => /INSERT INTO sync_jobs/.test(write.text));
-    expect(job?.params[0]).toBe("succeeded");
-    expect(job?.text).toMatch(/ON CONFLICT \(job_key\)/);
-    expect(job?.text).toContain("'sync-service'");
+    const begin = data.writes.find((write) => /INSERT INTO sync_jobs/.test(write.text));
+    expect(begin?.text).toContain("'running'");
+    expect(begin?.text).toMatch(/ON CONFLICT \(job_key\)/);
+    const finish = data.writes.find((write) => /UPDATE sync_jobs/.test(write.text));
+    expect(finish?.params[1]).toBe("succeeded");
     const log = data.writes.find((write) => /INSERT INTO sync_job_logs/.test(write.text));
     expect(log?.params[1]).toBe("info");
+    expect(String(log?.params[2])).toMatch(/dry_run run/);
     expect(JSON.parse(String(log?.params[3]))).toMatchObject({ mode: "dry_run", counts: expect.objectContaining({ planned_update: 1 }) });
+  });
+
+  it("writes progress markers for long runs", async () => {
+    const many = Array.from({ length: 250 }, (_, index) => event({ sofascore_id: 7000 + index }));
+    const data = fixture({ matchRows: scheduledExisting, captureDocument: capture(many) });
+    await runSofaScoreMatchesSync({ execute: false, capturePath: "capture.json", logRun: true }, data.dependencies);
+    const progress = data.writes.filter((write) => /INSERT INTO sync_job_logs/.test(write.text) && String(write.params[2]).includes("import_progress"));
+    expect(progress.length).toBeGreaterThanOrEqual(2);
   });
 
   it("keeps the refresh result when run logging fails", async () => {
