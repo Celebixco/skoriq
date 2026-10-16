@@ -36,7 +36,6 @@ import {
 } from "./api";
 import { CompetitionLogo, MetricCard, ProgressBar, StatusBadge, TeamLogo } from "./components";
 import { formatDate, formatDateTime, formatDecimal, formatPercent, formatRatePercent, statusLabel } from "./format";
-import skoriqMark from "./assets/skoriq-logo.png";
 import type {
   FeatureStatus,
   AuthUser,
@@ -606,7 +605,7 @@ function LoginPage({ onLogin, navigate }: { onLogin: (user: AuthUser) => void; n
         <AuthScene />
         <section className="login-card">
           <div className="login-brand">
-            <span className="brand-text">Skor<i>IQ</i></span>
+            <BrandMark size={26} /><span className="brand-text">Skor<i>IQ</i></span>
           </div>
           <div className="auth-copy">
             <p className="auth-kicker">SkorIQ — Üye Girişi</p>
@@ -665,7 +664,7 @@ function ForgotPasswordPage({ navigate }: { navigate: (path: string) => void }) 
                 <AuthScene />
 <section className="login-card">
           <div className="login-brand">
-            <span className="brand-text">Skor<i>IQ</i></span>
+            <BrandMark size={26} /><span className="brand-text">Skor<i>IQ</i></span>
           </div>
           <div className="auth-copy">
             <p className="auth-kicker">SkorIQ — Erişim</p>
@@ -730,7 +729,7 @@ function ResetPasswordPage({ navigate }: { navigate: (path: string) => void }) {
                 <AuthScene />
 <section className="login-card">
           <div className="login-brand">
-            <span className="brand-text">Skor<i>IQ</i></span>
+            <BrandMark size={26} /><span className="brand-text">Skor<i>IQ</i></span>
           </div>
           <div className="auth-copy">
             <p className="auth-kicker">SkorIQ — Güvenlik</p>
@@ -835,7 +834,7 @@ function RegisterPage({ onRegister, navigate }: { onRegister: (user: AuthUser) =
                 <AuthScene />
 <section className="login-card">
           <div className="login-brand">
-            <span className="brand-text">Skor<i>IQ</i></span>
+            <BrandMark size={26} /><span className="brand-text">Skor<i>IQ</i></span>
           </div>
           <div className="auth-copy">
             <p className="auth-kicker">SkorIQ — Üyelik</p>
@@ -6994,7 +6993,7 @@ export function Shell({
       <header className="topband">
         <div className="topband-in">
           <button className="tb-brand" type="button" onClick={() => go("/")} aria-label="SkorIQ ana sayfa">
-            <span className="brand-text">Skor<i>IQ</i></span>
+            <BrandMark size={26} /><span className="brand-text">Skor<i>IQ</i></span>
           </button>
           <nav className="tb-nav" aria-label="Dashboard navigation">
             <TopNavLink label="Genel Bakış" path="/" currentPath={currentPath} navigate={go} />
@@ -7113,8 +7112,8 @@ function RouteTransitionLoader() {
     <div className="route-transition-loader" role="status" aria-live="polite" aria-label="Sayfa yükleniyor">
       <div className="route-loader-card">
         <div className="route-loader-logo" aria-hidden="true">
-          <img className="route-loader-logo-base" src={skoriqMark} alt="" />
-          <img className="route-loader-logo-fill" src={skoriqMark} alt="" />
+          <span className="route-loader-logo-base"><BrandMark size={76} /></span>
+          <span className="route-loader-logo-fill"><BrandMark size={76} /></span>
         </div>
         <strong>Yükleniyor</strong>
       </div>
@@ -7163,6 +7162,30 @@ function NavButton({
         <span>{label}</span>
       </span>
     </button>
+  );
+}
+
+function BrandMark({ size = 26 }: { size?: number }) {
+  return (
+    <svg className="brand-mark" width={size} height={size} viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <rect x="1" y="1" width="38" height="38" rx="10" fill="#facc15" />
+      <path
+        d="M10.5 26.6 L16.8 19.4 L22.4 22"
+        stroke="#141003"
+        strokeWidth="3.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M22.4 22 L28.4 14"
+        stroke="#141003"
+        strokeWidth="3.4"
+        strokeLinecap="round"
+        strokeDasharray="3.2 2.6"
+      />
+      <circle cx="29.1" cy="13.2" r="3.3" fill="#141003" />
+      <circle cx="29.1" cy="13.2" r="6" stroke="#141003" strokeOpacity="0.3" strokeWidth="1.4" />
+    </svg>
   );
 }
 
@@ -7473,7 +7496,8 @@ export function LandingPage({ navigate }: { navigate: (path: string) => void }) 
       <header className="tk-topbar">
         <div className="tk-container tk-topbar-in">
           <a className="tk-brand" href="#top">
-            Skor<i>IQ</i>
+            <BrandMark size={28} />
+            <span>Skor<i>IQ</i></span>
           </a>
           <nav className="tk-nav" aria-label="Ana menü">
             <a href="#akis">Akış</a>
@@ -7824,7 +7848,8 @@ export function LandingPage({ navigate }: { navigate: (path: string) => void }) 
           <div className="tk-footer-grid">
             <div className="tk-footer-brand">
               <a className="tk-brand" href="#top">
-                Skor<i>IQ</i>
+                <BrandMark size={26} />
+                <span>Skor<i>IQ</i></span>
               </a>
               <p>Maçı form, gol profili, H2H ve risk sinyalleriyle okuyan; gördüğünü gerekçesiyle yazan veri destekli analiz. SkorIQ bir tahmin botu değildir.</p>
             </div>

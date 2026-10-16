@@ -12711,3 +12711,52 @@ textarea {
     display: none;
   }
 }
+
+/* ============================================================
+   21. LOGO — "Sinyal İzi" markı ve marka kilitleri
+   Sarı karo içinde kesikli sinyal çizgisi + aday düğümü:
+   taktik tahtanın imzası, minik boyutlarda da okunur.
+   ============================================================ */
+
+.brand-mark {
+  display: block;
+  flex-shrink: 0;
+}
+
+.tb-brand {
+  gap: 0.55rem;
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.login-brand .brand-mark {
+  width: 1.9rem;
+  height: 1.9rem;
+}
+
+.taktik-home .tk-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.taktik-home .tk-footer .tk-brand .brand-mark {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.route-loader-logo > span {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.route-loader-logo > span svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
