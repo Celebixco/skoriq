@@ -36,3 +36,17 @@ export function statusLabel(status: FeatureStatus): string {
   if (status === "partial") return "Biraz Eksik";
   return "Veri Yetersiz";
 }
+
+export function matchStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    not_started: "Başlamadı",
+    scheduled: "Planlandı",
+    finished: "Bitti",
+    after_extra_time: "Uzatmalar sonrası",
+    after_penalties: "Penaltılar sonrası",
+    postponed: "Ertelendi",
+    cancelled: "İptal edildi",
+    abandoned: "Tatil edildi"
+  };
+  return map[status] ?? status;
+}

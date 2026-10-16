@@ -1768,7 +1768,7 @@ p {
 
 .nav-item.active,
 .nav-item:hover:not(.disabled) {
-  color: #ffffff;
+  color: #141003;
   border-color: transparent;
   background: rgba(28, 24, 12, 0.05);
   box-shadow: none;
@@ -1776,7 +1776,7 @@ p {
 
 .nav-item.active .nav-icon,
 .nav-item:hover:not(.disabled) .nav-icon {
-  color: #ffffff;
+  color: #141003;
   opacity: 1;
 }
 
@@ -2026,7 +2026,7 @@ p {
   border-radius: 1rem;
   padding: clamp(1.75rem, 3.5vw, 2.75rem) clamp(1.5rem, 3vw, 2.25rem);
   background: radial-gradient(ellipse at 50% 0%, rgba(250, 204, 21, 0.09) 0%, rgba(28, 24, 12, 0.05) 70%, rgba(28, 24, 12, 0.05) 100%);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 32px rgba(20, 16, 3, 0.06);
   backdrop-filter: blur(16px);
 }
 
@@ -5002,7 +5002,7 @@ p {
   border-radius: 0.85rem;
   padding: 1rem;
   color: var(--muted-strong);
-  background: rgba(0, 0, 0, 0.36);
+  background: rgba(20, 16, 3, 0.04);
 }
 
 .conflict-row {
@@ -5100,13 +5100,7 @@ p {
   background: rgba(28, 24, 12, 0.05);
 }
 
-.team-filter-chips {
-  display: flex;
-  flex: 1 1 28rem;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  justify-content: flex-end;
-}
+.team-filter-chips { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 0.55rem; justify-content: flex-start; }
 
 .team-filter-chip {
   min-height: 2.35rem;
@@ -5120,12 +5114,7 @@ p {
   box-shadow: none;
 }
 
-.team-filter-chip:hover,
-.team-filter-chip.active {
-  color: #ffffff;
-  border-color: rgba(28, 24, 12, 0.16);
-  background: rgba(28, 24, 12, 0.06);
-}
+.team-filter-chip:hover, .team-filter-chip.active { color: #141003; border-color: var(--yellow); background: var(--yellow); }
 
 /* Teams enhanced toolbar & controls */
 .teams-toolbar-controls {
@@ -9886,7 +9875,7 @@ p {
   padding: 0.05rem 0.3rem;
   border-radius: 9999px;
   z-index: 2;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 4px rgba(20, 16, 3, 0.06);
 }
 
 .squad-player-info {
@@ -10429,7 +10418,7 @@ p {
   border: 1px solid rgba(250, 204, 21, 0.25);
   padding: 0.2rem 0.85rem;
   border-radius: 0.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(20, 16, 3, 0.06);
 }
 
 .match-scoreboard-display .scoreboard-badge {
@@ -10926,7 +10915,7 @@ p {
   font-size: 0.85rem;
   font-weight: 700;
   color: #1c1c18;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(20, 16, 3, 0.06);
   padding: 0.15rem 0.5rem;
   border-radius: 0.3rem;
   border: 1px solid rgba(28, 24, 12, 0.08);
@@ -11772,7 +11761,7 @@ textarea {
   padding: 0.5rem 0.66rem;
   color: var(--muted-strong);
   background: rgba(28, 24, 12, 0.05);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 28px rgba(20, 16, 3, 0.06);
   font-family: var(--font-mono);
   font-size: 0.66rem;
   font-weight: 600;
@@ -12790,6 +12779,11 @@ textarea {
     radial-gradient(circle at 48% 46%, rgba(250, 204, 21, 0.22), transparent 17rem),
     radial-gradient(circle at 28% 30%, rgba(234, 179, 8, 0.2), transparent 20rem),
     linear-gradient(145deg, #f4f2ec, #f8f7f4);
+}
+
+/* maç merkezi sekmeleri: emoji ikonlar kapalı, metin odaklı */
+.match-center-tab-btn .tab-icon {
+  display: none;
 }
 /* istatistik kartlari: sayilar murekkep, ton yalnizca ikonda */
 .dashboard-stat-card strong,

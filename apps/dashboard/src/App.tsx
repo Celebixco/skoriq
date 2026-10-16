@@ -35,7 +35,7 @@ import {
   logout as logoutRequest
 } from "./api";
 import { CompetitionLogo, MetricCard, ProgressBar, StatusBadge, TeamLogo } from "./components";
-import { formatDate, formatDateTime, formatDecimal, formatPercent, formatRatePercent, statusLabel } from "./format";
+import { formatDate, formatDateTime, formatDecimal, formatPercent, formatRatePercent, matchStatusLabel, statusLabel } from "./format";
 import type {
   FeatureStatus,
   AuthUser,
@@ -1934,7 +1934,7 @@ export function MatchDetailReportView({
   );
   const competitionName = report.match.competition?.name || "Lig bilgisi yok";
   const kickoffLabel = report.match.kickoffAt ? formatDateTime(report.match.kickoffAt) : "Tarih bilgisi yok";
-  const matchStatus = report.match.status || "Durum bilgisi yok";
+  const matchStatus = report.match.status ? matchStatusLabel(report.match.status) : "Durum bilgisi yok";
   const analysisSummary = formatAnalysisSummary(report);
 
   return (
