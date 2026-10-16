@@ -89,16 +89,20 @@ def due_jobs(jobs: list[Job], state: dict[str, Any], now: datetime) -> list[Job]
 
 
 def parse_last_json_line(output: str) -> dict[str, Any] | None:
-    for line in reversed(output.strip().splitlines()):
-        line = line.strip()
+    lines = output.strip().splitlines()
+    for index in range(len(lines) - 1, -1, -1):
+        line = lines[index].strip()
         if not line.startswith("{"):
             continue
-        try:
-            document = json.loads(line)
-        except ValueError:
-            continue
-        if isinstance(document, dict):
-            return document
+        # Try the line alone first, then the line joined with everything after it
+        # so a pretty-printed multi-line document is still readable.
+        for candidate in (line, "\n".join(lines[index:]).strip()):
+            try:
+                document = json.loads(candidate)
+            except ValueError:
+                continue
+            if isinstance(document, dict):
+                return document
     return None
 
 

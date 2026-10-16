@@ -514,7 +514,7 @@ const insertSyncLogSql = `INSERT INTO sync_job_logs (sync_job_id, level, message
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   runSofaScoreMatchesSync(parseSofaScoreMatchesArgs(process.argv.slice(2)))
-    .then((report) => console.log(JSON.stringify(report, null, 2)))
+    .then((report) => console.log(JSON.stringify(report)))
     .catch((error: unknown) => {
       console.error(error instanceof Error ? error.message.replace(/postgres(?:ql)?:\/\/[^\s]+/gi, "DATABASE_URL=<redacted>") : "SofaScore matches refresh failed.");
       process.exitCode = 1;

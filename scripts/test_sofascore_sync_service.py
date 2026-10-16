@@ -77,6 +77,10 @@ class SummaryParsingTests(unittest.TestCase):
         self.assertIsNone(service.parse_last_json_line("no json here"))
         self.assertIsNone(service.parse_last_json_line(""))
 
+    def test_reads_a_multiline_pretty_printed_document(self):
+        output = 'header\n{\n  "a": 1,\n  "b": {"c": 2},\n  "counts": {\n    "x": 3\n  }\n}\n'
+        self.assertEqual(service.parse_last_json_line(output), {"a": 1, "b": {"c": 2}, "counts": {"x": 3}})
+
 
 class RunJobTests(unittest.TestCase):
     def setUp(self):
