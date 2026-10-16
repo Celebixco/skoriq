@@ -3,6 +3,12 @@ import { allQueueNames } from "@sports-data/queue";
 import { loadConfig } from "@sports-data/config";
 import pg from "pg";
 
+interface SyncRunLogRow {
+  message?: string;
+  metadata?: unknown;
+  createdAt?: string;
+}
+
 interface SyncRunRow {
   job_key?: string;
   job_name?: string;
@@ -12,7 +18,8 @@ interface SyncRunRow {
   started_at?: string | null;
   finished_at?: string | null;
   duration_ms?: number | null;
-  latest_log?: { message?: string; metadata?: unknown; createdAt?: string } | null;
+  latest_log?: SyncRunLogRow | null;
+  recent_logs?: SyncRunLogRow[] | null;
 }
 
 @Controller("sync")
@@ -42,7 +49,9 @@ export class SyncStatusController {
         pool.query(`
           SELECT j.job_key, j.job_name, j.status, j.attempt_count, j.last_error, j.started_at, j.finished_at, j.duration_ms,
             (SELECT jsonb_build_object('message', l.message, 'metadata', l.metadata_json, 'createdAt', l.created_at)
-              FROM sync_job_logs l WHERE l.sync_job_id = j.id ORDER BY l.created_at DESC LIMIT 1) AS latest_log
+              FROM sync_job_logs l WHERE l.sync_job_id = j.id ORDER BY l.created_at DESC LIMIT 1) AS latest_log,
+            (SELECT jsonb_agg(jsonb_build_object('message', l.message, 'metadata', l.metadata_json, 'createdAt', l.created_at) ORDER BY l.created_at DESC)
+              FROM (SELECT message, metadata_json, created_at FROM sync_job_logs WHERE sync_job_id = j.id ORDER BY created_at DESC LIMIT 20) l) AS recent_logs
           FROM sync_jobs j
           WHERE j.queue_name = 'sync-service'
           ORDER BY j.updated_at DESC
@@ -60,7 +69,12 @@ export class SyncStatusController {
         finishedAt: row.finished_at ?? null,
         durationMs: row.duration_ms ?? null,
         lastMessage: row.latest_log?.message ?? null,
-        lastMetadata: row.latest_log?.metadata ?? null
+        lastMetadata: row.latest_log?.metadata ?? null,
+        recentLogs: (row.recent_logs ?? []).map((entry) => ({
+          message: entry.message ?? null,
+          metadata: entry.metadata ?? null,
+          createdAt: entry.createdAt ?? null
+        }))
       }));
       const latestRun = syncRuns[0] ?? null;
 

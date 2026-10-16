@@ -58,7 +58,11 @@ describe("SyncStatusController", () => {
       started_at: "2026-10-16T12:00:00.000Z",
       finished_at: "2026-10-16T12:01:00.000Z",
       duration_ms: 60000,
-      latest_log: { message: "finished-matches dry_run run: 240 events", metadata: { mode: "dry_run", counts: { planned_update: 12 } }, createdAt: "2026-10-16T12:01:00.000Z" }
+      latest_log: { message: "finished-matches dry_run run: 240 events", metadata: { mode: "dry_run", counts: { planned_update: 12 } }, createdAt: "2026-10-16T12:01:00.000Z" },
+      recent_logs: [
+        { message: "finished-matches dry_run run: 240 events", metadata: { mode: "dry_run", counts: { planned_update: 12 } }, createdAt: "2026-10-16T12:01:00.000Z" },
+        { message: "fetch_completed", metadata: { tournamentId: 52 }, createdAt: "2026-10-16T12:00:30.000Z" }
+      ]
     }];
     const result = await new SyncStatusController().getSyncStatus();
     expect(result.automation).toMatchObject({
@@ -74,6 +78,10 @@ describe("SyncStatusController", () => {
       lastMessage: "finished-matches dry_run run: 240 events",
       lastMetadata: { mode: "dry_run", counts: { planned_update: 12 } }
     });
+    const firstRun = result.syncRuns[0];
+    expect(firstRun).toBeDefined();
+    expect(firstRun?.recentLogs).toHaveLength(2);
+    expect(firstRun?.recentLogs?.[1]).toMatchObject({ message: "fetch_completed" });
   });
 
   it("scopes the sync run query to the sync service queue", async () => {
