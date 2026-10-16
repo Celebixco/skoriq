@@ -208,6 +208,35 @@ class RunFetchTests(unittest.TestCase):
         self.assertNotIn("sensitive", json.dumps(summary))
 
 
+class ImpersonationTransportTests(unittest.TestCase):
+    class FakeSession:
+        def __init__(self, responses: dict[str, int]):
+            self.responses = responses
+            self.calls: list[str] = []
+
+        def get(self, url: str, *, timeout: int, impersonate: str, allow_redirects: bool, headers: dict) -> FakeResponse:
+            self.calls.append(impersonate)
+            return FakeResponse(self.responses.get(impersonate, 403), {"events": []})
+
+    def test_falls_through_403_candidates_and_sticks_to_the_working_profile(self):
+        session = self.FakeSession({"chrome": 403, "chrome131": 200})
+        transport = capture.ImpersonationTransport(session, ("chrome", "chrome131", "chrome124"))
+        self.assertEqual(transport("https://example", timeout=5).status_code, 200)
+        self.assertEqual(transport.active, "chrome131")
+        transport("https://example", timeout=5)
+        self.assertEqual(session.calls, ["chrome", "chrome131", "chrome131"])
+
+    def test_returns_the_last_403_when_every_candidate_fails(self):
+        session = self.FakeSession({})
+        transport = capture.ImpersonationTransport(session, ("chrome", "safari"))
+        self.assertEqual(transport("https://example", timeout=5).status_code, 403)
+        self.assertEqual(session.calls, ["chrome", "safari"])
+
+    def test_requires_at_least_one_candidate(self):
+        with self.assertRaises(ValueError):
+            capture.ImpersonationTransport(self.FakeSession({}), ())
+
+
 class ParseArgsTests(unittest.TestCase):
     def test_defaults(self):
         options = capture.parse_args([])

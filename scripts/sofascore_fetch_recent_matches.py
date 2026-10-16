@@ -21,9 +21,11 @@ OLDEST_EVENT = datetime(2020, 1, 1, tzinfo=timezone.utc)
 ALLOWED_STATUS_TYPES = {"finished", "ended"}
 MAX_SEASON_PROBES = 3
 # The chrome124 TLS profile and the api.sofascore.com host are rejected by the
-# provider edge; the current chrome profile on www.sofascore.com passes.
+# provider edge; the current chrome profile on www.sofascore.com passes from
+# residential networks. Datacenter addresses may block more profiles, so the
+# transport walks this ordered list until one answers, then stays sticky.
 API_BASE = "https://www.sofascore.com/api/v1"
-IMPERSONATE = "chrome"
+IMPERSONATE_CANDIDATES = ("chrome", "chrome131", "chrome124", "safari")
 
 
 class ProviderResponse(Protocol):
@@ -356,6 +358,33 @@ def run_fetch(catalog_path: Path, output_path: Path, *, transport: Transport,
     }
 
 
+class ImpersonationTransport:
+    """Tries impersonation profiles in order and sticks to the first that works."""
+
+    def __init__(self, session: Any, candidates: tuple[str, ...] = IMPERSONATE_CANDIDATES):
+        if not candidates:
+            raise ValueError("At least one impersonation candidate is required.")
+        self.session = session
+        self.candidates = candidates
+        self.index = 0
+        self.active = candidates[0]
+
+    def __call__(self, url: str, *, timeout: int) -> ProviderResponse:
+        last: ProviderResponse | None = None
+        for index in range(self.index, len(self.candidates)):
+            impersonate = self.candidates[index]
+            response = self.session.get(url, timeout=timeout, impersonate=impersonate, allow_redirects=False,
+                                        headers={"Accept": "application/json", "Referer": "https://www.sofascore.com/"})
+            if response.status_code != 403:
+                self.index = index
+                self.active = impersonate
+                return response
+            last = response
+        assert last is not None
+        self.active = self.candidates[-1]
+        return last
+
+
 def main(argv: list[str] | None = None) -> int:
     options = parse_args(argv)
     output = options.output or default_output_path()
@@ -364,11 +393,10 @@ def main(argv: list[str] | None = None) -> int:
     except ImportError:
         print(json.dumps({"error": "curl_cffi is required; install it with pip install curl_cffi."}))
         return 2
+    transport: ImpersonationTransport | None = None
     try:
         with requests.Session() as session:
-            def transport(url: str, *, timeout: int) -> ProviderResponse:
-                return session.get(url, timeout=timeout, impersonate=IMPERSONATE, allow_redirects=False,
-                                   headers={"Accept": "application/json", "Referer": "https://www.sofascore.com/"})
+            transport = ImpersonationTransport(session)
             summary = run_fetch(options.catalog, output, transport=transport,
                                 limit_tournaments=options.limit_tournaments,
                                 tournament_id=options.tournament_id)
@@ -378,6 +406,8 @@ def main(argv: list[str] | None = None) -> int:
     except OSError:
         print(json.dumps({"error": "Capture output could not be published; no existing file was overwritten."}))
         return 2
+    if transport is not None:
+        summary["impersonate"] = transport.active
     print(json.dumps(summary, ensure_ascii=False, allow_nan=False))
     if not summary["fetched_leagues"]:
         return 1
