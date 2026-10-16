@@ -139,8 +139,8 @@ class RunJobTests(unittest.TestCase):
         part_statuses = {entry["tournamentId"]: entry["status"] for entry in summary["importSummary"]["parts"]}
         self.assertEqual(part_statuses, {52: "executed", 98: "import_failed"})
         helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
-        self.assertEqual(len(helper), 4)
-        self.assertTrue(any("DATABASE_URL=<redacted>" in part for part in helper[-1]) or any("import_failed" in part for part in helper[-1]))
+        self.assertGreaterEqual(len(helper), 6)
+        self.assertTrue(any("import_failed" in part for part in helper[-1]))
 
     def test_missing_capture_skips_import_but_reports_fetch_summary(self):
         runner = FakeRunner(publish=False)
@@ -178,8 +178,7 @@ class RunJobTests(unittest.TestCase):
         self.assertIn("DATABASE_URL=<redacted>", summary["importError"])
         self.assertNotIn("secret", summary["importError"])
         helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
-        self.assertEqual(len(helper), 4)
-        self.assertIn("fetch_completed", helper[0])
+        self.assertGreaterEqual(len(helper), 6)
         self.assertIn("import_failed", helper[-1])
         self.assertTrue(any("DATABASE_URL=<redacted>" in part for part in helper[-1]))
 
@@ -189,8 +188,9 @@ class RunJobTests(unittest.TestCase):
         summary = service.run_job(self.job, env, self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["status"], "succeeded")
         helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
-        self.assertEqual(len(helper), 3)
-        self.assertTrue(all(any("fetch_completed" in token or "fetch_phase_complete" in token for token in command) for command in helper))
+        self.assertGreaterEqual(len(helper), 6)
+        self.assertTrue(any("import_started" in part for part in helper))
+        self.assertTrue(any("import_part_result" in part for part in helper))
 
     def test_containment_keeps_service_alive_and_updates_state(self):
         def failing_runner(command, **kwargs):

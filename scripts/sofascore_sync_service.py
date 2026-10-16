@@ -25,6 +25,27 @@ PROCESS_STARTED_AT = time.time()
 Runner = Callable[..., "subprocess.CompletedProcess[str]"]
 
 
+def robust_runner(command, *, capture_output: bool = False, text: bool = False, timeout: float | None = None, **kwargs):
+    # Mirrors subprocess.run, but a child that survives SIGKILL (uninterruptible
+    # I/O on a stuck mount) is abandoned instead of blocking the service forever.
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE if capture_output else None,
+        stderr=subprocess.PIPE if capture_output else None,
+        text=text
+    )
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        try:
+            stdout, stderr = process.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            stdout, stderr = "", ""
+        raise subprocess.TimeoutExpired(command, timeout, output=stdout, stderr=stderr)
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
 @dataclass(frozen=True)
 class Job:
     name: str
@@ -113,9 +134,14 @@ def redact(text: str) -> str:
     return _POSTGRES_URL_PATTERN.sub("DATABASE_URL=<redacted>", text)
 
 
-def capture_path_for(state_dir: Path, job: Job, now: datetime) -> Path:
+def capture_dir_for(env: dict[str, str], state_dir: Path) -> Path:
+    configured = env.get("SYNC_CAPTURE_DIR")
+    return Path(configured) if configured else state_dir / "captures"
+
+
+def capture_path_for(capture_dir: Path, job: Job, now: datetime) -> Path:
     stamp = now.strftime("%Y%m%dT%H%M%SZ")
-    return state_dir / "captures" / f"{job.name}-{stamp}-{os.getpid()}.json"
+    return capture_dir / f"{job.name}-{stamp}-{os.getpid()}.json"
 
 
 def prune_captures(capture_dir: Path, retention_days: int, now: datetime) -> int:
@@ -159,11 +185,11 @@ def read_tournament_ids(catalog_path: Path) -> list[int]:
     return ids
 
 
-def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, runner: Runner = subprocess.run) -> dict[str, Any]:
+def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, runner: Runner = robust_runner) -> dict[str, Any]:
     execute = env.get("SYNC_EXECUTE", "0").strip().lower() in {"1", "true", "yes"}
     timeout = int(env.get("SYNC_JOB_TIMEOUT_SECONDS", str(DEFAULT_JOB_TIMEOUT_SECONDS)))
     fetch_timeout = int(env.get("SYNC_FETCH_TIMEOUT_SECONDS", "120"))
-    capture = capture_path_for(state_dir, job, now)
+    capture = capture_path_for(capture_dir_for(env, state_dir), job, now)
     capture.parent.mkdir(parents=True, exist_ok=True)
     catalog = env.get("SYNC_CATALOG")
     catalog_path = Path(catalog) if catalog else job.fetch_script.with_name("sofascore_catalog.json")
@@ -207,8 +233,11 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
         if not part_path.exists():
             part_summaries.append({"tournamentId": part_summary["tournamentId"], "status": "skipped_no_capture"})
             continue
+        log_step(job, env, "import_started", {"tournamentId": part_summary["tournamentId"]}, runner=runner)
         import_summary = import_part(job, part_path, env, execute, import_timeout, runner)
         part_summaries.append(import_summary)
+        log_step(job, env, "import_part_result",
+                 {"tournamentId": part_summary["tournamentId"], "partStatus": import_summary["status"]}, runner=runner)
         if import_summary["status"] == "executed":
             imported_parts += 1
             for action, count in (import_summary.get("counts") or {}).items():
@@ -330,7 +359,7 @@ def log_step(job: Job, env: dict[str, str], step: str, payload: dict[str, Any], 
         return
 
 
-def send_heartbeat(env: dict[str, str], *, runner: Runner = subprocess.run) -> None:
+def send_heartbeat(env: dict[str, str], *, runner: Runner = robust_runner) -> None:
     # A single start marker makes a dead service or a broken node chain visible
     # in sync telemetry instead of silence.
     if not env.get("DATABASE_URL"):
@@ -344,7 +373,7 @@ def send_heartbeat(env: dict[str, str], *, runner: Runner = subprocess.run) -> N
         return
 
 
-def execute_job_with_containment(job: Job, env: dict[str, str], state_dir: Path, *, runner: Runner = subprocess.run) -> dict[str, Any]:
+def execute_job_with_containment(job: Job, env: dict[str, str], state_dir: Path, *, runner: Runner = robust_runner) -> dict[str, Any]:
     try:
         summary = run_job(job, env, state_dir, utc_now(), runner=runner)
     except Exception as error:  # keep the service alive across controlled failures
@@ -409,11 +438,11 @@ def release_lock(state_dir: Path) -> None:
         pass
 
 
-def run_once(job: Job, env: dict[str, str], state_dir: Path, *, runner: Runner = subprocess.run) -> dict[str, Any]:
+def run_once(job: Job, env: dict[str, str], state_dir: Path, *, runner: Runner = robust_runner) -> dict[str, Any]:
     return execute_job_with_containment(job, env, state_dir, runner=runner)
 
 
-def run_loop(env: dict[str, str], state_dir: Path, *, runner: Runner = subprocess.run, poll_seconds: int | None = None,
+def run_loop(env: dict[str, str], state_dir: Path, *, runner: Runner = robust_runner, poll_seconds: int | None = None,
              sleep: Callable[[float], None] = time.sleep) -> None:
     jobs = build_jobs(env)
     poll = poll_seconds or int(env.get("SYNC_POLL_SECONDS", str(DEFAULT_POLL_SECONDS)))
