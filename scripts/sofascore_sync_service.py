@@ -382,20 +382,29 @@ def run_loop(env: dict[str, str], state_dir: Path, *, runner: Runner = subproces
     signal.signal(signal.SIGTERM, request_stop)
     signal.signal(signal.SIGINT, request_stop)
     print(json.dumps({"event": "sync_service_started", "jobs": [job.name for job in jobs], "execute": env.get("SYNC_EXECUTE", "0")}), flush=True)
+    first_pass = True
     while not stop:
         try:
             now = utc_now()
             state = load_state(state_dir)
             pending = due_jobs(jobs, state, now)
-            if pending and acquire_lock(state_dir, now, stale_after_seconds=timeout * 2):
-                try:
-                    for job in pending:
-                        if stop:
-                            break
-                        summary = execute_job_with_containment(job, env, state_dir, runner=runner)
-                        print(json.dumps({"event": "sync_run", **summary}, ensure_ascii=False), flush=True)
-                finally:
-                    release_lock(state_dir)
+            if first_pass:
+                log_step(jobs[0], env, "loop_begin",
+                         {"state": state, "dueJobs": [job.name for job in pending], "stateDir": str(state_dir)},
+                         runner=runner)
+                first_pass = False
+            if pending:
+                if acquire_lock(state_dir, now, stale_after_seconds=timeout * 2):
+                    try:
+                        for job in pending:
+                            if stop:
+                                break
+                            summary = execute_job_with_containment(job, env, state_dir, runner=runner)
+                            print(json.dumps({"event": "sync_run", **summary}, ensure_ascii=False), flush=True)
+                    finally:
+                        release_lock(state_dir)
+                else:
+                    log_step(jobs[0], env, "lock_busy", {}, runner=runner)
         except Exception as error:
             # The loop must never die silently; record the controlled category and continue.
             try:
