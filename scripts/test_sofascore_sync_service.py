@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -194,6 +195,15 @@ class StateAndLockTests(unittest.TestCase):
         old = (NOW - timedelta(seconds=3600)).timestamp()
         os.utime(lock, (old, old))
         self.assertTrue(service.acquire_lock(self.state_dir, NOW, stale_after_seconds=600))
+        service.release_lock(self.state_dir)
+
+    def test_lock_from_a_previous_container_is_stolen(self):
+        self.state_dir.mkdir(parents=True, exist_ok=True)
+        lock = self.state_dir / "sync.lock"
+        lock.write_text(json.dumps({"pid": 1, "processStartedAt": time.time() - 3600}), encoding="utf-8")
+        self.assertTrue(service.acquire_lock(self.state_dir, NOW, stale_after_seconds=99999))
+        payload = json.loads(lock.read_text(encoding="utf-8"))
+        self.assertEqual(payload["pid"], os.getpid())
         service.release_lock(self.state_dir)
 
     def test_run_once_updates_state(self):

@@ -17,6 +17,9 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_JOB_TIMEOUT_SECONDS = 900
 DEFAULT_CAPTURE_RETENTION_DAYS = 7
 DEFAULT_POLL_SECONDS = 60
+# A lock written before this process started cannot belong to it; the previous
+# container is gone after a deploy, so such a lock is safe to steal.
+PROCESS_STARTED_AT = time.time()
 
 Runner = Callable[..., "subprocess.CompletedProcess[str]"]
 
@@ -329,11 +332,18 @@ def acquire_lock(state_dir: Path, now: datetime, stale_after_seconds: int) -> bo
         descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError:
         try:
+            payload = json.loads(lock.read_text(encoding="utf-8"))
+            owner_started = float(payload.get("processStartedAt", 0))
+        except (OSError, ValueError):
+            owner_started = 0.0
+        try:
             age = now.timestamp() - lock.stat().st_mtime
         except OSError:
             return False
-        if age <= stale_after_seconds:
-            return False
+        if owner_started >= PROCESS_STARTED_AT - 2:
+            # Written after this process started: an active lock or a same-process leftover.
+            if age <= stale_after_seconds:
+                return False
         try:
             lock.unlink()
         except OSError:
@@ -343,7 +353,7 @@ def acquire_lock(state_dir: Path, now: datetime, stale_after_seconds: int) -> bo
         except FileExistsError:
             return False
     with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-        stream.write(str(os.getpid()))
+        stream.write(json.dumps({"pid": os.getpid(), "processStartedAt": PROCESS_STARTED_AT}))
     return True
 
 

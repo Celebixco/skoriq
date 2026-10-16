@@ -125,6 +125,7 @@ services:
       context: .
       dockerfile: Dockerfile.sync
     restart: unless-stopped
+    stop_grace_period: 140s
     environment:
       NODE_ENV: production
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
