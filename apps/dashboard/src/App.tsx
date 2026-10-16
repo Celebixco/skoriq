@@ -209,8 +209,8 @@ export function SearchBar({ query, onChange, onClear }: {
         value={query}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-        placeholder="Takım, lig veya maç ara…"
-        aria-label="Maç ara"
+        placeholder="Takım veya lig ara…"
+        aria-label="Takım veya lig ara"
       />
       {query ? (
         <button type="button" className="analytics-search-clear" onClick={onClear} aria-label="Aramayı temizle">
@@ -228,13 +228,13 @@ export function QuickFilterChips({ activeChip, onChipClick, counts }: {
   onChipClick: (chip: QuickChipId) => void;
   counts: { ready: number; predictionEligible: number; within24h: number; hasH2h: number; hasPrediction: number };
 }) {
-  const chips: { id: QuickChipId; label: string; count?: number }[] = [
-    { id: "all", label: "Tümü" },
-    { id: "ready", label: "Hazır", count: counts.ready },
-    { id: "predictionEligible", label: "Tahmine uygun", count: counts.predictionEligible },
-    { id: "within24h", label: "36 saat içinde", count: counts.within24h },
-    { id: "hasH2h", label: "H2H mevcut", count: counts.hasH2h },
-    { id: "hasPrediction", label: "Tahmin var", count: counts.hasPrediction },
+  const chips: { id: QuickChipId; label: string; count?: number; hint?: string }[] = [
+    { id: "all", label: "Hepsi", hint: "Tüm yaklaşan maçlar" },
+    { id: "ready", label: "Analizi Hazır", count: counts.ready, hint: "İncelemesi tamamlanmış maçlar" },
+    { id: "predictionEligible", label: "Tahmine Uygun", count: counts.predictionEligible, hint: "SkorIQ bu maç için tahmin üretebiliyor" },
+    { id: "within24h", label: "Çok Yakında", count: counts.within24h, hint: "Başlamasına 36 saatten az kalan maçlar" },
+    { id: "hasH2h", label: "Geçmiş Maçlar", count: counts.hasH2h, hint: "İki takım daha önce karşılaşmış" },
+    { id: "hasPrediction", label: "Tahmin Hazır", count: counts.hasPrediction, hint: "SkorIQ bu maç için tahminini yayınladı" },
   ];
 
   return (
@@ -246,6 +246,7 @@ export function QuickFilterChips({ activeChip, onChipClick, counts }: {
           className={`analytics-chip${activeChip === chip.id ? " analytics-chip-active" : ""}`}
           onClick={() => onChipClick(chip.id)}
           aria-pressed={activeChip === chip.id}
+          title={chip.hint}
         >
           {chip.label}
           {chip.count !== undefined ? <span className="analytics-chip-count">{chip.count}</span> : null}
@@ -265,14 +266,14 @@ export function ActiveFilterPills({ filters, frontendFilters, quickChip, onClear
   const pills: { key: string; label: string }[] = [];
 
   if (filters.featureStatus) {
-    const labels: Record<string, string> = { ready: "Hazır", partial: "Kısmi", insufficient_data: "Yetersiz" };
+    const labels: Record<string, string> = { ready: "Hazır", partial: "Biraz Eksik", insufficient_data: "Veri Yetersiz" };
     pills.push({ key: "featureStatus", label: `Durum: ${labels[filters.featureStatus] ?? filters.featureStatus}` });
   }
   if (filters.predictionEligible !== "" && filters.predictionEligible !== undefined) {
-    pills.push({ key: "predictionEligible", label: `Tahmin: ${filters.predictionEligible ? "Uygun" : "Uygun değil"}` });
+    pills.push({ key: "predictionEligible", label: `Tahmin: ${filters.predictionEligible ? "Var" : "Yok"}` });
   }
   if (filters.kuponEligible !== "" && filters.kuponEligible !== undefined) {
-    pills.push({ key: "kuponEligible", label: `Sonuç: ${filters.kuponEligible ? "Aktif" : "Pasif"}` });
+    pills.push({ key: "kuponEligible", label: `Sonuç takibi: ${filters.kuponEligible ? "Açık" : "Kapalı"}` });
   }
   if (frontendFilters.searchQuery.trim()) {
     pills.push({ key: "searchQuery", label: `Arama: ${frontendFilters.searchQuery.trim()}` });
@@ -284,13 +285,13 @@ export function ActiveFilterPills({ filters, frontendFilters, quickChip, onClear
     pills.push({ key: "countryName", label: `Ülke: ${frontendFilters.countryName}` });
   }
   if (frontendFilters.within24h || quickChip === "within24h") {
-    pills.push({ key: "within24h", label: "36 saat içinde" });
+    pills.push({ key: "within24h", label: "Çok Yakında" });
   }
   if (frontendFilters.hasH2h || quickChip === "hasH2h") {
-    pills.push({ key: "hasH2h", label: "H2H mevcut" });
+    pills.push({ key: "hasH2h", label: "Geçmiş Maçlar" });
   }
   if (frontendFilters.hasPrediction || quickChip === "hasPrediction") {
-    pills.push({ key: "hasPrediction", label: "Tahmin var" });
+    pills.push({ key: "hasPrediction", label: "Tahmin Hazır" });
   }
 
   if (pills.length === 0) return null;
@@ -337,8 +338,8 @@ export function ResultSummaryBar({ showing, total, loaded, limit, offset, fronte
         {frontendFiltered
           ? `Gösterilen: ${showing.toLocaleString("tr-TR")} maç`
           : total > 0
-          ? `Sayfa ${page.toLocaleString("tr-TR")} · Gösterilen: ${start.toLocaleString("tr-TR")}–${end.toLocaleString("tr-TR")} · Toplam: ${total.toLocaleString("tr-TR")}`
-          : `Sayfa ${page.toLocaleString("tr-TR")} · Gösterilen: ${showing.toLocaleString("tr-TR")} · Toplam: ${total.toLocaleString("tr-TR")}`}
+          ? `Sayfa ${page.toLocaleString("tr-TR")} · Gösterilen: ${start.toLocaleString("tr-TR")}–${end.toLocaleString("tr-TR")} · Toplam: ${total.toLocaleString("tr-TR")} maç`
+          : `Sayfa ${page.toLocaleString("tr-TR")} · Gösterilen: ${showing.toLocaleString("tr-TR")} · Toplam: ${total.toLocaleString("tr-TR")} maç`}
       </p>
       <div className="analytics-pagination">
         <button
@@ -376,10 +377,10 @@ export function EmptySearchState({ hasFilters, apiHasData, onClear, navigate }: 
   onClear: () => void;
   navigate: (path: string) => void;
 }) {
-  const title = apiHasData ? "Eşleşen maç bulunamadı." : "Yaklaşan analiz maçı bulunmuyor.";
+  const title = apiHasData ? "Eşleşen maç bulunamadı." : "Şu an yaklaşan maç yok.";
   const body = apiHasData
-    ? "Takım adı, lig adı veya farklı bir arama terimi deneyebilirsin."
-    : "Biten maçlar ve tahmin sonuçları için Sonuçlar sayfasına git.";
+    ? "Başka bir takım ya da lig adı denemeyi istersin belki."
+    : "Merak etme: oynanmış maçların ve tahminlerin sonuçlarına bakabilirsin.";
 
   return (
     <div className="analytics-empty-state">
@@ -396,7 +397,7 @@ export function EmptySearchState({ hasFilters, apiHasData, onClear, navigate }: 
           className="analytics-empty-btn"
           onClick={() => navigate("/football/prediction-results")}
         >
-          Sonuçlar sayfasına git →
+          Sonuçlara Bak →
         </button>
       ) : null}
     </div>
@@ -1566,15 +1567,15 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
       <header className="hero analytics-header">
         <div>
           <p className="eyebrow">SkorIQ Futbol</p>
-          <h1>Yaklaşan Maç Analizleri</h1>
-          <p>Analiz ve tahmin üretimi için yaklaşan maçları incele.</p>
+          <h1>Yaklaşan Maçlar</h1>
+          <p>Bir maça dokun; SkorIQ o maç için ne bulduğunu sade bir dille anlatsın.</p>
         </div>
         {matchStats ? (
           <div className="analytics-summary-grid" aria-label="Maç analizi özet metrikleri">
-            <AnalyticsSummaryStat label="Hazır analiz" value={matchStats.ready} />
-            <AnalyticsSummaryStat label="Kısmi veri" value={matchStats.partial} />
-            <AnalyticsSummaryStat label="Yetersiz veri" value={matchStats.insufficient} />
-            <AnalyticsSummaryStat label="Ortalama kapsam" value={formatPercent(matchStats.averageCoverage)} />
+            <AnalyticsSummaryStat label="Analizi Hazır" value={matchStats.ready} hint="İncelemesi tamamlanmış maçlar." />
+            <AnalyticsSummaryStat label="Biraz Eksik" value={matchStats.partial} hint="Bazı bilgiler eksik ama analiz yapılabiliyor." />
+            <AnalyticsSummaryStat label="Veri Yetersiz" value={matchStats.insufficient} hint="Yeterli bilgi yok; SkorIQ tahmin yapmıyor." />
+            <AnalyticsSummaryStat label="Ortalama Veri" value={formatPercent(matchStats.averageCoverage)} hint="Maç verilerinin ortalama doluluk oranı." />
           </div>
         ) : null}
       </header>
@@ -1608,6 +1609,10 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
           counts={quickChipCounts}
         />
 
+        <p className="analytics-helper-note">
+          İpucu: “Analizi Hazır” bir maça dokun; SkorIQ’nun o maçta neler bulduğunu görebilirsin.
+        </p>
+
         <FilterBar
           filters={filters}
           setFilters={setFilters}
@@ -1626,9 +1631,9 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
         />
 
         <div className="analytics-results-link-panel">
-          <span>Biten maçlar ve tahmin sonuçları için Sonuçlar sayfasına git.</span>
+          <span>Oynanmış maçları ve tahminlerin sonuçlarını merak ediyorsan buraya bak.</span>
           <button type="button" onClick={() => navigate("/football/prediction-results")}>
-            Sonuçlar sayfası
+            Sonuçlara Bak →
           </button>
         </div>
 
@@ -1665,9 +1670,9 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
   );
 }
 
-function AnalyticsSummaryStat({ label, value }: { label: string; value: ReactNode }) {
+function AnalyticsSummaryStat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
-    <div className="analytics-summary-stat">
+    <div className="analytics-summary-stat" title={hint}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
@@ -1695,35 +1700,35 @@ function FilterBar({
   return (
     <section className="analytics-filters" aria-label="Futbol analiz filtreleri">
       <label>
-        Analiz durumu
+        Analiz Durumu
         <select value={filters.featureStatus} onChange={(event) => updateApi({ featureStatus: event.target.value as FeatureStatus | "" })}>
-          <option value="">Tümü</option>
+          <option value="">Hepsi</option>
           <option value="ready">Hazır</option>
-          <option value="partial">Kısmi</option>
-          <option value="insufficient_data">Yetersiz</option>
+          <option value="partial">Biraz Eksik</option>
+          <option value="insufficient_data">Veri Yetersiz</option>
         </select>
       </label>
       <label>
-        Tahmin uygunluğu
+        Tahmin
         <select value={String(filters.predictionEligible)} onChange={(event) => updateApi({ predictionEligible: parseBooleanFilter(event.target.value) })}>
-          <option value="">Tümü</option>
-          <option value="true">Uygun</option>
-          <option value="false">Uygun değil</option>
+          <option value="">Hepsi</option>
+          <option value="true">Tahmin var</option>
+          <option value="false">Tahmin yok</option>
         </select>
       </label>
       <label>
-        Sonuç durumu
+        Sonuç Takibi
         <select value={String(filters.kuponEligible)} onChange={(event) => updateApi({ kuponEligible: parseBooleanFilter(event.target.value) })}>
-          <option value="">Tümü</option>
-          <option value="true">Aktif</option>
-          <option value="false">Pasif</option>
+          <option value="">Hepsi</option>
+          <option value="true">Açık</option>
+          <option value="false">Kapalı</option>
         </select>
       </label>
       {competitions.length > 0 ? (
         <label>
           Lig
           <select value={frontendFilters.competitionName} onChange={(event) => updateUi({ competitionName: event.target.value })}>
-            <option value="">Tümü</option>
+            <option value="">Hepsi</option>
             {competitions.map((name) => (
               <option key={name} value={name}>{name}</option>
             ))}
@@ -1734,7 +1739,7 @@ function FilterBar({
         <label>
           Ülke
           <select value={frontendFilters.countryName} onChange={(event) => updateUi({ countryName: event.target.value })}>
-            <option value="">Tümü</option>
+            <option value="">Hepsi</option>
             {countries.map((name) => (
               <option key={name} value={name}>{name}</option>
             ))}
@@ -1799,12 +1804,13 @@ function MatchList({ data, navigate }: { data: FootballAnalyticsMatchListRespons
                 </div>
                 <div className="coverage-cell analytics-coverage-cell">
                   <ProgressBar value={item.combinedCoverageScore} />
-                  <span>Kapsam: {formatPercent(item.combinedCoverageScore)}</span>
+                  <span title="Bu maç için elimizdeki bilgilerin doluluk oranı.">Veri Tamlığı: {formatPercent(item.combinedCoverageScore)}</span>
                 </div>
                 <span className="analytics-match-league">{item.match.competition.name}</span>
                 <div className="analytics-match-badges">
-                  {item.predictionEligible ? <span className="badge badge-good">Tahmine uygun</span> : null}
-                  {item.hasPredictionPreview ? <span className="badge badge-info">Ön tahmin var</span> : null}
+                  {item.predictionEligible ? <span className="badge badge-good" title="SkorIQ bu maç için tahmin üretebiliyor.">Tahmine Uygun</span> : null}
+                  {item.hasPredictionPreview ? <span className="badge badge-info" title="Tahmin yayında; analizi açıp okuyabilirsin.">Tahmin Hazır</span> : null}
+                  <span className="analytics-row-cta" aria-hidden="true">Analizi Aç →</span>
                 </div>
               </div>
             </article>

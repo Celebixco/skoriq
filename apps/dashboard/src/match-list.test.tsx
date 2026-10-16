@@ -22,14 +22,14 @@ import type { FootballAnalyticsMatchFilters, FootballAnalyticsMatchListResponse 
 describe("MatchListPage analytics search and filter area", () => {
   it("renders the upcoming-only page title and subtitle", () => {
     const html = renderToStaticMarkup(<MatchListPage navigate={vi.fn()} />);
-    expect(html).toContain("Yaklaşan Maç Analizleri");
-    expect(html).toContain("Analiz ve tahmin üretimi için yaklaşan maçları incele.");
+    expect(html).toContain("Yaklaşan Maçlar");
+    expect(html).toContain("Bir maça dokun; SkorIQ o maç için ne bulduğunu sade bir dille anlatsın.");
   });
 
   it("renders search input with correct placeholder", () => {
     const html = renderToStaticMarkup(<MatchListPage navigate={vi.fn()} />);
-    expect(html).toContain('placeholder="Takım, lig veya maç ara…"');
-    expect(html).toContain('aria-label="Maç ara"');
+    expect(html).toContain('placeholder="Takım veya lig ara…"');
+    expect(html).toContain('aria-label="Takım veya lig ara"');
   });
 
   it("renders filter bar with page size options 20, 50, 100, 200", () => {
@@ -42,12 +42,12 @@ describe("MatchListPage analytics search and filter area", () => {
 
   it("renders quick filter chips", () => {
     const html = renderToStaticMarkup(<MatchListPage navigate={vi.fn()} />);
-    expect(html).toContain(">Tümü</button>");
-    expect(html).toContain(">Hazır<span");
-    expect(html).toContain(">Tahmine uygun<span");
-    expect(html).toContain(">36 saat içinde<span");
-    expect(html).toContain(">H2H mevcut<span");
-    expect(html).toContain(">Tahmin var<span");
+    expect(html).toContain(">Hepsi</button>");
+    expect(html).toContain(">Analizi Hazır<span");
+    expect(html).toContain(">Tahmine Uygun<span");
+    expect(html).toContain(">Çok Yakında<span");
+    expect(html).toContain(">Geçmiş Maçlar<span");
+    expect(html).toContain(">Tahmin Hazır<span");
   });
 
   it("does not show '24 saat içinde' text anywhere", () => {
@@ -94,12 +94,12 @@ describe("QuickFilterChips", () => {
         counts={{ ready: 5, predictionEligible: 3, within24h: 2, hasH2h: 4, hasPrediction: 1 }}
       />
     );
-    expect(html).toContain(">Tümü</button>");
-    expect(html).toContain(">Hazır<span");
-    expect(html).toContain(">Tahmine uygun<span");
-    expect(html).toContain(">36 saat içinde<span");
-    expect(html).toContain(">H2H mevcut<span");
-    expect(html).toContain(">Tahmin var<span");
+    expect(html).toContain(">Hepsi</button>");
+    expect(html).toContain(">Analizi Hazır<span");
+    expect(html).toContain(">Tahmine Uygun<span");
+    expect(html).toContain(">Çok Yakında<span");
+    expect(html).toContain(">Geçmiş Maçlar<span");
+    expect(html).toContain(">Tahmin Hazır<span");
     expect(html).toContain(">5</span>");
     expect(html).toContain(">3</span>");
   });
@@ -400,21 +400,21 @@ describe("EmptySearchState", () => {
     const html = renderToStaticMarkup(
       <EmptySearchState hasFilters={false} apiHasData={false} onClear={vi.fn()} navigate={vi.fn()} />
     );
-    expect(html).toContain("Yaklaşan analiz maçı bulunmuyor.");
-    expect(html).toContain("Sonuçlar sayfasına git");
+    expect(html).toContain("Şu an yaklaşan maç yok.");
+    expect(html).toContain("Sonuçlara Bak");
   });
 
   it("renders link to prediction results page when no upcoming matches", () => {
     const html = renderToStaticMarkup(
       <EmptySearchState hasFilters={false} apiHasData={false} onClear={vi.fn()} navigate={vi.fn()} />
     );
-    expect(html).toContain("Sonuçlar sayfasına git");
+    expect(html).toContain("Sonuçlara Bak");
   });
 
   it("renders the finished results navigation hint on the analytics page", () => {
     const html = renderToStaticMarkup(<MatchListPage navigate={vi.fn()} />);
-    expect(html).toContain("Biten maçlar ve tahmin sonuçları için Sonuçlar sayfasına git.");
-    expect(html).toContain("Sonuçlar sayfası");
+    expect(html).toContain("Oynanmış maçları ve tahminlerin sonuçlarını merak ediyorsan buraya bak.");
+    expect(html).toContain("Sonuçlara Bak");
   });
 });
 

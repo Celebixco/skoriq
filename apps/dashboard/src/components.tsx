@@ -2,8 +2,18 @@ import { useState, type ReactNode } from "react";
 import { formatEligibility, formatPercent, statusLabel } from "./format";
 import type { CoverageBlock, FeatureStatus, FootballAnalyticsMatchReport, H2HBlock } from "./types";
 
+const featureStatusHint: Record<FeatureStatus, string> = {
+  ready: "Analiz tamamlandı.",
+  partial: "Bazı bilgiler eksik; analiz ihtiyatlı yapıldı.",
+  insufficient_data: "Yeterli bilgi yok; SkorIQ tahmin yapmıyor."
+};
+
 export function StatusBadge({ status }: { status: FeatureStatus }) {
-  return <span className={`badge badge-${status}`}>{statusLabel(status)}</span>;
+  return (
+    <span className={`badge badge-${status}`} title={featureStatusHint[status]}>
+      {statusLabel(status)}
+    </span>
+  );
 }
 
 export function BooleanBadge({ value, tone = "neutral" }: { value: boolean; tone?: "good" | "warn" | "neutral" }) {

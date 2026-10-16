@@ -33,6 +33,6 @@ export function formatEligibility(value: boolean): string {
 
 export function statusLabel(status: FeatureStatus): string {
   if (status === "ready") return "Hazır";
-  if (status === "partial") return "Kısmi";
-  return "Yetersiz";
+  if (status === "partial") return "Biraz Eksik";
+  return "Veri Yetersiz";
 }

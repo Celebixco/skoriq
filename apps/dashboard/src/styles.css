@@ -12283,3 +12283,68 @@ textarea {
     animation: none !important;
   }
 }
+
+/* ============================================================
+   18. ÇOCUK DOSTU MAÇ LİSTESİ — net ipuçları, tıklanır satırlar
+   ============================================================ */
+
+.analytics-helper-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.1rem 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.analytics-helper-note::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin-top: 0.34rem;
+  background: var(--yellow);
+  flex-shrink: 0;
+}
+
+.analytics-summary-stat[title],
+.coverage-cell span[title],
+.analytics-match-row .badge[title] {
+  cursor: help;
+}
+
+.analytics-chip {
+  min-height: 2.3rem;
+}
+
+.analytics-match-row {
+  cursor: pointer;
+}
+
+.analytics-match-row:focus-visible {
+  outline: 2px solid rgba(250, 204, 21, 0.6);
+  outline-offset: 2px;
+}
+
+.analytics-match-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.analytics-row-cta {
+  margin-left: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--neutral);
+  transition: color 0.18s ease, transform 0.18s ease;
+}
+
+.analytics-match-row:hover .analytics-row-cta {
+  color: var(--yellow);
+  transform: translateX(2px);
+}
