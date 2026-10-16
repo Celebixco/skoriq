@@ -242,7 +242,7 @@ export class FootballMatchAnalyticsService {
         ) dyn_af on true
         left join lateral (
           select id, window_size, sample_size, coverage_score
-          from football_h2h_features
+          from football_head_to_head_features
           where ((team_a_id = home.id and team_b_id = away.id) or (team_a_id = away.id and team_b_id = home.id))
             and window_size = 5
           order by as_of_date desc
@@ -319,7 +319,7 @@ export class FootballMatchAnalyticsService {
         ) dyn_af on true
         left join lateral (
           select id, window_size, sample_size, coverage_score
-          from football_h2h_features
+          from football_head_to_head_features
           where ((team_a_id = home.id and team_b_id = away.id) or (team_a_id = away.id and team_b_id = home.id))
             and window_size = 5
           order by as_of_date desc
@@ -395,7 +395,7 @@ export class FootballMatchAnalyticsService {
         ) dyn_af on true
         left join lateral (
           select id, window_size, sample_size, coverage_score
-          from football_h2h_features
+          from football_head_to_head_features
           where ((team_a_id = home.id and team_b_id = away.id) or (team_a_id = away.id and team_b_id = home.id))
             and window_size = 5
           order by as_of_date desc
