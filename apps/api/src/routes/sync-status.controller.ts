@@ -41,8 +41,11 @@ export class SyncStatusController {
         pool.query(`
           SELECT COUNT(*) AS total,
             COUNT(CASE WHEN
-              jsonb_typeof(coalesce(nullif(metadata_json->'seasonStatistics', 'null'::jsonb), metadata_json->'season_statistics')) = 'object'
-              AND coalesce(nullif(metadata_json->'seasonStatistics', 'null'::jsonb), metadata_json->'season_statistics') <> '{}'::jsonb
+              (jsonb_typeof(coalesce(nullif(metadata_json->'seasonStatistics', 'null'::jsonb), metadata_json->'season_statistics')) = 'object'
+                AND coalesce(nullif(metadata_json->'seasonStatistics', 'null'::jsonb), metadata_json->'season_statistics') <> '{}'::jsonb)
+              OR
+              (jsonb_typeof(metadata_json->'competitionSeasonStatistics') = 'object'
+                AND metadata_json->'competitionSeasonStatistics' <> '{}'::jsonb)
               THEN 1 END) AS with_stats
           FROM teams
         `),

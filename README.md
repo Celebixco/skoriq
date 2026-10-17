@@ -514,6 +514,12 @@ npm run provider:sofascore:matches:fetch -- --pages=3
 
 The backfill is additive and never deletes matches, scores, standings, provider mappings, or prediction history. It uses the same capture validation and importer safeguards as the regular finished-score sync.
 
+### Weekly team season statistics
+
+The sync service also refreshes team-season statistics from the SofaScore team statistics endpoint every 7 days (`SYNC_TEAM_STATISTICS_INTERVAL_MINUTES=10080`). It captures up to 30 teams per league through `www.sofascore.com` with the `chrome` impersonation profile and updates scoped `competitionSeasonStatistics` metadata without overwriting team identity or unrelated metadata. The importer runs through `tsx` because it imports the local `db-readiness` module, and it requires `ALLOW_PRODUCTION_TEAM_STATISTICS=true` plus `ALLOW_PRODUCTION_LOCAL_DB=true` in the self-hosted production sync container. Both flags are set by `docker-compose.coolify.yml`.
+
+`SYNC_FORCE_JOBS` is a one-shot recovery hook: list job names there to force them to run on the next service start even when their interval is not due. Remove the value after the recovered run; it is not a permanent schedule.
+
 Internal public eligibility review is available through authenticated, read-only API/dashboard surfaces:
 
 ```http

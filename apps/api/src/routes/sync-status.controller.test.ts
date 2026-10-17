@@ -38,6 +38,7 @@ describe("SyncStatusController", () => {
     const teamQuery = queries.find((query) => query.includes("FROM teams"));
     expect(teamQuery).toContain("metadata_json->'seasonStatistics'");
     expect(teamQuery).toContain("metadata_json->'season_statistics'");
+    expect(teamQuery).toContain("metadata_json->'competitionSeasonStatistics'");
     expect(teamQuery).toContain("jsonb_typeof");
   });
 
