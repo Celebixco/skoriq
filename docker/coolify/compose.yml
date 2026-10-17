@@ -140,10 +140,11 @@ services:
       AUTH_ENABLED: "true"
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Set a random AUTH_JWT_SECRET of at least 32 characters}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set the deployed frontend origin}
-      ANALYTICS_STATE_DIR: /var/lib/skoriq-analytics
+      # v2 volume: one-time analytics bootstrap after the history backfill.
+      ANALYTICS_STATE_DIR: /var/lib/skoriq-analytics-v2
       TZ: Europe/Istanbul
     volumes:
-      - analytics_state:/var/lib/skoriq-analytics
+      - analytics_state_v2:/var/lib/skoriq-analytics-v2
     depends_on:
       postgres:
         condition: service_healthy
@@ -172,4 +173,4 @@ volumes:
   postgres_data:
   dragonfly_data:
   sync_state:
-  analytics_state:
+  analytics_state_v2:
