@@ -133,11 +133,8 @@ const upsertSql = `INSERT INTO football_match_team_statistics (
 
 const matchSql = `SELECT m.id, m.home_team_id, m.away_team_id
   FROM matches m
-  INNER JOIN provider_mappings pm
-    ON pm.provider = 'sofascore'
-   AND pm.entity_type = 'match'
-   AND pm.internal_entity_id = m.id
-  WHERE pm.provider_entity_id = $1
+  INNER JOIN sports s ON s.id = m.sport_id AND s.slug = 'football'
+  WHERE m.metadata_json->>'sofascoreId' = $1
   LIMIT 1`;
 
 const teamMappingSql = `SELECT internal_entity_id, provider_entity_id

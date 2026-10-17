@@ -89,19 +89,18 @@ async function selectMissingMatches() {
   const result = await pool.query(
     `
       SELECT m.id AS match_id,
-        epm.provider_entity_id AS event_id,
+        m.metadata_json->>'sofascoreId' AS event_id,
         hpm.provider_entity_id AS home_team_id,
         apm.provider_entity_id AS away_team_id
       FROM matches m
       INNER JOIN sports s ON s.id = m.sport_id AND s.slug = 'football'
-      INNER JOIN provider_mappings epm
-        ON epm.provider = 'sofascore' AND epm.entity_type = 'match' AND epm.internal_entity_id = m.id
       INNER JOIN provider_mappings hpm
         ON hpm.provider = 'sofascore' AND hpm.entity_type = 'team' AND hpm.internal_entity_id = m.home_team_id
       INNER JOIN provider_mappings apm
         ON apm.provider = 'sofascore' AND apm.entity_type = 'team' AND apm.internal_entity_id = m.away_team_id
       LEFT JOIN football_match_team_statistics ms ON ms.match_id = m.id
       WHERE m.status IN ('finished', 'after_extra_time', 'after_penalties')
+        AND m.metadata_json->>'sofascoreId' IS NOT NULL
         AND ms.id IS NULL
         AND m.scheduled_start_at >= now() - ($1::int * interval '1 day')
       ORDER BY m.scheduled_start_at DESC
@@ -132,6 +131,10 @@ async function runOnce() {
   const rows = await selectMissingMatches();
   if (rows.length === 0) {
     log("no_missing_matches", { lookbackDays: LOOKBACK_DAYS });
+    await runSyncLog("final", {
+      status: "succeeded",
+      summary: { selected: 0, lookbackDays: LOOKBACK_DAYS, message: "no_missing_matches" }
+    });
     return { status: "skipped" };
   }
   const matches = rows
@@ -219,7 +222,9 @@ async function main() {
       await runOnce();
       await pruneCaptures();
     } catch (error) {
-      log("run_error", { error: redact(error instanceof Error ? error.message : String(error)).slice(0, 300) });
+      const message = redact(error instanceof Error ? error.message : String(error)).slice(0, 300);
+      log("run_error", { error: message });
+      await runSyncLog("final", { status: "failed", summary: { stage: "run_once" }, error: message });
     }
     if (stopping) break;
     await new Promise((resolve) => setTimeout(resolve, INTERVAL_MS));
