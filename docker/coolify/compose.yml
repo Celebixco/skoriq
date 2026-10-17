@@ -195,9 +195,32 @@ services:
       postgres:
         condition: service_healthy
 
+  lineups:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.sync
+    restart: unless-stopped
+    stop_grace_period: 120s
+    command: ["node", "scripts/lineups-service.mjs"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
+      LINEUPS_STATE_DIR: /var/lib/skoriq-lineups
+      LINEUPS_INTERVAL_MINUTES: ${LINEUPS_INTERVAL_MINUTES:-30}
+      LINEUPS_BATCH_LIMIT: ${LINEUPS_BATCH_LIMIT:-80}
+      LINEUPS_LOOKBACK_DAYS: ${LINEUPS_LOOKBACK_DAYS:-120}
+      PYTHON_BIN: python3
+      TZ: Europe/Istanbul
+    volumes:
+      - lineups_state:/var/lib/skoriq-lineups
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   dragonfly_data:
   sync_state:
   analytics_state_v2:
   match_statistics_state:
+  lineups_state:
