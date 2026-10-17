@@ -85,7 +85,7 @@ class FetchTeamStatisticsTests(unittest.TestCase):
         self.assertEqual(team["providerFetchedAt"], "2026-09-27T10:20:30.000Z")
         self.assertEqual(team["source"], "sofascore")
         self.assertEqual(team["endpoint"],
-                         "https://api.sofascore.com/api/v1/team/111/unique-tournament/52/season/98080/statistics/overall")
+                         "https://www.sofascore.com/api/v1/team/111/unique-tournament/52/season/98080/statistics/overall")
         self.assertNotIn("recent_matches", team)
         self.assertNotIn("played", team)
         self.assertNotIn("matches", captured[0])
@@ -128,7 +128,7 @@ class FetchTeamStatisticsTests(unittest.TestCase):
         self.assertEqual(len({url for url, _ in transport.calls}), 3)
 
     def test_rejects_invalid_cli_limits_and_identifiers(self):
-        for arguments in (["--limit", "0"], ["--limit", "21"], ["--limit", "-1"],
+        for arguments in (["--limit", "0"], ["--limit", "31"], ["--limit", "-1"],
                           ["--team-id", "0"], ["--tournament-id", "-3"]):
             with self.subTest(arguments=arguments), redirect_stderr(io.StringIO()):
                 with self.assertRaises(SystemExit):
@@ -203,7 +203,7 @@ class FetchTeamStatisticsTests(unittest.TestCase):
 
     def test_rejects_invalid_direct_limit_without_transport_calls(self):
         transport = Transport([])
-        for options in ({"limit": 21}, {"team_id": 0}, {"tournament_id": -3}):
+        for options in ({"limit": 31}, {"team_id": 0}, {"tournament_id": -3}):
             with self.subTest(options=options), self.assertRaises(ValueError):
                 self.run_fetch(transport, **options)
         self.assertEqual(transport.calls, [])

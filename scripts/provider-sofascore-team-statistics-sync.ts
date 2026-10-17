@@ -27,9 +27,14 @@ export function parseSofaScoreTeamStatisticsArgs(args: string[]): SofaScoreTeamS
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
     if (arg === "--execute") options.execute = true;
+    else if (arg === "--no-log-run") { /* accepted for sync-service child runs; this importer never writes sync_jobs */ }
     else if (arg === "--catalog-path" || arg.startsWith("--catalog-path=")) {
       const value = arg === "--catalog-path" ? args[++index] : arg.slice("--catalog-path=".length);
       if (!value || value.startsWith("--")) throw new Error("--catalog-path requires a file path.");
+      options.catalogPath = value;
+    } else if (arg === "--capture" || arg.startsWith("--capture=")) {
+      const value = arg === "--capture" ? args[++index] : arg.slice("--capture=".length);
+      if (!value || value.startsWith("--")) throw new Error("--capture requires a file path.");
       options.catalogPath = value;
     } else throw new Error(`Unknown SofaScore team statistics flag "${arg}".`);
   }
@@ -38,7 +43,9 @@ export function parseSofaScoreTeamStatisticsArgs(args: string[]): SofaScoreTeamS
 
 export async function runSofaScoreTeamStatisticsSync(options: SofaScoreTeamStatisticsOptions, dependencies: SofaScoreTeamStatisticsDependencies = {}) {
   const env = dependencies.env ?? process.env;
-  if (env.NODE_ENV === "production") throw new Error("SofaScore team statistics refresh is forbidden in production.");
+  if (env.NODE_ENV === "production" && env.ALLOW_PRODUCTION_TEAM_STATISTICS !== "true") {
+    throw new Error("SofaScore team statistics refresh is forbidden in production unless ALLOW_PRODUCTION_TEAM_STATISTICS=true.");
+  }
   if (options.execute && !env.DATABASE_URL) throw new Error("Database readiness requires DATABASE_URL before execute.");
   if (env.DATABASE_URL) {
     let parsed: URL;

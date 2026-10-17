@@ -109,11 +109,11 @@ describe("database readiness checks", () => {
     });
   });
 
-  it("allows production analytics on the self-hosted database only with the explicit flag", async () => {
+  it("allows production local readiness only with the explicit flag", async () => {
     const result = await checkDatabaseReadiness({
       databaseUrl: "postgres://postgres:postgres@postgres:5432/sports_data",
       nodeEnv: "production",
-      allowProductionAnalyticsDb: true,
+      allowProductionLocalDb: true,
       connect: async () => ({ tableNames: expectedTables })
     });
 

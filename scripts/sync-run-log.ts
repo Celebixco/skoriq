@@ -24,6 +24,7 @@ const jobs: Record<string, JobIdentity> = {
   "upcoming-matches": { jobKey: "sofascore.upcoming-matches", jobName: "upcoming-matches-sync", entityType: "match" },
   "standings": { jobKey: "sofascore.standings", jobName: "standings-sync", entityType: "standing" },
   "history-backfill": { jobKey: "sofascore.history-backfill", jobName: "history-backfill-sync", entityType: "match" },
+  "team-statistics": { jobKey: "sofascore.team-statistics", jobName: "team-statistics-sync", entityType: "team" },
   "prematch": { jobKey: "analytics.prematch", jobName: "daily-prematch", entityType: "match" },
   "settlement": { jobKey: "analytics.settlement", jobName: "prediction-settlement", entityType: "match" }
 };

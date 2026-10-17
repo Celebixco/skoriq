@@ -47,6 +47,7 @@ describe("controlled SofaScore existing-team season statistics refresh", () => {
   it("defaults to preview and accepts an explicit catalog path", () => {
     expect(parseSofaScoreTeamStatisticsArgs([])).toMatchObject({ execute: false });
     expect(parseSofaScoreTeamStatisticsArgs(["--catalog-path=reviewed.json", "--execute"])).toEqual({ execute: true, catalogPath: "reviewed.json" });
+    expect(parseSofaScoreTeamStatisticsArgs(["--capture=part.json", "--execute", "--no-log-run"])).toEqual({ execute: true, catalogPath: "part.json" });
   });
 
   it("plans an existing mapped team without writing in dry-run", async () => {

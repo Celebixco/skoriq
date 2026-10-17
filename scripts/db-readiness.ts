@@ -44,7 +44,7 @@ export interface CheckDatabaseReadinessOptions {
   dbExecutionTarget?: string;
   allowRemoteTestDb?: string | boolean;
   neonBranchName?: string;
-  allowProductionAnalyticsDb?: string | boolean;
+  allowProductionLocalDb?: string | boolean;
   connect?: (databaseUrl: string) => Promise<DatabaseProbeResult>;
 }
 
@@ -58,10 +58,11 @@ export async function checkDatabaseReadiness(options: CheckDatabaseReadinessOpti
   const dbExecutionTarget = options.dbExecutionTarget ?? process.env.DB_EXECUTION_TARGET ?? "local";
   const allowRemoteTestDb = normalizeBoolean(options.allowRemoteTestDb ?? process.env.ALLOW_REMOTE_TEST_DB);
   const neonBranchName = options.neonBranchName ?? process.env.NEON_BRANCH_NAME;
-  // Analytics containers may run draft-only analytics against the self-hosted
-  // production database. Ingestion and destructive tools must never set this.
-  const allowProductionAnalyticsDb = normalizeBoolean(
-    options.allowProductionAnalyticsDb ?? process.env.ALLOW_PRODUCTION_ANALYTICS_DB
+  // The self-hosted sync/analytics containers may run controlled jobs against
+  // the compose-local production database. Ingestion and destructive tools must
+  // never set this flag; it only permits the local-target readiness check.
+  const allowProductionLocalDb = normalizeBoolean(
+    options.allowProductionLocalDb ?? process.env.ALLOW_PRODUCTION_LOCAL_DB
   );
 
   if (!databaseUrl) {
@@ -84,12 +85,12 @@ export async function checkDatabaseReadiness(options: CheckDatabaseReadinessOpti
   }
 
   if (nodeEnv === "production" && target.classification !== "neon-test") {
-    if (!(allowProductionAnalyticsDb && target.classification === "local")) {
+    if (!(allowProductionLocalDb && target.classification === "local")) {
       return {
         status: "not_ready",
         target,
         reason: "unsafe_target",
-        message: "Database readiness checks refuse NODE_ENV=production unless the target is an explicitly approved Neon test branch or ALLOW_PRODUCTION_ANALYTICS_DB=true for the self-hosted local database."
+        message: "Database readiness checks refuse NODE_ENV=production unless the target is an explicitly approved Neon test branch or ALLOW_PRODUCTION_LOCAL_DB=true for the self-hosted local database."
       };
     }
   }

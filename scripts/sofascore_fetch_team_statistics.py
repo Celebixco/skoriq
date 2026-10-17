@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Callable, Protocol
 from uuid import uuid4
 
-MAX_LIMIT = 20
+MAX_LIMIT = 30
 MAX_SAFE_INTEGER = 9_007_199_254_740_991
 REQUEST_TIMEOUT_SECONDS = 15
 REQUEST_DELAY_SECONDS = 1.0
@@ -46,7 +46,7 @@ class TeamScope:
     @property
     def endpoint(self) -> str:
         return (
-            f"https://api.sofascore.com/api/v1/team/{self.team_id}"
+            f"https://www.sofascore.com/api/v1/team/{self.team_id}"
             f"/unique-tournament/{self.tournament_id}/season/{self.season_id}"
             "/statistics/overall"
         )
@@ -278,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with requests.Session() as session:
             def transport(url: str, *, timeout: int) -> ProviderResponse:
-                return session.get(url, timeout=timeout, impersonate="chrome124", allow_redirects=False,
+                return session.get(url, timeout=timeout, impersonate="chrome", allow_redirects=False,
                                    headers={"Accept": "application/json", "Referer": "https://www.sofascore.com/"})
             summary = run_fetch(options.catalog, output, transport=transport, limit=options.limit,
                                 team_id=options.team_id, tournament_id=options.tournament_id)
