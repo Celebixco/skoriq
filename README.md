@@ -520,6 +520,12 @@ The sync service also refreshes team-season statistics from the SofaScore team s
 
 `SYNC_FORCE_JOBS` is a one-shot recovery hook: list job names there to force them to run on the next service start even when their interval is not due. Remove the value after the recovered run; it is not a permanent schedule.
 
+### Match team statistics backfill
+
+A dedicated `match-statistics` service fills `football_match_team_statistics` for finished matches that have no telemetry rows. Every hour it selects up to 40 finished matches from the last 120 days, fetches `/event/{id}/statistics` from `www.sofascore.com` with the `chrome` impersonation profile, and imports full-time possession, shots, xG, passes, cards, tackles, interceptions, clearances, and related fields. It never fabricates missing measurements: unsupported metrics such as count-based duels remain null, while `passAccuracyPercent` is derived only when both passes and accurate passes exist. The service records each run as `sofascore.match-statistics` in the admin sync telemetry.
+
+Configuration: `MATCH_STATISTICS_INTERVAL_MINUTES` (default 60), `MATCH_STATISTICS_BATCH_LIMIT` (default 40), and `MATCH_STATISTICS_LOOKBACK_DAYS` (default 120). It is additive and never deletes existing telemetry, matches, scores, or prediction history.
+
 The sync scheduler floors every interval at 15 minutes. A configured `SYNC_FINISHED_INTERVAL_MINUTES=5` therefore runs every 15 minutes; set the value to 15 to make the effective cadence explicit.
 
 Internal public eligibility review is available through authenticated, read-only API/dashboard surfaces:
