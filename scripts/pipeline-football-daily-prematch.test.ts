@@ -47,7 +47,35 @@ describe("daily football pre-match scan", () => {
   it("requires exactly one supported scope", () => {
     expect(() => parseDailyPrematchArgs([])).toThrow("exactly one scope");
     expect(() => parseDailyPrematchArgs(["--all-reviewed-enabled", "--country-id=44", "--league-id=152"])).toThrow("exactly one scope");
+    expect(() => parseDailyPrematchArgs(["--all-competitions", "--all-reviewed-enabled"])).toThrow("exactly one scope");
     expect(() => parseDailyPrematchArgs(["--country-id=44"])).toThrow("country-id and --league-id together");
+  });
+
+  it("parses the canonical all-competitions scope", () => {
+    expect(parseDailyPrematchArgs(["--all-competitions"])).toMatchObject({
+      allCompetitions: true,
+      allReviewedEnabled: false
+    });
+  });
+
+  it("discovers canonical competitions and tracks one scope per competition", async () => {
+    const report = await runDailyPrematchScan(
+      { ...baseOptions(), countryId: undefined, leagueId: undefined, allReviewedEnabled: false, allCompetitions: true },
+      "postgres://localhost/test",
+      new Date("2026-05-01T12:00:00.000Z"),
+      {
+        listCompetitions: async () => [{ competitionId: "competition-1", leagueName: "Canonical League" }],
+        loadMatches: async (options) => {
+          expect(options.competitionId).toBe("competition-1");
+          return [insideMatch("inside-1")];
+        },
+        runMatchPipeline: async ({ target }) => readyMatchReport(target.matchId, false, 0)
+      }
+    );
+
+    expect(report.leaguesScanned).toBe(1);
+    expect(report.matchesConsidered).toBe(1);
+    expect(report.draftsThatWouldBePersisted).toBe(1);
   });
 
   it("prints startup, league, match, and final progress while writing no drafts in dry-run", async () => {
@@ -147,6 +175,7 @@ function baseOptions() {
     minimumLeadMinutes: 30,
     limit: 50,
     allReviewedEnabled: false,
+    allCompetitions: false,
     timezone: "Europe/Istanbul",
     maxRuntimeSeconds: 300,
     perMatchTimeoutSeconds: 45,

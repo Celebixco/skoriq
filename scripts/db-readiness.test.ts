@@ -109,6 +109,23 @@ describe("database readiness checks", () => {
     });
   });
 
+  it("allows production analytics on the self-hosted database only with the explicit flag", async () => {
+    const result = await checkDatabaseReadiness({
+      databaseUrl: "postgres://postgres:postgres@postgres:5432/sports_data",
+      nodeEnv: "production",
+      allowProductionAnalyticsDb: true,
+      connect: async () => ({ tableNames: expectedTables })
+    });
+
+    expect(result).toMatchObject({
+      status: "ready",
+      target: {
+        classification: "local",
+        host: "postgres"
+      }
+    });
+  });
+
   it("blocks production or main-looking Neon targets even with explicit flags", async () => {
     const result = await checkDatabaseReadiness({
       databaseUrl: "postgres://user:secret@ep-main.neon.tech/production?sslmode=require",

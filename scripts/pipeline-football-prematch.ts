@@ -554,7 +554,7 @@ async function loadScopedMatches(pool: pg.Pool, options: FootballPrematchPipelin
       join teams home on home.id = m.home_team_id
       join teams away on away.id = m.away_team_id
       join competitions c on c.id = m.competition_id
-      join provider_mappings league_pm
+      left join provider_mappings league_pm
         on league_pm.provider = $1
        and league_pm.entity_type = 'competition'
        and league_pm.internal_entity_id = m.competition_id
@@ -617,7 +617,11 @@ async function main() {
   try {
     const now = new Date();
     const targets = await loadPrematchMatchesFromDb(pool, options, now);
-    assertReviewedTargets(targets);
+    // Canonical competition and single-match scopes are already explicit; the
+    // reviewed APIFootball league gate only applies to the league scope.
+    if (!options.matchId && !options.competitionId) {
+      assertReviewedTargets(targets);
+    }
     await runFootballPrematchPipeline(options, {
       now: () => now,
       loadMatches: async () => targets,

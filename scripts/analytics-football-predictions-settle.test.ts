@@ -11,6 +11,7 @@ const baseOptions: FootballPredictionSettlementRunnerOptions = {
   reportJson: false,
   lookbackHours: 96,
   allReviewedEnabled: false,
+  allCompetitions: false,
   matchId: "match-1"
 };
 
@@ -27,14 +28,32 @@ describe("football prediction settlement runner", () => {
       reportJson: true,
       lookbackHours: 96,
       allReviewedEnabled: false,
+      allCompetitions: false,
       predictionId: "prediction-1"
+    });
+    expect(parseFootballPredictionSettlementArgs(["--all-competitions"])).toMatchObject({
+      allCompetitions: true,
+      allReviewedEnabled: false
     });
   });
 
   it("validates target and production safety", () => {
-    expect(() => validateFootballPredictionSettlementOptions({ execute: false, reportJson: false, lookbackHours: 96, allReviewedEnabled: false }, baseEnv)).toThrow("requires --match-id");
+    expect(() => validateFootballPredictionSettlementOptions({ execute: false, reportJson: false, lookbackHours: 96, allReviewedEnabled: false, allCompetitions: false }, baseEnv)).toThrow("requires --match-id");
     expect(() => validateFootballPredictionSettlementOptions({ ...baseOptions, predictionId: "prediction-1" }, baseEnv)).toThrow("not both");
+    expect(() => validateFootballPredictionSettlementOptions({ ...baseOptions, allReviewedEnabled: true }, baseEnv)).toThrow("not both");
     expect(() => validateFootballPredictionSettlementOptions(baseOptions, { ...baseEnv, NODE_ENV: "production" })).toThrow("forbidden in production");
+  });
+
+  it("settles all canonical competitions when the scope is explicit", async () => {
+    const listContextsForAllCompetitions = vi.fn().mockResolvedValue([baseContext]);
+    const result = await runFootballPredictionSettlement(
+      { execute: false, reportJson: false, lookbackHours: 96, allReviewedEnabled: false, allCompetitions: true },
+      mockDependencies({ listContextsForAllCompetitions })
+    );
+
+    expect(listContextsForAllCompetitions).toHaveBeenCalledWith(96);
+    expect(result.report.selected_target.type).toBe("all_competitions");
+    expect(result.report.evaluated_outputs_count).toBe(1);
   });
 
   it("runs dry-run settlement without writes or provider calls", async () => {

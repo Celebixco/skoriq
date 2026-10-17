@@ -22,7 +22,9 @@ interface JobIdentity {
 const jobs: Record<string, JobIdentity> = {
   "finished-matches": { jobKey: "sofascore.finished-matches", jobName: "finished-matches-sync", entityType: "match" },
   "upcoming-matches": { jobKey: "sofascore.upcoming-matches", jobName: "upcoming-matches-sync", entityType: "match" },
-  "standings": { jobKey: "sofascore.standings", jobName: "standings-sync", entityType: "standing" }
+  "standings": { jobKey: "sofascore.standings", jobName: "standings-sync", entityType: "standing" },
+  "prematch": { jobKey: "analytics.prematch", jobName: "daily-prematch", entityType: "match" },
+  "settlement": { jobKey: "analytics.settlement", jobName: "prediction-settlement", entityType: "match" }
 };
 const failedStatuses = new Set(["fetch_failed", "import_failed", "service_error"]);
 const phases = new Set<SyncRunPhase>(["begin", "step", "final"]);

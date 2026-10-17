@@ -24,6 +24,7 @@ interface DailyPrematchOptions {
   competitionId?: string;
   matchId?: string;
   allReviewedEnabled: boolean;
+  allCompetitions: boolean;
   timezone: string;
   maxRuntimeSeconds: number;
   perMatchTimeoutSeconds: number;
@@ -71,6 +72,7 @@ interface DailyPrematchDependencies {
     options: FootballPrematchPipelineOptions;
     now: Date;
   }): Promise<FootballPrematchPipelineMatchReport>;
+  listCompetitions?(options: DailyPrematchOptions, now: Date): Promise<DailyLeagueScope[]>;
   log?(message: string): void;
 }
 
@@ -91,6 +93,7 @@ export function parseDailyPrematchArgs(argv: string[]): DailyPrematchOptions {
     minimumLeadMinutes: policy.minimumLeadMinutes,
     limit: 50,
     allReviewedEnabled: false,
+    allCompetitions: false,
     timezone: "Europe/Istanbul",
     maxRuntimeSeconds: 300,
     perMatchTimeoutSeconds: 45,
@@ -109,6 +112,10 @@ export function parseDailyPrematchArgs(argv: string[]): DailyPrematchOptions {
     }
     if (arg === "--all-reviewed-enabled") {
       options.allReviewedEnabled = true;
+      continue;
+    }
+    if (arg === "--all-competitions") {
+      options.allCompetitions = true;
       continue;
     }
     if (arg === "--verbose") {
@@ -160,9 +167,9 @@ export function parseDailyPrematchArgs(argv: string[]): DailyPrematchOptions {
     }
   }
 
-  const scopeCount = [options.allReviewedEnabled, Boolean(options.countryId || options.leagueId), Boolean(options.competitionId), Boolean(options.matchId)].filter(Boolean).length;
+  const scopeCount = [options.allReviewedEnabled, options.allCompetitions, Boolean(options.countryId || options.leagueId), Boolean(options.competitionId), Boolean(options.matchId)].filter(Boolean).length;
   if (scopeCount !== 1) {
-    throw new Error("Daily pre-match scan requires exactly one scope: --all-reviewed-enabled, --country-id plus --league-id, --competition-id, or --match-id.");
+    throw new Error("Daily pre-match scan requires exactly one scope: --all-reviewed-enabled, --all-competitions, --country-id plus --league-id, --competition-id, or --match-id.");
   }
   if ((options.countryId && !options.leagueId) || (!options.countryId && options.leagueId)) {
     throw new Error("Daily pre-match scan requires --country-id and --league-id together.");
@@ -175,13 +182,15 @@ export async function runDailyPrematchScan(options: DailyPrematchOptions, databa
   const startedAt = Date.now();
   const deadline = startedAt + options.maxRuntimeSeconds * 1000;
   const log = dependencies.log ?? (() => undefined);
-  const leagueScopes = resolveDailyPrematchScopes(options);
+  const pool = dependencies.loadMatches ? undefined : new pg.Pool({ connectionString: databaseUrl, max: 1 });
+  const leagueScopes = options.allCompetitions
+    ? await loadAllFootballCompetitions(pool!, options, now, dependencies)
+    : resolveDailyPrematchScopes(options);
 
   log(
     `[daily-prematch] startup mode=${options.execute ? "execute" : "dry-run"} windowHours=${options.windowHours} minimumLeadMinutes=${options.minimumLeadMinutes} limit=${options.limit} scope=${formatScope(options)} maxRuntimeSeconds=${options.maxRuntimeSeconds} perMatchTimeoutSeconds=${options.perMatchTimeoutSeconds}`
   );
 
-  const pool = dependencies.loadMatches ? undefined : new pg.Pool({ connectionString: databaseUrl, max: 1 });
   const reports: DailyPrematchReport["reports"] = [];
   let stoppedReason: string | undefined;
   try {
@@ -203,7 +212,11 @@ export async function runDailyPrematchScan(options: DailyPrematchOptions, databa
       };
       validateFootballPrematchPipelineOptions(pipelineOptions, process.env);
       const targets = dependencies.loadMatches ? await dependencies.loadMatches(pipelineOptions, now) : await loadPrematchMatchesFromDb(pool!, pipelineOptions, now);
-      assertReviewedTargets(targets);
+      // Canonical competition, single-match, and all-competitions scopes are
+      // explicit; the reviewed APIFootball gate only applies to league scopes.
+      if (!options.allCompetitions && !options.competitionId && !options.matchId) {
+        assertReviewedTargets(targets);
+      }
       const leagueReports: FootballPrematchPipelineMatchReport[] = [];
       const insideWindowCount = targets.filter((target) => evaluateTargetWindow(target, pipelineOptions, now) === "within_window").length;
       log(
@@ -312,6 +325,7 @@ function parseBooleanFlag(flag: string, value: string | undefined) {
 function resolveDailyPrematchScopes(options: DailyPrematchOptions): DailyLeagueScope[] {
   const reviewedLeagues = manualLeagueConfigs.filter((league) => league.reviewed && league.enabled);
   if (options.allReviewedEnabled) return reviewedLeagues;
+  if (options.allCompetitions) return [];
   if (options.countryId && options.leagueId) {
     return reviewedLeagues.filter((league) => league.countryId === options.countryId && league.leagueId === options.leagueId);
   }
@@ -320,8 +334,35 @@ function resolveDailyPrematchScopes(options: DailyPrematchOptions): DailyLeagueS
   return [];
 }
 
+async function loadAllFootballCompetitions(
+  pool: pg.Pool,
+  options: DailyPrematchOptions,
+  now: Date,
+  dependencies: DailyPrematchDependencies
+): Promise<DailyLeagueScope[]> {
+  if (dependencies.listCompetitions) return dependencies.listCompetitions(options, now);
+  const minimumStart = new Date(now.getTime() + options.minimumLeadMinutes * 60 * 1000);
+  const windowEnd = new Date(now.getTime() + options.windowHours * 60 * 60 * 1000);
+  const result = await pool.query<{ competitionId: string; leagueName: string }>(
+    `
+      select distinct c.id::text as "competitionId", c.name as "leagueName"
+      from matches m
+      join competitions c on c.id = m.competition_id
+      join sports s on s.id = m.sport_id
+      where s.slug = 'football'
+        and m.status in ('not_started', 'scheduled')
+        and m.scheduled_start_at > $1
+        and m.scheduled_start_at <= $2
+      order by c.name
+    `,
+    [minimumStart.toISOString(), windowEnd.toISOString()]
+  );
+  return result.rows;
+}
+
 function formatScope(options: DailyPrematchOptions) {
   if (options.allReviewedEnabled) return "all-reviewed-enabled";
+  if (options.allCompetitions) return "all-competitions";
   if (options.countryId && options.leagueId) return `country:${options.countryId}/league:${options.leagueId}`;
   if (options.competitionId) return `competition:${options.competitionId}`;
   if (options.matchId) return `match:${options.matchId}`;

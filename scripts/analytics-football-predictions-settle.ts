@@ -20,6 +20,7 @@ export interface FootballPredictionSettlementRunnerOptions {
   predictionId?: string;
   lookbackHours: number;
   allReviewedEnabled: boolean;
+  allCompetitions: boolean;
 }
 
 export interface FootballPredictionSettlementEnvironment {
@@ -61,6 +62,7 @@ export interface FootballPredictionSettlementContext {
 export interface FootballPredictionSettlementDependencies {
   listContextsByMatchId(matchId: string): Promise<FootballPredictionSettlementContext[]>;
   listContextsForReviewedEnabled?(lookbackHours: number): Promise<FootballPredictionSettlementContext[]>;
+  listContextsForAllCompetitions?(lookbackHours: number): Promise<FootballPredictionSettlementContext[]>;
   findContextByPredictionId(predictionId: string): Promise<FootballPredictionSettlementContext | undefined>;
   persistSettlement?(settlement: FootballPredictionSettlementResult): Promise<void>;
   persistRunReport?(report: FootballPredictionSettlementRunReport): Promise<void>;
@@ -71,7 +73,7 @@ export interface FootballPredictionSettlementRunReport {
   provider: typeof reportProvider;
   mode: "dry-run" | "execute";
   selected_target: {
-    type: "match" | "prediction";
+    type: "match" | "prediction" | "all_competitions";
     match_id?: string;
     prediction_id?: string;
   };
@@ -90,6 +92,7 @@ export interface FootballPredictionSettlementRunReport {
     mode: "dry-run" | "execute";
     match_id?: string;
     prediction_id?: string;
+    all_competitions?: boolean;
     report_json: boolean;
   };
 }
@@ -104,7 +107,8 @@ export function parseFootballPredictionSettlementArgs(argv: string[]): FootballP
     execute: false,
     reportJson: false,
     lookbackHours: 96,
-    allReviewedEnabled: false
+    allReviewedEnabled: false,
+    allCompetitions: false
   };
 
   for (const arg of argv) {
@@ -118,6 +122,10 @@ export function parseFootballPredictionSettlementArgs(argv: string[]): FootballP
     }
     if (arg === "--all-reviewed-enabled") {
       options.allReviewedEnabled = true;
+      continue;
+    }
+    if (arg === "--all-competitions") {
+      options.allCompetitions = true;
       continue;
     }
 
@@ -153,8 +161,14 @@ export function validateFootballPredictionSettlementOptions(
   if (options.matchId && options.predictionId) {
     throw new Error("Use either --match-id or --prediction-id, not both.");
   }
-  if (!options.matchId && !options.predictionId && !options.allReviewedEnabled) {
-    throw new Error("Football prediction settlement requires --match-id, --prediction-id, or --all-reviewed-enabled.");
+  if (!options.matchId && !options.predictionId && !options.allReviewedEnabled && !options.allCompetitions) {
+    throw new Error("Football prediction settlement requires --match-id, --prediction-id, --all-reviewed-enabled, or --all-competitions.");
+  }
+  if ((options.matchId || options.predictionId) && (options.allReviewedEnabled || options.allCompetitions)) {
+    throw new Error("Use either a single settlement target or a bulk scope, not both.");
+  }
+  if (options.allReviewedEnabled && options.allCompetitions) {
+    throw new Error("Use either --all-reviewed-enabled or --all-competitions, not both.");
   }
 }
 
@@ -168,7 +182,9 @@ export async function runFootballPredictionSettlement(
     ? compact([await dependencies.findContextByPredictionId(options.predictionId)])
     : options.matchId
       ? await dependencies.listContextsByMatchId(options.matchId)
-      : await dependencies.listContextsForReviewedEnabled?.(options.lookbackHours) ?? [];
+      : options.allCompetitions
+        ? await dependencies.listContextsForAllCompetitions?.(options.lookbackHours) ?? []
+        : await dependencies.listContextsForReviewedEnabled?.(options.lookbackHours) ?? [];
 
   if (contexts.length === 0) {
     warnings.push("No settleable prediction outputs were found for the selected target.");
@@ -219,7 +235,7 @@ export async function runFootballPredictionSettlement(
     provider: reportProvider,
     mode: options.execute ? "execute" : "dry-run",
     selected_target: {
-      type: options.predictionId ? "prediction" : "match",
+      type: options.predictionId ? "prediction" : options.allCompetitions ? "all_competitions" : "match",
       match_id: options.matchId,
       prediction_id: options.predictionId
     },
@@ -238,6 +254,7 @@ export async function runFootballPredictionSettlement(
       mode: options.execute ? "execute" : "dry-run",
       match_id: options.matchId,
       prediction_id: options.predictionId,
+      all_competitions: options.allCompetitions,
       report_json: options.reportJson
     }
   };
@@ -255,6 +272,7 @@ function createDependencies(database: Database): FootballPredictionSettlementDep
   return {
     listContextsByMatchId: (matchId) => repository.listPredictionOutputSettlementContextsByMatchId(matchId),
     listContextsForReviewedEnabled: (lookbackHours) => listReviewedEnabledSettlementContexts(database, lookbackHours),
+    listContextsForAllCompetitions: (lookbackHours) => listAllSettlementContexts(database, lookbackHours),
     findContextByPredictionId: (predictionId) => repository.findPredictionOutputSettlementContextById(predictionId),
     persistSettlement: (settlement) =>
       repository.settlePredictionOutput({
@@ -326,6 +344,47 @@ async function listReviewedEnabledSettlementContexts(database: Database, lookbac
       )})
   `);
   const rows = Array.isArray(result) ? result : "rows" in result && Array.isArray(result.rows) ? result.rows : [];
+  return mapSettlementContextRows(rows);
+}
+
+async function listAllSettlementContexts(database: Database, lookbackHours: number): Promise<FootballPredictionSettlementContext[]> {
+  const since = new Date(Date.now() - lookbackHours * 60 * 60 * 1000).toISOString();
+  const result = await database.execute(sql`
+    select
+      p.id as prediction_id,
+      p.match_id,
+      p.prediction_type,
+      p.prediction_value,
+      p.status as prediction_status,
+      p.consistency_status,
+      p.recommendation_tier,
+      p.generated_at,
+      p.generation_window_status,
+      p.rebuild_required,
+      p.stale_at,
+      m.id as match_id,
+      m.status as match_status,
+      m.scheduled_start_at,
+      fs.home_score_fulltime,
+      fs.away_score_fulltime,
+      fs.home_score_halftime,
+      fs.away_score_halftime,
+      fs.status as score_status
+    from football_prediction_outputs p
+    inner join matches m on m.id = p.match_id
+    inner join sports s on s.id = m.sport_id and s.slug = 'football'
+    left join football_match_scores fs on fs.match_id = m.id
+    where m.scheduled_start_at >= ${since}
+      and p.status in ('draft', 'generated', 'member_visible', 'locked', 'settlement_pending')
+      and p.recommendation_tier in ('primary', 'try', 'alternative')
+      and p.consistency_status in ('passed', 'warning')
+      and p.blocking_conflict_count = 0
+  `);
+  const rows = Array.isArray(result) ? result : "rows" in result && Array.isArray(result.rows) ? result.rows : [];
+  return mapSettlementContextRows(rows);
+}
+
+function mapSettlementContextRows(rows: unknown[]): FootballPredictionSettlementContext[] {
   return rows.map((row) => {
     const record = row as Record<string, unknown>;
     return {

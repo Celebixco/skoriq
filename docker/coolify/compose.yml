@@ -124,6 +124,30 @@ services:
       dragonfly:
         condition: service_started
 
+  analytics:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    stop_grace_period: 120s
+    command: ["node", "scripts/analytics-daily-service.mjs"]
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
+      REDIS_URL: redis://dragonfly:6379
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_EXECUTION_TARGET: local
+      AUTH_ENABLED: "true"
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Set a random AUTH_JWT_SECRET of at least 32 characters}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set the deployed frontend origin}
+      ANALYTICS_STATE_DIR: /var/lib/skoriq-analytics
+      TZ: Europe/Istanbul
+    volumes:
+      - analytics_state:/var/lib/skoriq-analytics
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   sync:
     build:
       context: ../..
@@ -148,3 +172,4 @@ volumes:
   postgres_data:
   dragonfly_data:
   sync_state:
+  analytics_state:
