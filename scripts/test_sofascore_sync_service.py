@@ -76,6 +76,7 @@ class JobTests(unittest.TestCase):
         self.assertEqual(jobs[3].fetch_args, ("--pages", "3"))
         self.assertEqual(jobs[4].name, "team-statistics")
         self.assertEqual(jobs[4].fetch_args, ("--limit", "30"))
+        self.assertTrue(jobs[4].use_tsx)
         self.assertTrue(str(jobs[4].fetch_script).endswith("sofascore_fetch_team_statistics.py"))
         self.assertTrue(str(jobs[0].fetch_script).endswith("sofascore_fetch_recent_matches.py"))
 
@@ -212,6 +213,18 @@ class RunJobTests(unittest.TestCase):
         self.assertGreater(phases.count("step"), 0)
         self.assertEqual(phases[-1], "final")
         self.assertIn("succeeded", helper[-1])
+
+    def test_team_statistics_job_uses_tsx_and_limit(self):
+        runner = FakeRunner()
+        job = service.build_jobs({})[4]
+        service.run_job(job, dict(self.base_env), self.state_dir, NOW, runner=runner)
+        fetch_commands = [command for command in runner.commands if "sofascore_fetch_team_statistics.py" in command[1]]
+        import_commands = [command for command in runner.commands if any("provider-sofascore-team-statistics-sync.ts" in part for part in command)]
+        self.assertEqual(len(fetch_commands), 2)
+        self.assertTrue(all("--limit" in command and "30" in command for command in fetch_commands))
+        self.assertEqual(len(import_commands), 2)
+        self.assertTrue(all("tsx" in command[0] for command in import_commands))
+        self.assertTrue(all("--no-log-run" in command for command in import_commands))
 
     def test_standings_job_uses_the_standings_scripts(self):
         runner = FakeRunner()

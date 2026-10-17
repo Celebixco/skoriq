@@ -164,6 +164,7 @@ services:
       SYNC_TEAM_STATISTICS_INTERVAL_MINUTES: ${SYNC_TEAM_STATISTICS_INTERVAL_MINUTES:-10080}
       ALLOW_PRODUCTION_TEAM_STATISTICS: "true"
       ALLOW_PRODUCTION_LOCAL_DB: "true"
+      SYNC_FORCE_JOBS: team-statistics
       SYNC_STATE_DIR: /var/lib/skoriq-sync
       SYNC_CAPTURE_DIR: /tmp/skoriq-sync-captures
       TZ: Europe/Istanbul

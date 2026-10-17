@@ -54,6 +54,7 @@ class Job:
     import_script: Path
     fetch_args: tuple[str, ...] = ()
     import_args: tuple[str, ...] = ()
+    use_tsx: bool = False
 
 
 def build_jobs(env: dict[str, str]) -> list[Job]:
@@ -77,7 +78,7 @@ def build_jobs(env: dict[str, str]) -> list[Job]:
         Job("team-statistics", max(15, team_statistics_interval),
             ROOT / "scripts" / "sofascore_fetch_team_statistics.py",
             ROOT / "scripts" / "provider-sofascore-team-statistics-sync.ts",
-            fetch_args=("--limit", "30")),
+            fetch_args=("--limit", "30"), use_tsx=True),
     ]
 
 
@@ -297,7 +298,7 @@ def import_part(job: Job, part_path: Path, env: dict[str, str], execute: bool, t
     tournament_id = int(part_path.stem.rsplit("-t", 1)[1])
     progress_path = Path(f"{part_path}.progress")
     progress_path.unlink(missing_ok=True)
-    command = [node_binary(), str(job.import_script), "--capture", str(part_path)]
+    command = [tsx_binary() if job.use_tsx else node_binary(), str(job.import_script), "--capture", str(part_path)]
     command += list(job.import_args)
     if execute:
         command.append("--execute")
@@ -383,6 +384,15 @@ def begin_run(job: Job, env: dict[str, str], *, execute: bool, runner: Runner = 
 def node_binary() -> str:
     # Node runs the TypeScript entry points natively (type stripping); tsx is not required.
     return shutil.which("node") or "node"
+
+
+def tsx_binary() -> str:
+    # Importers with local .ts module imports need tsx's .js -> .ts resolution;
+    # plain Node type stripping cannot resolve ./db-readiness.js to the .ts file.
+    candidate = ROOT / "node_modules" / ".bin" / "tsx"
+    if candidate.exists():
+        return str(candidate)
+    return shutil.which("tsx") or "tsx"
 
 
 def log_step(job: Job, env: dict[str, str], step: str, payload: dict[str, Any], *, runner: Runner) -> None:
@@ -497,12 +507,18 @@ def run_loop(env: dict[str, str], state_dir: Path, *, runner: Runner = robust_ru
     signal.signal(signal.SIGINT, request_stop)
     print(json.dumps({"event": "sync_service_started", "jobs": [job.name for job in jobs], "execute": env.get("SYNC_EXECUTE", "0")}), flush=True)
     first_pass = True
+    forced = {name.strip() for name in env.get("SYNC_FORCE_JOBS", "").split(",") if name.strip()}
     while not stop:
         try:
             now = utc_now()
             state = load_state(state_dir)
             pending = due_jobs(jobs, state, now)
             if first_pass:
+                # One-shot recovery hook: a failed job can be retried without
+                # waiting for its full interval or deleting the state volume.
+                for job in jobs:
+                    if job.name in forced and job not in pending:
+                        pending.append(job)
                 log_step(jobs[0], env, "loop_begin",
                          {"state": state, "dueJobs": [job.name for job in pending], "stateDir": str(state_dir)},
                          runner=runner)
