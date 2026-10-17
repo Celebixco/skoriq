@@ -153,6 +153,29 @@ class RunFetchTests(unittest.TestCase):
         self.assertEqual([item["sofascore_id"] for item in first["events"]], [6002, 6001])
         self.assertEqual(document["tournaments"][1]["events"], [])
 
+    def test_pages_merge_historical_events_and_dedupe(self):
+        first_page = [event(7000 + index, ts=RECENT_TS - index * 60) for index in range(capture.MAX_EVENTS_PER_TOURNAMENT)]
+        second_page = [event(7100, ts=RECENT_TS - 7200), event(7000, ts=RECENT_TS)]
+        transport = FakeTransport({
+            "tournament/52/season/98080/events/last/1": FakeResponse(200, {"events": second_page}),
+            "tournament/52/season/98080/events/last/0": FakeResponse(200, {"events": first_page}),
+            "tournament/98/season/87876/events": FakeResponse(200, {"events": []}),
+        })
+        summary = capture.run_fetch(self.catalog, self.output, transport=transport, now=lambda: NOW,
+                                    sleep=lambda _: None, pages=2)
+        self.assertEqual(summary["events_total"], 31)
+        document = json.loads(self.output.read_text(encoding="utf-8"))
+        events = [item for tournament in document["tournaments"] for item in tournament["events"]]
+        self.assertEqual(len(events), 31)
+        self.assertEqual(len({item["sofascore_id"] for item in events}), 31)
+        self.assertEqual(events[0]["sofascore_id"], 7000)
+        self.assertIn(7100, {item["sofascore_id"] for item in events})
+
+    def test_rejects_out_of_range_page_count(self):
+        with self.assertRaises(ValueError):
+            capture.run_fetch(self.catalog, self.output, transport=FakeTransport({}), now=lambda: NOW,
+                              sleep=lambda _: None, pages=6)
+
     def test_stops_after_rate_limit_and_skips_remaining(self):
         transport = FakeTransport({
             "tournament/52/season/98080/events": FakeResponse(429, None),

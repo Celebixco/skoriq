@@ -58,7 +58,7 @@ export class SyncStatusController {
           FROM sync_jobs j
           WHERE j.queue_name = 'sync-service'
           ORDER BY j.updated_at DESC
-          LIMIT 5
+          LIMIT 10
         `)
       ]);
 

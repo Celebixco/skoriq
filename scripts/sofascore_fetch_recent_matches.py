@@ -13,6 +13,8 @@ from uuid import uuid4
 
 MAX_SAFE_INTEGER = 9_007_199_254_740_991
 MAX_EVENTS_PER_TOURNAMENT = 30
+MAX_EVENTS_TOTAL = 180
+MAX_EVENT_PAGES = 5
 MAX_GOALS = 30
 REQUEST_TIMEOUT_SECONDS = 15
 REQUEST_DELAY_SECONDS = 0.7
@@ -71,6 +73,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Fetch a single league by SofaScore tournament id.")
     parser.add_argument("--window", choices=["last", "next"], default="last",
                         help="Capture recently finished matches (last) or upcoming fixtures (next).")
+    parser.add_argument("--pages", type=positive_argument, default=1,
+                        help="Number of 30-event pages to merge for a historical backfill (1-5).")
     return parser.parse_args(argv)
 
 
@@ -207,8 +211,8 @@ def default_output_path() -> Path:
     return Path(__file__).resolve().parents[1] / ".provider-runs" / "sofascore" / f"recent-matches-{stamp}-{uuid4().hex[:8]}.json"
 
 
-def events_endpoint(tournament_id: int, season_id: int, window: str = "last") -> str:
-    return f"{API_BASE}/unique-tournament/{tournament_id}/season/{season_id}/events/{window}/0"
+def events_endpoint(tournament_id: int, season_id: int, window: str = "last", page: int = 0) -> str:
+    return f"{API_BASE}/unique-tournament/{tournament_id}/season/{season_id}/events/{window}/{page}"
 
 
 def seasons_endpoint(tournament_id: int) -> str:
@@ -280,12 +284,15 @@ def run_fetch(catalog_path: Path, output_path: Path, *, transport: Transport,
               limit_tournaments: int | None = None,
               tournament_id: int | None = None,
               window: str = "last",
+              pages: int = 1,
               now: Callable[[], datetime] = utc_now,
               sleep: Callable[[float], None] = time.sleep) -> dict[str, Any]:
     if limit_tournaments is not None:
         positive_id(limit_tournaments)
     if tournament_id is not None:
         positive_id(tournament_id)
+    if not 1 <= pages <= MAX_EVENT_PAGES:
+        raise ValueError(f"--pages must be between 1 and {MAX_EVENT_PAGES}.")
     catalog_path, output_path = Path(catalog_path), Path(output_path)
     validate_output(catalog_path, output_path)
     try:
@@ -307,41 +314,62 @@ def run_fetch(catalog_path: Path, output_path: Path, *, transport: Transport,
             continue
         season_id = league.season_id
         season_detected = False
-        payload, reason, status = fetch_payload(transport, events_endpoint(league.tournament_id, season_id, window), sleep, attempted)
+        page_limit = pages if window == "last" else 1
+
+        def fetch_pages(target_season: int) -> tuple[list[dict[str, Any]], str | None, int | None]:
+            merged: list[dict[str, Any]] = []
+            for page in range(page_limit):
+                endpoint = events_endpoint(league.tournament_id, target_season, window, page)
+                payload, page_reason, page_status = fetch_payload(transport, endpoint, sleep, attempted)
+                if page_status in (403, 429):
+                    return merged, page_reason, page_status
+                if page_reason is not None:
+                    return merged, page_reason, page_status
+                try:
+                    page_events = extract_finished_events(payload, snapshot_instant, window)
+                except CaptureFailure as error:
+                    return merged, str(error), page_status
+                if not page_events:
+                    break
+                merged.extend(page_events)
+                if len(page_events) < MAX_EVENTS_PER_TOURNAMENT:
+                    break
+            return merged, None, 200
+
+        events, reason, status = fetch_pages(season_id)
         if status in (403, 429):
             stopped_status = status
-        if reason is None:
-            try:
-                events = extract_finished_events(payload, snapshot_instant, window)
-            except CaptureFailure as error:
-                reason = str(error)
-                events = []
-        else:
-            events = []
-        stale = False
         if window == "last":
-            latest = events[0]["start_timestamp"] if events else None
+            latest = max((event["start_timestamp"] for event in events), default=None)
             stale = latest is None or snapshot_instant - datetime.fromtimestamp(latest, tz=timezone.utc) > STALE_WINDOW
             if reason is None and stale and stopped_status is None:
                 detected = detect_current_season(transport, league, sleep, attempted, snapshot_instant)
                 if detected is not None:
-                    season_id, events = detected
+                    season_id, _ = detected
                     season_detected = True
-                    latest = events[0]["start_timestamp"] if events else None
-                    stale = latest is None
-        if reason is not None:
+                    events, reason, status = fetch_pages(season_id)
+                    if status in (403, 429):
+                        stopped_status = status
+        if reason is not None and not events:
             failures.append({"tournamentId": league.tournament_id, "seasonId": season_id,
                              "status": status, "reason": reason})
             continue
-        if stale:
+        if reason is not None:
             failures.append({"tournamentId": league.tournament_id, "seasonId": season_id,
-                             "status": 200, "reason": "no_recent_events"})
+                             "status": status, "reason": f"partial_pages:{reason}"})
+        if window == "last":
+            latest = max((event["start_timestamp"] for event in events), default=None)
+            if latest is None or snapshot_instant - datetime.fromtimestamp(latest, tz=timezone.utc) > STALE_WINDOW:
+                failures.append({"tournamentId": league.tournament_id, "seasonId": season_id,
+                                 "status": 200, "reason": "no_recent_events"})
+        events.sort(key=lambda item: item["start_timestamp"], reverse=window == "last")
         fresh_events: list[dict[str, Any]] = []
         for event in events:
             if event["sofascore_id"] in seen_events:
                 continue
             seen_events.add(event["sofascore_id"])
             fresh_events.append(event)
+        fresh_events = fresh_events[:MAX_EVENTS_TOTAL]
         events_total += len(fresh_events)
         tournaments.append({
             "sofascore_tournament_id": league.tournament_id,
@@ -410,7 +438,8 @@ def main(argv: list[str] | None = None) -> int:
             summary = run_fetch(options.catalog, output, transport=transport,
                                 limit_tournaments=options.limit_tournaments,
                                 tournament_id=options.tournament_id,
-                                window=options.window)
+                                window=options.window,
+                                pages=options.pages)
     except ValueError as error:
         print(json.dumps({"error": str(error)}))
         return 2

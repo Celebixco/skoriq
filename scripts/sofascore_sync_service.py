@@ -60,6 +60,7 @@ def build_jobs(env: dict[str, str]) -> list[Job]:
     interval = int(env.get("SYNC_FINISHED_INTERVAL_MINUTES", "180"))
     upcoming_interval = int(env.get("SYNC_UPCOMING_INTERVAL_MINUTES", "720"))
     standings_interval = int(env.get("SYNC_STANDINGS_INTERVAL_MINUTES", "720"))
+    history_interval = int(env.get("SYNC_HISTORY_INTERVAL_MINUTES", "43200"))
     matches_fetch = ROOT / "scripts" / "sofascore_fetch_recent_matches.py"
     matches_import = ROOT / "scripts" / "provider-sofascore-matches-sync.ts"
     return [
@@ -70,6 +71,8 @@ def build_jobs(env: dict[str, str]) -> list[Job]:
         Job("standings", max(15, standings_interval),
             ROOT / "scripts" / "sofascore_fetch_standings.py",
             ROOT / "scripts" / "provider-sofascore-standings-sync.ts"),
+        Job("history-backfill", max(15, history_interval), matches_fetch, matches_import,
+            fetch_args=("--pages", "3"), import_args=("--job", "finished-matches")),
     ]
 
 

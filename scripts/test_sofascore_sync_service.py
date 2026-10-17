@@ -66,12 +66,14 @@ class JobTests(unittest.TestCase):
         jobs = service.build_jobs({"SYNC_FINISHED_INTERVAL_MINUTES": "5"})
         self.assertEqual(jobs[0].interval_minutes, 15)
         jobs = service.build_jobs({})
-        self.assertEqual(len(jobs), 3)
+        self.assertEqual(len(jobs), 4)
         self.assertEqual(jobs[0].interval_minutes, 180)
         self.assertEqual(jobs[1].name, "upcoming-matches")
         self.assertEqual(jobs[1].fetch_args, ("--window", "next"))
         self.assertEqual(jobs[2].name, "standings")
         self.assertTrue(str(jobs[2].fetch_script).endswith("sofascore_fetch_standings.py"))
+        self.assertEqual(jobs[3].name, "history-backfill")
+        self.assertEqual(jobs[3].fetch_args, ("--pages", "3"))
         self.assertTrue(str(jobs[0].fetch_script).endswith("sofascore_fetch_recent_matches.py"))
 
     def test_due_jobs_uses_last_finished_at(self):
