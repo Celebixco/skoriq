@@ -520,6 +520,8 @@ The sync service also refreshes team-season statistics from the SofaScore team s
 
 `SYNC_FORCE_JOBS` is a one-shot recovery hook: list job names there to force them to run on the next service start even when their interval is not due. Remove the value after the recovered run; it is not a permanent schedule.
 
+The sync scheduler floors every interval at 15 minutes. A configured `SYNC_FINISHED_INTERVAL_MINUTES=5` therefore runs every 15 minutes; set the value to 15 to make the effective cadence explicit.
+
 Internal public eligibility review is available through authenticated, read-only API/dashboard surfaces:
 
 ```http
