@@ -2,6 +2,8 @@
 
 This runbook documents controlled soft-launch jobs. Do not enable unattended jobs until the deployment target, database branch, and secrets are explicitly approved.
 
+Production note: the self-hosted SofaScore stack runs its own `sync` and `analytics` containers. The `sync` container refreshes matches, fixtures, standings, and the monthly history backfill. The `analytics` container runs the daily draft-only pre-match scan at 09:00 Europe/Istanbul and settlement at 09:30. The APIFootball commands below remain manual/controlled workflows; they are not the production schedule.
+
 ## Daily 08:30 Upcoming Fixture Sync
 
 Purpose: refresh scheduled/not-started fixtures for reviewed/enabled football leagues before the daily pre-match analysis scan. This keeps future matches visible without running historical backfills or prediction builders.

@@ -27,7 +27,7 @@ Member-safe prediction preview:
 - `GET /api/member/football/matches/:matchId/prediction-preview` returns a protected, sanitized match-level prediction preview for authenticated members and admins.
 - Pre-match draft generation now uses a configurable 36-hour window by default: `FOOTBALL_PREMATCH_WINDOW_HOURS=36` and `FOOTBALL_PREMATCH_MINIMUM_LEAD_MINUTES=30`.
 - `npm run provider:football:upcoming-sync -- --all-reviewed-enabled --window-days=5 --limit=200 --execute` refreshes upcoming fixtures for reviewed/enabled leagues only. It should run before daily pre-match analysis, defaults to dry-run, skips live/non-standard statuses safely, and never runs feature builders, candidates, settlement, publishing, member-visible mutation, or tahmin kombini.
-- `npm run pipeline:football:daily-prematch -- --all-reviewed-enabled --execute` is the documented daily 09:00 Europe/Istanbul scan command. It uses normalized DB data only and keeps outputs draft-only.
+- `npm run pipeline:football:daily-prematch -- --all-competitions --execute` is the daily 09:00 Europe/Istanbul scan command used by the `analytics` service for the SofaScore production dataset. The `--all-reviewed-enabled` scope remains for APIFootball reviewed test leagues. Both use normalized DB data only and keep outputs draft-only.
 - `npm run provider:football:finished-sync -- --all-reviewed-enabled --lookback-hours=72 --execute` refreshes recent final scores for reviewed/enabled leagues only.
 - `npm run analytics:football:settle-predictions -- --all-reviewed-enabled --lookback-hours=96 --execute` stores internal settlement results without publishing or changing member visibility.
 - `GET /api/football/prediction-results` and `/summary` power the member-safe Tahmin Sonuçları page.
@@ -441,7 +441,7 @@ npm run auth:create-admin
 
 The bootstrap command refuses `NODE_ENV=production`, lowercases the email, hashes the password, and does not print passwords or hashes. This is membership access only; billing, subscription plans, prediction models, and public successful-prediction flows are not implemented.
 
-Member registration is available through `POST /api/auth/register` and the dashboard `/register` route. Registration collects ad, soyad, Turkish `+90` telefon numarası, e-posta, şifre, şifre tekrar, and a simple math security question; login remains e-posta + şifre only. Registration creates `role=member`, `status=active`, uses the same HTTP-only cookie auth strategy, and auto-logs the member in. It never creates admin users; admins are still created only through `npm run auth:create-admin`. Email verification, password reset, social login, billing, and subscription plans are not implemented yet.
+Member registration is available through `POST /api/auth/register` and the dashboard `/register` route. Registration collects ad, soyad, Turkish `+90` telefon numarası, e-posta, şifre, şifre tekrar, and a simple math security question; login remains e-posta + şifre only. Registration creates `role=member`, `status=active`, uses the same HTTP-only cookie auth strategy, and auto-logs the member in. It never creates admin users; admins are still created only through `npm run auth:create-admin`. Password management now includes `POST /api/auth/change-password` for authenticated users and the `forgot-password` / `reset-password` routes used by the dashboard. Reset email delivery requires `RESEND_API_KEY` and `AUTH_PASSWORD_RESET_FROM_EMAIL`; without them the forgot-password endpoint returns `503` and the change-password endpoint remains available. Email verification, social login, billing, and subscription plans are not implemented yet.
 
 Role-based access control:
 
@@ -491,6 +491,29 @@ npm run pipeline:football:prematch -- --match-id=<match-uuid>
 
 Dry-run is the default and writes nothing. Execute mode is local/Neon-test only, selects only matches inside the configured pre-match window, rebuilds match-scoped team form, H2H, match prediction features, reasoning, and consistency-checked candidates, then persists draft audit rows only when the feature is `ready`, the match is inside the window, and at least one non-blocked recommendation candidate exists. It does not call providers, run ingestion, settle, publish, mark member-visible, create public predictions, schedule jobs, or generate tahmin kombini output.
 
+## Automatic Analytics Service
+
+The Coolify compose stack also runs a dedicated `analytics` service using the same runtime image as the API. It replaces the manual daily pre-match step:
+
+- On a fresh state volume it bootstraps one settlement and one pre-match run immediately, so a new deployment is observable without waiting for 09:00.
+- Every day at 09:00 Europe/Istanbul it runs `pipeline:football:daily-prematch --all-competitions --execute`.
+- Every day at 09:30 Europe/Istanbul it runs `analytics:football:predictions:settle --all-competitions --lookback-hours=96 --execute`.
+- Runs are recorded in the admin sync telemetry as `analytics.prematch` and `analytics.settlement`.
+- It reads normalized data only, never calls providers, and persists draft/audit rows only. It does not publish, mark member-visible, create public cards, or generate tahmin kombini output.
+- The analytics container runs with `NODE_ENV=development` because the CLI analytics runners intentionally refuse `NODE_ENV=production`; the container is isolated from the API and only executes these draft-only commands.
+
+`--all-competitions` discovers canonical football competitions with upcoming matches instead of relying on APIFootball reviewed-league mappings. It is also accepted by the settlement runner and makes the pipeline usable with the SofaScore production dataset. `--all-reviewed-enabled` remains available for APIFootball reviewed test leagues.
+
+### Historical form backfill
+
+The sync service exposes a monthly `history-backfill` job. It merges up to three SofaScore event pages per league (`--pages=3`) so home/away form samples are deep enough for readiness. The first service start runs it immediately; later runs follow `SYNC_HISTORY_INTERVAL_MINUTES` (default 43200 minutes). The capture command can also be run manually:
+
+```bash
+npm run provider:sofascore:matches:fetch -- --pages=3
+```
+
+The backfill is additive and never deletes matches, scores, standings, provider mappings, or prediction history. It uses the same capture validation and importer safeguards as the regular finished-score sync.
+
 Internal public eligibility review is available through authenticated, read-only API/dashboard surfaces:
 
 ```http
@@ -500,7 +523,7 @@ GET /api/football/matches/<match-uuid>/public-eligibility
 
 Dashboard routes `/football/public-eligibility` and `/football/matches/:matchId/public-eligibility` show eligible/excluded settled outputs, blocker reasons, late-generated test prediction warnings, and public safety notes. These screens do not publish, approve, mutate statuses, create public cards, or create tahmin kombini output.
 
-Prediction persistence foundation now includes `football_prediction_outputs` and `football_prediction_conflicts`, plus a focused repository for lifecycle-safe storage. This is storage only: no persisted/member-visible prediction generation, settlement engine, public successful predictions page, or tahmin kombini engine exists yet.
+Prediction persistence foundation includes `football_prediction_outputs` and `football_prediction_conflicts`, plus a focused repository for lifecycle-safe storage. The analytics service persists draft candidates and internal settlement results; member-visible/public publishing and tahmin kombini remain unimplemented.
 
 The deterministic football prediction candidate generator prototype is local/manual and dry-run only:
 
