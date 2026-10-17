@@ -75,6 +75,8 @@ import type {
 } from "./types";
 import "./styles.css";
 import { LandingPage } from "./landing/LandingPage";
+import { AppShell } from "./app/AppShell";
+import "./app/app.css";
 
 export { LandingPage };
 
@@ -503,7 +505,7 @@ export function App() {
   const forbidden = isAdminOnlyRoute(route) && currentUser.role !== "admin";
 
   return (
-    <Shell currentPath={path} navigate={navigate} user={currentUser} onLogout={handleLogout} routeLoading={routeLoading}>
+    <AppShell currentPath={path} navigate={navigate} user={currentUser} onLogout={handleLogout} routeLoading={routeLoading}>
       {forbidden ? <ForbiddenPage navigate={navigate} /> : null}
       {!forbidden && (
         <>
@@ -527,7 +529,7 @@ export function App() {
       {route.kind === "match-public-eligibility" ? <MatchPublicEligibilityPage matchId={route.id} navigate={navigate} /> : null}
         </>
       )}
-    </Shell>
+    </AppShell>
   );
 }
 
@@ -977,16 +979,20 @@ export function OverviewDashboardView({
   const health = buildOverviewHealth(data, overview);
   const currentDate = new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" }).format(new Date());
   const previewCount = data?.predictionPreview.items.length ?? 0;
+  const greetingName = user.firstName?.trim() || displayUserName(user);
+  const hour = new Date().getHours();
+  const greeting = hour < 6 ? "İyi geceler" : hour < 12 ? "Günaydın" : hour < 18 ? "İyi günler" : "İyi akşamlar";
 
   return (
     <div className="overview-dashboard">
       <header className="overview-hero">
         <div>
-          <p className="eyebrow">SkorIQ</p>
-          <h1>Hoş geldin, {data?.user.email ?? displayUserName(user)}</h1>
+          <p className="eyebrow">Genel Bakış · Analiz Masası</p>
+          <h1>{greeting}, {greetingName}.</h1>
           <p>Veri destekli analizlerle maçları daha bilinçli değerlendir.</p>
         </div>
         <div className="overview-hero-side">
+          <span>{data?.user.email ?? user.email}</span>
           <span>{currentDate}</span>
           <strong>Rol: {roleLabel(data?.user.role ?? user.role)}</strong>
           <strong>Veri Durumu: {overview.error ? "Kontrol edilemedi" : overview.loading ? "Kontrol ediliyor" : dataStatusSummary(data)}</strong>
@@ -1003,8 +1009,9 @@ export function OverviewDashboardView({
       <div className="overview-main-grid">
         <DashboardSectionCard
           className="overview-matches-card"
-          title="Maç listesi"
-          hideHeader
+          title="Yaklaşan maçlar"
+          actionLabel="Tümü"
+          onAction={() => navigate("/football/analytics")}
         >
           {overview.loading ? <OverviewInlineState text="Dashboard özeti yükleniyor..." /> : null}
           {overview.error ? <OverviewInlineState text="Dashboard özeti yüklenemedi." tone="warning" /> : null}
