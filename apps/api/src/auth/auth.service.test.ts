@@ -291,6 +291,80 @@ describe("AuthService", () => {
     );
   });
 
+  it("changes a password only after verifying the current password", async () => {
+    const currentHash = await hashPassword("CurrentPass123");
+    const database = mockDatabase([
+      [
+        {
+          id: "user-1",
+          email: "admin@example.test",
+          password_hash: currentHash,
+          role: "admin",
+          status: "active",
+          created_at: new Date("2026-04-30T00:00:00.000Z"),
+          last_login_at: null
+        }
+      ],
+      [],
+      []
+    ]);
+
+    const result = await new AuthService(database, testConfig()).changePassword({
+      userId: "user-1",
+      currentPassword: "CurrentPass123",
+      password: "NewStrongPass123",
+      confirmPassword: "NewStrongPass123"
+    });
+
+    expect(result).toEqual({ ok: true, message: "Şifreniz güncellendi." });
+    const calls = (database.execute as ReturnType<typeof vi.fn>).mock.calls.map((entry) => JSON.stringify(entry));
+    expect(calls.join(" ")).not.toContain("NewStrongPass123");
+  });
+
+  it("rejects password changes with a wrong current password or a weak new password", async () => {
+    const currentHash = await hashPassword("CurrentPass123");
+    const database = mockDatabase([
+      [
+        {
+          id: "user-1",
+          email: "admin@example.test",
+          password_hash: currentHash,
+          role: "admin",
+          status: "active",
+          created_at: new Date("2026-04-30T00:00:00.000Z"),
+          last_login_at: null
+        }
+      ]
+    ]);
+
+    await expect(
+      new AuthService(database, testConfig()).changePassword({
+        userId: "user-1",
+        currentPassword: "WrongPass123",
+        password: "NewStrongPass123",
+        confirmPassword: "NewStrongPass123"
+      })
+    ).rejects.toThrow(new UnauthorizedException("Mevcut şifre hatalı."));
+
+    await expect(
+      new AuthService(mockDatabase([]), testConfig()).changePassword({
+        userId: "user-1",
+        currentPassword: "CurrentPass123",
+        password: "weak",
+        confirmPassword: "weak"
+      })
+    ).rejects.toThrow(new BadRequestException("Şifre en az 12 karakter olmalı; büyük harf, küçük harf ve rakam içermeli."));
+
+    await expect(
+      new AuthService(mockDatabase([]), testConfig()).changePassword({
+        userId: "user-1",
+        currentPassword: "CurrentPass123",
+        password: "NewStrongPass123",
+        confirmPassword: "DifferentPass123"
+      })
+    ).rejects.toThrow(new BadRequestException("Şifre onayı eşleşmiyor."));
+  });
+
   it("rejects duplicate email, weak password, and confirm password mismatch safely", async () => {
     const validMemberInput = {
       email: "bad@example.test",

@@ -1,6 +1,10 @@
 import "dotenv/config";
 import { z } from "zod";
 
+const optionalString = z.preprocess((value) => (value === "" ? undefined : value), z.string().optional());
+const optionalEmail = z.preprocess((value) => (value === "" ? undefined : value), z.string().email().optional());
+const optionalUrl = z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
@@ -57,9 +61,9 @@ const envSchema = z.object({
   AUTH_JWT_SECRET: z.string().optional(),
   AUTH_COOKIE_NAME: z.string().min(1).default("betify_auth"),
   AUTH_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(86400),
-  RESEND_API_KEY: z.string().optional(),
-  AUTH_PASSWORD_RESET_FROM_EMAIL: z.string().email().optional(),
-  AUTH_PASSWORD_RESET_URL_BASE: z.string().url().optional(),
+  RESEND_API_KEY: optionalString,
+  AUTH_PASSWORD_RESET_FROM_EMAIL: optionalEmail,
+  AUTH_PASSWORD_RESET_URL_BASE: optionalUrl,
   AUTH_PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().positive().default(60),
   RAW_PAYLOAD_SUCCESS_RETENTION_DAYS: z.coerce.number().int().positive().default(7),
   RAW_PAYLOAD_FAILED_RETENTION_DAYS: z.coerce.number().int().positive().default(30),

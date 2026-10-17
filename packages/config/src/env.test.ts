@@ -205,4 +205,21 @@ describe("loadConfig", () => {
 
     expect(config.AUTH_ENABLED).toBe(true);
   });
+
+  it("treats empty password reset email settings as unset", () => {
+    const config = loadConfig({
+      NODE_ENV: "test",
+      DATABASE_URL: "postgres://postgres:postgres@localhost:5432/sports_data",
+      REDIS_URL: "redis://localhost:6379",
+      AUTH_ENABLED: "true",
+      AUTH_JWT_SECRET: "test-secret",
+      RESEND_API_KEY: "",
+      AUTH_PASSWORD_RESET_FROM_EMAIL: "",
+      AUTH_PASSWORD_RESET_URL_BASE: ""
+    });
+
+    expect(config.RESEND_API_KEY).toBeUndefined();
+    expect(config.AUTH_PASSWORD_RESET_FROM_EMAIL).toBeUndefined();
+    expect(config.AUTH_PASSWORD_RESET_URL_BASE).toBeUndefined();
+  });
 });

@@ -3,6 +3,7 @@ import { AuthController } from "./auth/auth.controller.js";
 import { AdminGuard } from "./auth/admin.guard.js";
 import { AuthGuard } from "./auth/auth.guard.js";
 import { AuthService } from "./auth/auth.service.js";
+import { ResendPasswordResetEmailService } from "./auth/password-reset-email.service.js";
 import { DashboardOverviewController } from "./routes/dashboard-overview.controller.js";
 import { DashboardOverviewService } from "./routes/dashboard-overview.service.js";
 import { DependencyReadinessService } from "./routes/dependency-readiness.service.js";
@@ -39,6 +40,10 @@ import { SyncStatusController } from "./routes/sync-status.controller.js";
   providers: [
     DependencyReadinessService,
     AuthService,
+    {
+      provide: "AUTH_PASSWORD_RESET_EMAIL_SENDER",
+      useClass: ResendPasswordResetEmailService
+    },
     AuthGuard,
     AdminGuard,
     DashboardOverviewService,

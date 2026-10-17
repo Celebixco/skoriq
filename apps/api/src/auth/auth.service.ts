@@ -207,6 +207,31 @@ export class AuthService {
     return { ok: true, message: "Şifreniz güncellendi. Giriş yapabilirsiniz." };
   }
 
+  async changePassword(input: { userId: string; currentPassword: string; password: string; confirmPassword?: string }) {
+    if (!isStrongPassword(input.password)) {
+      throw new BadRequestException(weakPasswordMessage);
+    }
+    if (input.confirmPassword !== undefined && input.confirmPassword !== input.password) {
+      throw new BadRequestException("Şifre onayı eşleşmiyor.");
+    }
+
+    const user = await this.findUserById(input.userId);
+    if (!user || user.status !== "active") {
+      throw new UnauthorizedException("Authentication required.");
+    }
+
+    const valid = await verifyPassword(input.currentPassword, user.password_hash);
+    if (!valid) {
+      throw new UnauthorizedException("Mevcut şifre hatalı.");
+    }
+
+    const passwordHash = await hashPassword(input.password);
+    await this.database.execute(sql`update users set password_hash = ${passwordHash}, updated_at = now() where id = ${user.id}`);
+    await this.database.execute(sql`update password_reset_tokens set used_at = now(), updated_at = now() where user_id = ${user.id} and used_at is null`);
+
+    return { ok: true, message: "Şifreniz güncellendi." };
+  }
+
   logout(response: CookieResponse) {
     response.setHeader("Set-Cookie", serializeExpiredCookie(this.config.AUTH_COOKIE_NAME, this.secureCookie));
     return { ok: true };

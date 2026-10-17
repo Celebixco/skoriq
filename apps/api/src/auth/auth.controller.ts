@@ -64,6 +64,39 @@ export class RegisterRequestBody {
   mathAnswer!: number;
 }
 
+export class ForgotPasswordRequestBody {
+  @IsEmail()
+  email!: string;
+}
+
+export class ResetPasswordRequestBody {
+  @IsString()
+  @MinLength(1)
+  token!: string;
+
+  @IsString()
+  @MinLength(12)
+  password!: string;
+
+  @IsOptional()
+  @IsString()
+  confirmPassword?: string;
+}
+
+export class ChangePasswordRequestBody {
+  @IsString()
+  @MinLength(1)
+  currentPassword!: string;
+
+  @IsString()
+  @MinLength(12)
+  password!: string;
+
+  @IsOptional()
+  @IsString()
+  confirmPassword?: string;
+}
+
 @Controller("auth")
 export class AuthController {
   constructor(@Inject(AuthService) private readonly authService: AuthService) {}
@@ -92,6 +125,34 @@ export class AuthController {
       response
     );
     return { user };
+  }
+
+  @Post("forgot-password")
+  forgotPassword(@Body() body: ForgotPasswordRequestBody) {
+    return this.authService.requestPasswordReset(body.email);
+  }
+
+  @Post("reset-password")
+  resetPassword(@Body() body: ResetPasswordRequestBody) {
+    return this.authService.resetPassword({
+      token: body.token,
+      password: body.password,
+      confirmPassword: body.confirmPassword
+    });
+  }
+
+  @UseGuards(AuthGuard)
+  @Post("change-password")
+  changePassword(@Body() body: ChangePasswordRequestBody, @Req() request: AuthenticatedRequest) {
+    if (!request.user) {
+      throw new UnauthorizedException("Authentication required.");
+    }
+    return this.authService.changePassword({
+      userId: request.user.id,
+      currentPassword: body.currentPassword,
+      password: body.password,
+      confirmPassword: body.confirmPassword
+    });
   }
 
   @Post("logout")
