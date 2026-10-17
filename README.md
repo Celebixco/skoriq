@@ -660,7 +660,7 @@ Health endpoints:
 - `/api/health/live`: process liveness.
 - `/api/health/ready`: bounded PostgreSQL `SELECT 1` and Redis `PING` checks; returns HTTP 503 when either dependency is unavailable. Connectivity readiness does not establish that migrations, provider freshness or analytics coverage are complete.
 
-`GET /api/sync/status` counts team season statistics under both supported metadata keys. It reports daemon automation as unverified until runtime evidence exists; a database count or a checked-in scraping script is not evidence of an active refresh schedule. There is no HTTP seed endpoint.
+`GET /api/sync/status` is admin-only (anonymous requests receive `401`, members receive `403`). It counts team season statistics under both supported metadata keys, reports the latest run's final status and attempt count, and exposes recent run logs for internal review. It reports daemon automation as unverified until runtime evidence exists; a database count or a checked-in scraping script is not evidence of an active refresh schedule. There is no HTTP seed endpoint.
 
 ## Dependency Audit
 

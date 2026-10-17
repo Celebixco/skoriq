@@ -1,7 +1,9 @@
-import { Controller, Get } from "@nestjs/common";
+import { Controller, Get, UseGuards } from "@nestjs/common";
 import { allQueueNames } from "@sports-data/queue";
 import { loadConfig } from "@sports-data/config";
 import pg from "pg";
+import { AdminGuard } from "../auth/admin.guard.js";
+import { AuthGuard } from "../auth/auth.guard.js";
 
 interface SyncRunLogRow {
   message?: string;
@@ -24,6 +26,7 @@ interface SyncRunRow {
 
 @Controller("sync")
 export class SyncStatusController {
+  @UseGuards(AuthGuard, AdminGuard)
   @Get("status")
   async getSyncStatus() {
     const config = loadConfig();
