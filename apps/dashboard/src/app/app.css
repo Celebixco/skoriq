@@ -2754,3 +2754,14 @@
     color: var(--text);
   }
 }
+
+.app-shell .team-card-action {
+  border: 1px solid rgba(233, 178, 95, 0.35);
+  background: rgba(233, 178, 95, 0.14);
+  color: #f3d6a4;
+}
+
+.app-shell .team-card-action:hover {
+  border-color: rgba(233, 178, 95, 0.55);
+  background: rgba(233, 178, 95, 0.22);
+}
