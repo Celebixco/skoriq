@@ -1,6 +1,6 @@
-/* ==========================================================================
-   SkorIQ — authenticated app layer
-   "Analiz masası": paper shell, white data surfaces, mono telemetry.
+﻿/* ==========================================================================
+   SkorIQ â€” authenticated app layer
+   "Analiz masasÄ±": paper shell, white data surfaces, mono telemetry.
    Loaded after styles.css; every selector is scoped to .app-shell.
    ========================================================================== */
 
@@ -31,7 +31,7 @@
   top: 12px;
 }
 
-/* ——— rail ————————————————————————————————————————————— */
+/* â€”â€”â€” rail â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” */
 
 .app-rail {
   position: sticky;
@@ -243,7 +243,7 @@
   color: var(--neutral);
 }
 
-/* ——— topbar ————————————————————————————————————————————— */
+/* â€”â€”â€” topbar â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” */
 
 .app-main {
   display: flex;
@@ -513,7 +513,7 @@
   box-shadow: 0 8px 24px -14px rgba(29, 25, 19, 0.4);
 }
 
-/* ——— page base ——————————————————————————————————————— */
+/* â€”â€”â€” page base â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” */
 
 .app-shell .page-container {
   width: 100%;
@@ -639,7 +639,7 @@
   background: var(--surface-strong);
 }
 
-/* ——— overview —————————————————————————————————————————— */
+/* â€”â€”â€” overview â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” */
 
 .app-shell .overview-dashboard {
   display: grid;
@@ -1089,7 +1089,7 @@
   color: var(--text);
 }
 
-/* ——— match list ————————————————————————————————————— */
+/* â€”â€”â€” match list â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” */
 
 .app-shell .analytics-header {
   align-items: flex-end;
@@ -1528,7 +1528,7 @@
   white-space: nowrap;
 }
 
-/* ——— responsive ——————————————————————————————————————— */
+/* â€”â€”â€” responsive â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” */
 
 @media (max-width: 1180px) {
   .app-shell .overview-main-grid {
@@ -1769,7 +1769,7 @@
   }
 }
 
-/* ——— global button reset for custom app controls ————————————— */
+/* â€”â€”â€” global button reset for custom app controls â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” */
 
 .app-shell .app-brand,
 .app-shell .app-nav-item,
@@ -1833,7 +1833,7 @@
   background: transparent;
 }
 
-/* ——— match row: override the legacy absolutely-positioned layout ——— */
+/* â€”â€”â€” match row: override the legacy absolutely-positioned layout â€”â€”â€” */
 
 .app-shell .analytics-card-topline {
   position: static;
@@ -1888,7 +1888,7 @@
   box-shadow: none;
 }
 
-/* ——— analytics filter bar (legacy class name) ————————————— */
+/* â€”â€”â€” analytics filter bar (legacy class name) â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” */
 
 .app-shell .analytics-filters {
   display: grid;
@@ -1953,7 +1953,7 @@
   }
 }
 
-/* ——— results ————————————————————————————————————————— */
+/* â€”â€”â€” results â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” */
 
 .app-shell .results-summary-panel {
   padding: 16px 18px;
@@ -2060,5 +2060,697 @@
 @media (max-width: 620px) {
   .app-shell .results-summary-grid {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ==========================================================================
+   GECE MASASI â€” dark system theme
+   The product after login is a night analysis desk: deep turf, chalk text,
+   warm lamp signal. The public landing keeps its paper identity.
+   ========================================================================== */
+
+.app-shell {
+  --bg: #070b08;
+  --bg-soft: #0b100c;
+  --surface: rgba(241, 237, 224, 0.045);
+  --surface-strong: #101610;
+  --surface-muted: rgba(241, 237, 224, 0.02);
+  --line: rgba(241, 237, 224, 0.14);
+  --line-subtle: rgba(241, 237, 224, 0.07);
+  --line-strong: rgba(241, 237, 224, 0.26);
+  --text: #f1ede0;
+  --muted: #a9a69a;
+  --muted-strong: #d6d1c3;
+  --neutral: #7e7b70;
+  --blue: #e9b25f;
+  --cyan: #e9b25f;
+  --yellow: #e9b25f;
+  --yellow-ink: #f0c57e;
+  --green: #6fd3a0;
+  --win: #6fd3a0;
+  --amber: #e9b25f;
+  --red: #ef7266;
+  --bronze: #c9b99a;
+  --silver: #a9a69a;
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.4);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app-shell ::selection {
+  background: rgba(233, 178, 95, 0.3);
+  color: var(--text);
+}
+
+.app-shell :focus-visible {
+  outline-color: rgba(233, 178, 95, 0.55);
+}
+
+.app-shell *::-webkit-scrollbar-thumb {
+  background: rgba(241, 237, 224, 0.18);
+  border-color: var(--bg);
+}
+
+.app-shell *::-webkit-scrollbar-thumb:hover {
+  background: rgba(241, 237, 224, 0.28);
+}
+
+/* shell surfaces */
+
+.app-shell .app-rail {
+  border-right-color: var(--line);
+  background: #0a0f0b;
+}
+
+.app-shell .app-rail-head {
+  border-bottom-color: var(--line-subtle);
+}
+
+.app-shell .app-nav-item {
+  color: var(--muted-strong);
+}
+
+.app-shell .app-nav-item:hover {
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.app-shell .app-nav-item.is-active {
+  border-color: var(--line);
+  background: #151c16;
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.app-shell .app-nav-item.is-active::before {
+  background: var(--yellow);
+}
+
+.app-shell .app-health {
+  border-color: var(--line-subtle);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.app-shell .app-health i {
+  box-shadow: 0 0 0 3px rgba(111, 211, 160, 0.12);
+}
+
+.app-shell .app-topbar {
+  border-bottom-color: var(--line-subtle);
+  background: rgba(7, 11, 8, 0.84);
+}
+
+.app-shell .app-crumb,
+.app-shell .app-crumb i {
+  color: var(--neutral);
+}
+
+.app-shell .app-search,
+.app-shell .app-menu,
+.app-shell .app-user-btn {
+  border-color: var(--line);
+  background: #111711;
+  color: var(--muted);
+}
+
+.app-shell .app-search:hover,
+.app-shell .app-menu:hover,
+.app-shell .app-user-btn:hover,
+.app-shell .app-user-btn.is-open {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.app-shell .app-search kbd {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--neutral);
+}
+
+.app-shell .app-live {
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.app-shell .app-user-pop {
+  border-color: var(--line);
+  background: #111711;
+  box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.7);
+}
+
+.app-shell .app-user-info {
+  border-bottom-color: var(--line-subtle);
+}
+
+.app-shell .app-user-info span {
+  color: var(--muted);
+}
+
+.app-shell .app-user-info em {
+  color: var(--neutral);
+}
+
+.app-shell .app-logout:hover {
+  background: rgba(239, 114, 102, 0.08);
+}
+
+.app-shell .app-route-loading {
+  border-color: var(--line);
+  background: #111711;
+  color: var(--muted);
+  box-shadow: 0 8px 24px -14px rgba(0, 0, 0, 0.7);
+}
+
+/* data surfaces */
+
+.app-shell .overview-section-card,
+.app-shell .analytics-controls,
+.app-shell .panel,
+.app-shell .metric-card,
+.app-shell .results-controls {
+  border-color: var(--line);
+  background: var(--surface-strong);
+}
+
+.app-shell .overview-section-card,
+.app-shell .panel {
+  box-shadow: none;
+}
+
+.app-shell .analytics-search-bar,
+.app-shell .results-search-bar,
+.app-shell .analytics-chip,
+.app-shell .analytics-filter-pill,
+.app-shell .analytics-clear-filters-btn,
+.app-shell .analytics-filters select,
+.app-shell .filter-bar select,
+.app-shell .filter-bar input,
+.app-shell .overview-section-header button {
+  border-color: var(--line);
+  background: #111711;
+  color: var(--text);
+}
+
+.app-shell .analytics-search-bar input,
+.app-shell .results-search-bar input,
+.app-shell .filter-bar input {
+  background: transparent;
+  color: var(--text);
+}
+
+.app-shell .analytics-search-bar input::placeholder,
+.app-shell .results-search-bar input::placeholder,
+.app-shell input::placeholder {
+  color: var(--neutral);
+}
+
+.app-shell .analytics-search-clear,
+.app-shell .analytics-search-clear:hover {
+  color: var(--muted);
+}
+
+.app-shell .analytics-search-clear:hover {
+  background: var(--surface);
+}
+
+.app-shell .analytics-chip:hover {
+  border-color: var(--line-strong);
+}
+
+.app-shell .analytics-chip-active {
+  border-color: rgba(233, 178, 95, 0.45);
+  background: rgba(233, 178, 95, 0.14);
+  color: #f3d6a4;
+}
+
+.app-shell .analytics-chip-active .analytics-chip-count {
+  background: rgba(233, 178, 95, 0.18);
+  color: #f3d6a4;
+}
+
+.app-shell .analytics-filters {
+  border-color: var(--line-subtle);
+  background: #0b100c;
+}
+
+.app-shell .analytics-filters label,
+.app-shell .filter-bar label {
+  color: var(--neutral);
+}
+
+.app-shell .analytics-filters select option,
+.app-shell .filter-bar select option,
+.app-shell select option {
+  background: #111711;
+  color: var(--text);
+}
+
+.app-shell .analytics-results-link-panel {
+  border-color: rgba(233, 178, 95, 0.28);
+  background: rgba(233, 178, 95, 0.07);
+  color: var(--muted-strong);
+}
+
+.app-shell .analytics-match-row:hover,
+.app-shell .overview-match-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.app-shell .overview-match-row {
+  border-bottom-color: var(--line-subtle);
+}
+
+.app-shell .overview-preview-row {
+  border-color: var(--line-subtle);
+  border-left-color: var(--yellow);
+  background: #0d130e;
+}
+
+.app-shell .overview-action-grid button {
+  border-color: var(--line-subtle);
+  background: #0d130e;
+  color: var(--muted-strong);
+}
+
+.app-shell .overview-action-grid button:hover {
+  border-color: var(--line-strong);
+  background: #151c16;
+  color: var(--text);
+}
+
+.app-shell .overview-health-row {
+  border-bottom-color: var(--line-subtle);
+}
+
+.app-shell .overview-empty-state,
+.app-shell .overview-inline-state {
+  color: var(--muted);
+}
+
+.app-shell .results-summary-card {
+  border-color: var(--line);
+  background: #0d130e;
+}
+
+.app-shell .results-won {
+  border-color: rgba(111, 211, 160, 0.24);
+  background: rgba(111, 211, 160, 0.06);
+}
+
+.app-shell .results-lost {
+  border-color: rgba(239, 114, 102, 0.24);
+  background: rgba(239, 114, 102, 0.06);
+}
+
+.app-shell .results-pending {
+  border-color: rgba(233, 178, 95, 0.24);
+  background: rgba(233, 178, 95, 0.06);
+}
+
+.app-shell .badge {
+  border-color: var(--line);
+}
+
+.app-shell .badge-good,
+.app-shell .badge-ready {
+  border-color: rgba(111, 211, 160, 0.28);
+  background: rgba(111, 211, 160, 0.08);
+  color: var(--green);
+}
+
+.app-shell .badge-info {
+  border-color: var(--line-strong);
+  background: var(--surface);
+  color: var(--muted-strong);
+}
+
+.app-shell .badge-partial {
+  border-color: rgba(233, 178, 95, 0.3);
+  background: rgba(233, 178, 95, 0.08);
+  color: #f0c57e;
+}
+
+.app-shell .badge-insufficient_data,
+.app-shell .badge-muted {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.app-shell .progress {
+  background: rgba(241, 237, 224, 0.1);
+}
+
+.app-shell .progress > span {
+  background: var(--yellow);
+}
+
+.app-shell input,
+.app-shell select,
+.app-shell textarea {
+  color: var(--text);
+}
+
+.app-shell .filters input,
+.app-shell .filters select {
+  border-color: var(--line);
+  background: #111711;
+  color: var(--text);
+}
+
+.app-shell .team-profile-standing,
+.app-shell .team-profile-grid .panel {
+  border-color: var(--line);
+  background: var(--surface-strong);
+}
+
+/* â€”â€”â€” auth: night in, one lit dossier â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” */
+
+.login-shell {
+  background: #070b08;
+}
+
+.login-experience {
+  border-color: var(--line);
+  background: #070b08;
+}
+
+.login-intelligence {
+  border-right-color: rgba(241, 237, 224, 0.12);
+  background:
+    radial-gradient(circle at 48% 46%, rgba(233, 178, 95, 0.14), transparent 17rem),
+    radial-gradient(circle at 28% 30%, rgba(233, 178, 95, 0.1), transparent 20rem),
+    linear-gradient(145deg, #0a100b, #070b08);
+}
+
+.login-intelligence::before {
+  opacity: 0.28;
+  background-image:
+    linear-gradient(rgba(233, 178, 95, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(233, 178, 95, 0.12) 1px, transparent 1px);
+}
+
+.login-intelligence::after {
+  background:
+    radial-gradient(circle, rgba(233, 178, 95, 0.16), transparent 62%),
+    conic-gradient(from 90deg, transparent, rgba(233, 178, 95, 0.16), transparent, rgba(233, 178, 95, 0.1), transparent);
+}
+
+.login-card {
+  border-color: rgba(241, 237, 224, 0.14);
+  background: #0e140f;
+}
+
+.login-card .login-brand .brand-text {
+  color: var(--text);
+}
+
+.login-card .auth-copy h1 {
+  color: var(--text);
+}
+
+.login-card .auth-copy p,
+.login-card .auth-hint,
+.login-card .auth-switch {
+  color: var(--muted);
+}
+
+.login-card .auth-copy .auth-kicker {
+  color: var(--neutral);
+}
+
+.login-card .auth-copy .auth-kicker::before {
+  background: var(--yellow);
+}
+
+.login-card .login-form input,
+.login-card .phone-field,
+.login-card .password-field,
+.login-card .math-field {
+  border-color: rgba(241, 237, 224, 0.16);
+  background: #0a100b;
+  color: var(--text);
+}
+
+.login-card .login-form input::placeholder {
+  color: var(--neutral);
+}
+
+.login-card .password-field button,
+.login-card .phone-prefix,
+.login-card .math-field span {
+  color: var(--muted);
+}
+
+.login-card .login-form button[type="submit"] {
+  background: var(--yellow);
+  color: #141003;
+}
+
+.login-card .login-form button[type="submit"]:hover {
+  background: #f0c57e;
+}
+
+.login-card .text-link {
+  color: #f0c57e;
+}
+
+.login-card .error-text {
+  color: #ef7266;
+}
+
+.login-card .auth-switch {
+  border-top-color: rgba(241, 237, 224, 0.1);
+}
+
+.login-intelligence .scene-foot {
+  color: var(--muted);
+}
+
+.login-intelligence .scene-foot::before {
+  background: var(--green);
+}
+
+.login-shell *::-webkit-scrollbar-thumb {
+  background: rgba(241, 237, 224, 0.18);
+  border-color: #070b08;
+}
+
+/* auth card: scope the night tokens to the form, keep the dossier lit */
+.login-card {
+  --bg: #070b08;
+  --bg-soft: #0b100c;
+  --surface: rgba(241, 237, 224, 0.05);
+  --surface-strong: #101610;
+  --line: rgba(241, 237, 224, 0.14);
+  --line-subtle: rgba(241, 237, 224, 0.07);
+  --line-strong: rgba(241, 237, 224, 0.26);
+  --text: #f1ede0;
+  --muted: #a9a69a;
+  --muted-strong: #d6d1c3;
+  --neutral: #7e7b70;
+  --yellow: #e9b25f;
+  --yellow-ink: #f0c57e;
+}
+
+.login-intelligence .scene-foot {
+  color: #a9a69a;
+}
+
+/* â€”â€”â€” night contrast pass: team, form, chips, pagination â€”â€”â€”â€”â€”â€”â€” */
+
+.app-shell {
+  --muted: #b3b0a3;
+  --muted-strong: #ded9cb;
+  --neutral: #8f8c80;
+}
+
+.app-shell .team-profile-hero {
+  border-bottom-color: var(--line-subtle);
+  color: var(--text);
+}
+
+.app-shell .team-hero-name {
+  color: var(--text);
+}
+
+.app-shell .team-profile-hero .standing-position strong,
+.app-shell .team-profile-hero .standing-points strong {
+  color: var(--text);
+}
+
+.app-shell .team-profile-standing,
+.app-shell .team-season-telemetry {
+  border-bottom-color: var(--line-subtle);
+}
+
+.app-shell .team-profile-standing .standing-stat strong,
+.app-shell .season-telemetry-grid .standing-stat strong {
+  color: var(--text);
+}
+
+.app-shell .team-season-telemetry h2,
+.app-shell .team-form-analytics-panel h2,
+.app-shell .team-profile-standing h2,
+.app-shell .team-matches-panel h2,
+.app-shell .team-squad-panel h2 {
+  color: var(--text);
+}
+
+.app-shell .team-form-analytics-panel {
+  border-color: var(--line);
+  background: var(--surface-strong);
+}
+
+.app-shell .form-chart-wrapper {
+  border-color: var(--line-subtle);
+  background: #0d130e;
+}
+
+.app-shell .form-chart-header {
+  color: var(--muted-strong);
+}
+
+.app-shell .home-away-split-matrix {
+  border-color: var(--line-subtle);
+  background: #0d130e;
+}
+
+.app-shell .home-away-split-matrix h3 {
+  color: var(--text);
+}
+
+.app-shell .form-opponent-name {
+  color: var(--muted-strong);
+}
+
+.app-shell .form-score {
+  color: var(--text);
+}
+
+.app-shell .form-venue {
+  color: var(--neutral);
+}
+
+.app-shell .form-summary-card {
+  border-color: var(--line-subtle);
+  background: #0d130e;
+}
+
+.app-shell .form-result-pill,
+.app-shell .res-win .form-result-pill {
+  border-color: rgba(111, 211, 160, 0.4);
+  background: rgba(111, 211, 160, 0.14);
+  color: var(--green);
+}
+
+.app-shell .res-draw .form-result-pill {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--muted-strong);
+}
+
+.app-shell .res-loss .form-result-pill {
+  border-color: rgba(239, 114, 102, 0.4);
+  background: rgba(239, 114, 102, 0.12);
+  color: var(--red);
+}
+
+.app-shell .text-rose {
+  color: var(--red);
+}
+
+.app-shell .analytics-quick-chips button.analytics-chip {
+  border-color: var(--line);
+  background: #111711;
+  color: var(--muted-strong);
+}
+
+.app-shell .analytics-quick-chips button.analytics-chip.analytics-chip-active {
+  border-color: rgba(233, 178, 95, 0.45);
+  background: rgba(233, 178, 95, 0.18);
+  color: #f3d6a4;
+}
+
+.app-shell .analytics-controls button:not(.analytics-chip):not(.analytics-clear-all-btn):not(.analytics-search-clear) {
+  border-color: var(--line);
+  background: #111711;
+  color: var(--text);
+}
+
+.app-shell .analytics-results-link-panel button {
+  border: 0;
+  background: transparent;
+  color: var(--yellow-ink);
+}
+
+.app-shell .analytics-filter-pill button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+/* final night pass: pagination, team hero values, split values */
+
+.app-shell .analytics-page-btn {
+  border-color: var(--line);
+  background: #111711;
+  color: var(--text);
+}
+
+.app-shell .analytics-page-btn:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: #151c16;
+}
+
+.app-shell .analytics-page-btn:disabled {
+  color: var(--neutral);
+}
+
+.app-shell .team-hero-stat strong {
+  color: var(--yellow-ink);
+}
+
+.app-shell .quick-metric {
+  color: var(--muted-strong);
+}
+
+.app-shell .quick-metric small {
+  color: var(--neutral);
+}
+
+.app-shell .quick-metric strong {
+  color: var(--text);
+}
+
+.app-shell .split-val strong {
+  color: var(--text);
+}
+
+.app-shell .split-val small {
+  color: var(--neutral);
+}
+
+/* mobile night legibility */
+
+.app-shell .overview-hero h1 {
+  color: var(--text);
+}
+
+@media (max-width: 720px) {
+  .app-shell .overview-match-teams .dashboard-match-name {
+    display: block;
+    max-width: 104px;
+    color: var(--text);
+  }
+
+  .app-shell .analytics-team-side h3 {
+    display: block;
+    max-width: 118px;
+    color: var(--text);
+  }
+
+  .app-shell .analytics-controls .analytics-page-btn {
+    background: #111711;
+    color: var(--text);
   }
 }
