@@ -137,6 +137,7 @@ class RunJobTests(unittest.TestCase):
         self.assertIn("--catalog", fetch_command)
         self.assertEqual(len(import_commands), 2)
         self.assertTrue(all("--execute" in command for command in import_commands))
+        self.assertTrue(all("--no-log-run" in command for command in import_commands))
 
     def test_partial_import_still_reports_success_with_failed_parts(self):
         runner = FakeRunner(fail_tournaments={98})
@@ -149,6 +150,7 @@ class RunJobTests(unittest.TestCase):
         self.assertEqual(part_statuses, {52: "executed", 98: "import_failed"})
         helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
         self.assertGreaterEqual(len(helper), 6)
+        self.assertEqual(helper[-1][helper[-1].index("--phase") + 1], "final")
         self.assertTrue(any("import_failed" in part for part in helper[-1]))
 
     def test_missing_capture_skips_import_but_reports_fetch_summary(self):
@@ -174,8 +176,10 @@ class RunJobTests(unittest.TestCase):
         summary = service.run_job(self.job, env, self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["status"], "fetch_failed")
         helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
-        self.assertEqual(len(helper), 3)
-        self.assertIn("fetch_completed", helper[0])
+        self.assertGreaterEqual(len(helper), 4)
+        self.assertEqual(helper[0][helper[0].index("--phase") + 1], "begin")
+        self.assertTrue(any("fetch_completed" in part for part in helper))
+        self.assertEqual(helper[-1][helper[-1].index("--phase") + 1], "final")
         self.assertIn("fetch_failed", helper[-1])
         self.assertIn("--error", helper[-1])
 
@@ -191,15 +195,18 @@ class RunJobTests(unittest.TestCase):
         self.assertIn("import_failed", helper[-1])
         self.assertTrue(any("DATABASE_URL=<redacted>" in part for part in helper[-1]))
 
-    def test_executed_run_is_not_double_logged(self):
+    def test_executed_run_is_finalized_once(self):
         runner = FakeRunner()
         env = {**self.base_env, "DATABASE_URL": "postgres://example"}
         summary = service.run_job(self.job, env, self.state_dir, NOW, runner=runner)
         self.assertEqual(summary["status"], "succeeded")
         helper = [command for command in runner.commands if any("sync-run-log.ts" in part for part in command)]
-        self.assertGreaterEqual(len(helper), 6)
-        self.assertTrue(any("import_started" in part for part in helper))
-        self.assertTrue(any("import_part_result" in part for part in helper))
+        phases = [command[command.index("--phase") + 1] for command in helper]
+        self.assertEqual(phases.count("begin"), 1)
+        self.assertEqual(phases.count("final"), 1)
+        self.assertGreater(phases.count("step"), 0)
+        self.assertEqual(phases[-1], "final")
+        self.assertIn("succeeded", helper[-1])
 
     def test_standings_job_uses_the_standings_scripts(self):
         runner = FakeRunner()
@@ -210,6 +217,7 @@ class RunJobTests(unittest.TestCase):
         self.assertEqual(len(fetch_commands), 2)
         self.assertEqual(len(import_commands), 2)
         self.assertFalse(any("--job" in command for command in import_commands))
+        self.assertTrue(all("--no-log-run" in command for command in import_commands))
 
     def test_upcoming_job_uses_the_next_window_and_job_flag(self):
         runner = FakeRunner()
@@ -221,6 +229,7 @@ class RunJobTests(unittest.TestCase):
         self.assertTrue(all("--window" in command and "next" in command for command in fetch_commands))
         self.assertEqual(len(import_commands), 2)
         self.assertTrue(all("--job" in command and "upcoming-matches" in command for command in import_commands))
+        self.assertTrue(all("--no-log-run" in command for command in import_commands))
 
     def test_containment_keeps_service_alive_and_updates_state(self):
         def failing_runner(command, **kwargs):

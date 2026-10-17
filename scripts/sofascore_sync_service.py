@@ -196,6 +196,9 @@ def read_tournament_ids(catalog_path: Path) -> list[int]:
 
 def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, runner: Runner = robust_runner) -> dict[str, Any]:
     execute = env.get("SYNC_EXECUTE", "0").strip().lower() in {"1", "true", "yes"}
+    # One run has exactly one job row: open it here, keep step markers log-only,
+    # and close it with a single final outcome after every league is imported.
+    begin_run(job, env, execute=execute, runner=runner)
     timeout = int(env.get("SYNC_JOB_TIMEOUT_SECONDS", str(DEFAULT_JOB_TIMEOUT_SECONDS)))
     fetch_timeout = int(env.get("SYNC_FETCH_TIMEOUT_SECONDS", "120"))
     capture = capture_path_for(capture_dir_for(env, state_dir), job, now)
@@ -290,6 +293,9 @@ def import_part(job: Job, part_path: Path, env: dict[str, str], execute: bool, t
     command += list(job.import_args)
     if execute:
         command.append("--execute")
+    # The service owns the sync_jobs row for the whole run. A per-league child
+    # must not increment attempt_count or flip a finished run back to running.
+    command.append("--no-log-run")
 
     def progress_tail() -> str | None:
         try:
@@ -323,9 +329,9 @@ def classify_run_status(fetched_any: bool, import_status: str) -> str:
 
 
 def log_run_outcome(job: Job, env: dict[str, str], summary: dict[str, Any], *, runner: Runner) -> None:
-    # Fully executed runs are recorded by the importer itself; this helper makes
-    # fetch failures, partial imports and import failures visible in sync_jobs.
-    if not env.get("DATABASE_URL") or summary.get("importStatus") == "executed":
+    # Every finished run closes its job row, including fully successful ones.
+    # The per-league importers run with --no-log-run, so this is the final write.
+    if not env.get("DATABASE_URL"):
         return
     payload = {
         "fetchSummary": summary.get("fetchSummary"),
@@ -338,7 +344,7 @@ def log_run_outcome(job: Job, env: dict[str, str], summary: dict[str, Any], *, r
     status = str(summary.get("status", "service_error"))
     error_value = summary.get("error") or (status if status in {"fetch_failed", "import_failed", "service_error"} else None)
     command = [node_binary(), str(ROOT / "scripts" / "sync-run-log.ts"),
-               "--job", job.name, "--status", status,
+               "--job", job.name, "--phase", "final", "--status", status,
                "--mode", str(summary.get("mode", "dry_run")),
                "--summary", json.dumps(payload, ensure_ascii=False)]
     if error_value:
@@ -348,6 +354,21 @@ def log_run_outcome(job: Job, env: dict[str, str], summary: dict[str, Any], *, r
                timeout=int(env.get("SYNC_JOB_TIMEOUT_SECONDS", str(DEFAULT_JOB_TIMEOUT_SECONDS))))
     except Exception:
         # Logging is best effort; the refresh loop must keep running.
+        return
+
+
+def begin_run(job: Job, env: dict[str, str], *, execute: bool, runner: Runner = robust_runner) -> None:
+    # One begin marker per run. attempt_count represents this run's attempt (1),
+    # not the sixteen per-league importer invocations or a lifetime counter.
+    if not env.get("DATABASE_URL"):
+        return
+    command = [node_binary(), str(ROOT / "scripts" / "sync-run-log.ts"),
+               "--job", job.name, "--phase", "begin", "--status", "running",
+               "--mode", "execute" if execute else "dry_run",
+               "--summary", json.dumps({"event": "run_started"})]
+    try:
+        runner(command, capture_output=True, text=True, timeout=60)
+    except Exception:
         return
 
 
@@ -361,7 +382,7 @@ def log_step(job: Job, env: dict[str, str], step: str, payload: dict[str, Any], 
     if not env.get("DATABASE_URL"):
         return
     command = [node_binary(), str(ROOT / "scripts" / "sync-run-log.ts"), "--job", job.name,
-               "--status", "running",
+               "--phase", "step", "--status", "running",
                "--mode", "execute" if env.get("SYNC_EXECUTE", "0").strip().lower() in {"1", "true", "yes"} else "dry_run",
                "--summary", json.dumps(payload, ensure_ascii=False), "--message", step]
     try:
@@ -376,7 +397,7 @@ def send_heartbeat(env: dict[str, str], *, runner: Runner = robust_runner) -> No
     if not env.get("DATABASE_URL"):
         return
     command = [node_binary(), str(ROOT / "scripts" / "sync-run-log.ts"), "--job", "finished-matches",
-               "--status", "running", "--mode", "execute" if env.get("SYNC_EXECUTE", "0").strip().lower() in {"1", "true", "yes"} else "dry_run",
+               "--phase", "step", "--status", "running", "--mode", "execute" if env.get("SYNC_EXECUTE", "0").strip().lower() in {"1", "true", "yes"} else "dry_run",
                "--summary", json.dumps({"event": "service_started"})]
     try:
         runner(command, capture_output=True, text=True, timeout=60)

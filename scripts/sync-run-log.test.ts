@@ -7,13 +7,18 @@ describe("sync run log helper", () => {
     expect(options).toEqual({ job: "finished-matches", status: "fetch_failed", mode: "dry_run", summary: '{"a":1}', error: "fetch_failed" });
     expect(parseSyncRunLogArgs(["--job", "finished-matches", "--status", "running", "--mode", "dry_run", "--summary", "{}", "--message", "fetch_completed"]))
       .toEqual({ job: "finished-matches", status: "running", mode: "dry_run", summary: "{}", message: "fetch_completed" });
+    expect(parseSyncRunLogArgs(["--job", "standings", "--status", "running", "--mode", "execute", "--summary", "{}", "--phase", "begin"]))
+      .toMatchObject({ job: "standings", phase: "begin" });
+    expect(parseSyncRunLogArgs(["--job", "standings", "--status", "succeeded", "--mode", "execute", "--summary", "{}", "--phase", "final"]))
+      .toMatchObject({ phase: "final" });
   });
 
   it.each([
     [[]],
     [["--job", "finished-matches"]],
     [["--job", "finished-matches", "--status", "succeeded", "--mode", "dry_run"]],
-    [["--job", "finished-matches", "--status", "succeeded", "--mode", "dry_run", "--summary", "{}", "--bogus", "x"]]
+    [["--job", "finished-matches", "--status", "succeeded", "--mode", "dry_run", "--summary", "{}", "--bogus", "x"]],
+    [["--job", "finished-matches", "--status", "running", "--mode", "dry_run", "--summary", "{}", "--phase", "nope"]]
   ])("rejects incomplete argument sets %#", (args) => {
     expect(() => parseSyncRunLogArgs(args)).toThrow();
   });
