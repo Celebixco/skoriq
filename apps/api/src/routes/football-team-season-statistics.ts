@@ -12,7 +12,7 @@ export function selectFootballTeamSeasonStatistics(teamMetadata: unknown, primar
   const teamId = positiveId(teamMetadata.sofascoreId);
   const tournamentId = positiveId(primaryCompetitionMetadata.sofascoreTournamentId);
   const seasonName = normalizedName(primaryCompetitionMetadata.seasonName);
-  if (!teamId || !tournamentId || !seasonName) return null;
+  if (!teamId || !tournamentId) return null;
 
   const matches: JsonRecord[] = [];
   for (const [key, value] of Object.entries(teamMetadata.competitionSeasonStatistics)) {
@@ -20,8 +20,11 @@ export function selectFootballTeamSeasonStatistics(teamMetadata: unknown, primar
     const source = value.provenance;
     const seasonId = positiveId(source.seasonId);
     if (source.provider !== "sofascore" || positiveId(source.providerTeamId) !== teamId ||
-      positiveId(source.tournamentId) !== tournamentId || !seasonId || key !== `${tournamentId}:${seasonId}` ||
-      normalizedName(source.seasonName) !== seasonName) continue;
+      positiveId(source.tournamentId) !== tournamentId || !seasonId || key !== `${tournamentId}:${seasonId}`) continue;
+    // Competition metadata does not always carry a season name. When it does,
+    // it must match exactly; when it does not, the scope key and provenance
+    // still prove the season and a single matching scope is safe to use.
+    if (seasonName && normalizedName(source.seasonName) !== seasonName) continue;
     const statistics = validStatistics(value.statistics);
     if (statistics) matches.push(statistics);
   }

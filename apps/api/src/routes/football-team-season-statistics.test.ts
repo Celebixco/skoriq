@@ -39,6 +39,16 @@ describe("verified primary-competition team season statistics", () => {
     expect(selectFootballTeamSeasonStatistics(metadata({ "17:96668": scope(), "17:96669": scope({ seasonId: "96669" }) }), primary)).toBeNull();
   });
 
+  it("selects a single primary scope when competition metadata has no season name", () => {
+    expect(selectFootballTeamSeasonStatistics(metadata(), { sofascoreTournamentId: 17 })).toEqual(statistics);
+  });
+
+  it("still refuses ambiguous primary seasons without a competition season name", () => {
+    expect(
+      selectFootballTeamSeasonStatistics(metadata({ "17:96668": scope(), "17:96669": scope({ seasonId: "96669" }) }), { sofascoreTournamentId: 17 })
+    ).toBeNull();
+  });
+
   it("normalizes whitespace but does not infer the competition or season name", () => {
     expect(selectFootballTeamSeasonStatistics(metadata({ "17:96668": scope({ seasonName: " Premier   League 26/27 " }) }), primary)).toEqual(statistics);
     expect(selectFootballTeamSeasonStatistics(metadata(), { ...primary, seasonName: "26/27" })).toBeNull();
