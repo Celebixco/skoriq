@@ -1,6 +1,6 @@
 :root {
-  color: #191813;
-  background: #F7F6F2;
+  color: #1D1913;
+  background: #F5F2EC;
   font-family:
     "Archivo",
     "Plus Jakarta Sans",
@@ -13,30 +13,30 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --bg: #F7F6F2;
-  --bg-soft: #EFEEE8;
-  --surface: rgba(28, 24, 12, 0.05);
+  --bg: #F5F2EC;
+  --bg-soft: #F0EDE4;
+  --surface: rgba(29, 25, 19, 0.05);
   --surface-strong: #ffffff;
-  --surface-muted: rgba(20, 16, 3, 0.025);
-  --line: rgba(25, 22, 12, 0.1);
-  --line-subtle: rgba(25, 22, 12, 0.07);
-  --line-strong: rgba(25, 22, 12, 0.2);
-  --text: #191813;
-  --muted: #5C5A52;
-  --muted-strong: #3E3C35;
-  --blue: #facc15;
-  --cyan: #facc15;
-  --yellow: #facc15;
-  --yellow-ink: #8A6A00;
-  --green: #18794E;
-  --win: #18794E;
-  --bronze: #C9A227;
-  --amber: #b45309;
+  --surface-muted: rgba(29, 25, 19, 0.025);
+  --line: rgba(29, 25, 19, 0.12);
+  --line-subtle: rgba(29, 25, 19, 0.07);
+  --line-strong: rgba(29, 25, 19, 0.22);
+  --text: #1D1913;
+  --muted: #4A4640;
+  --muted-strong: #2D2924;
+  --blue: #FFC400;
+  --cyan: #FFC400;
+  --yellow: #FFC400;
+  --yellow-ink: #7A5B00;
+  --green: #177A4E;
+  --win: #177A4E;
+  --bronze: #B6B1A7;
+  --amber: #A94B08;
   --red: #C13B30;
-  --neutral: #8A877D;
-  --silver: #5C5A52;
+  --neutral: #68635C;
+  --silver: #4A4640;
   --shadow: none;
-  --shadow-subtle: 0 1px 3px rgba(28, 24, 12, 0.12);
+  --shadow-subtle: 0 1px 2px rgba(29, 25, 19, 0.06);
 }
 
 strong, time, em, .badge {
@@ -6730,727 +6730,6 @@ p {
 }
 
 
-/* Landing Page — Intelligence Theme */
-/* ============================================================
-   TAKTİK ANA SAYFA (Onaylanan Rota A) — tk- önekli, izole
-   ============================================================ */
-.taktik-home {
-  --tk-bg: #F7F6F2;
-  --tk-panel: #ffffff;
-  --tk-ink: #191813;
-  --tk-mut: #5C5A52;
-  --tk-dim: #8A877D;
-  --tk-y: #facc15;
-  --tk-silver: #5C5A52;
-  --tk-red: #C13B30;
-  --tk-chalk: rgba(28, 24, 12, 0.22);
-  --tk-chalk-strong: rgba(28, 24, 12, 0.38);
-  --tk-line: rgba(28, 24, 12, 0.1);
-  --tk-line-dim: rgba(28, 24, 12, 0.06);
-  --tk-hand: "Caveat", cursive;
-  --tk-ease: cubic-bezier(0.16, 1, 0.3, 1);
-  min-height: 100dvh;
-  color: var(--tk-ink);
-  background: var(--tk-bg);
-}
-
-.taktik-home * { box-sizing: border-box; }
-.taktik-home h1, .taktik-home h2, .taktik-home h3, .taktik-home p { margin: 0; }
-.taktik-home button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
-
-.taktik-home .tk-container {
-  width: 100%;
-  max-width: 88rem;
-  margin: 0 auto;
-  padding-inline: clamp(1.25rem, 4vw, 3rem);
-}
-
-.taktik-home .tk-sec { padding-block: clamp(4.5rem, 9vw, 7rem); }
-
-.taktik-home .tk-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--tk-mut);
-}
-.taktik-home .tk-kicker::before {
-  content: "";
-  width: 9px;
-  height: 9px;
-  background: var(--tk-y);
-  flex-shrink: 0;
-}
-
-.taktik-home .tk-h2 {
-  margin-top: 1.2rem;
-  font-size: clamp(1.9rem, 3.6vw, 2.9rem);
-  font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -0.032em;
-  text-wrap: balance;
-}
-
-.taktik-home .tk-slede {
-  margin-top: 1rem;
-  max-width: 40rem;
-  color: var(--tk-mut);
-  font-size: 1rem;
-  line-height: 1.7;
-}
-
-.taktik-home .tk-shead { margin-bottom: clamp(2.2rem, 4.5vw, 3.4rem); }
-
-/* reveal */
-.taktik-home .tk-reveal {
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 0.7s var(--tk-ease), transform 0.7s var(--tk-ease);
-  transition-delay: var(--tk-d, 0ms);
-}
-.taktik-home .tk-reveal.tk-in { opacity: 1; transform: none; }
-
-/* ---- üst bar ---- */
-.taktik-home .tk-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background: rgba(248, 247, 244, 0.85);
-  border-bottom: 1px solid var(--tk-line);
-}
-.taktik-home .tk-topbar-in {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 0;
-}
-.taktik-home .tk-brand { font-weight: 800; font-size: 1.05rem; letter-spacing: -0.03em; color: var(--tk-ink); text-decoration: none; }
-.taktik-home .tk-brand i { font-style: normal; color: var(--tk-y-ink); }
-.taktik-home .tk-nav { display: flex; align-items: center; gap: 1.35rem; }
-.taktik-home .tk-nav a,
-.taktik-home .tk-nav button {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--tk-mut);
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-.taktik-home .tk-nav a:hover,
-.taktik-home .tk-nav button:hover { color: var(--tk-ink); }
-.taktik-home .tk-nav .tk-cta-mini { color: var(--tk-y-ink); }
-
-/* ---- butonlar ---- */
-.taktik-home .tk-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 2.9rem;
-  padding: 0 1.4rem;
-  border-radius: 2px;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  transition: transform 0.16s var(--tk-ease), background 0.16s ease, border-color 0.16s ease;
-}
-.taktik-home .tk-btn:active { transform: translateY(1px); }
-.taktik-home .tk-btn-solid { background: var(--tk-y); color: #141003; }
-.taktik-home .tk-btn-solid:hover { background: #F0C004; transform: translateY(-1px); }
-.taktik-home .tk-btn-line { border: 1px solid rgba(28, 24, 12, 0.28); color: var(--tk-ink); }
-.taktik-home .tk-btn-line:hover { border-color: rgba(28, 24, 12, 0.55); }
-
-/* ---- hero ---- */
-.taktik-home .tk-hero {
-  display: flex;
-  align-items: center;
-  padding: clamp(1.5rem, 5vh, 3rem) 0 clamp(3.5rem, 8vh, 5rem);
-}
-.taktik-home .tk-stage {
-  display: grid;
-  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
-  align-items: center;
-  gap: clamp(2.5rem, 5vw, 5rem);
-}
-.taktik-home .tk-motto {
-  display: block;
-  margin-top: 1rem;
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.08em;
-  color: var(--tk-dim);
-}
-.taktik-home .tk-hero h1 {
-  margin-top: 1.1rem;
-  font-size: clamp(2.5rem, 4.8vw, 4.35rem);
-  font-weight: 800;
-  line-height: 1.02;
-  letter-spacing: -0.035em;
-  text-wrap: balance;
-}
-.taktik-home .tk-hero h1 .tk-u { position: relative; white-space: nowrap; }
-.taktik-home .tk-hero h1 .tk-u::after {
-  content: "";
-  position: absolute;
-  left: -1%;
-  right: -2%;
-  bottom: 0.02em;
-  height: 0.14em;
-  background: rgba(250, 204, 21, 0.85);
-  transform: rotate(-1.1deg);
-  clip-path: polygon(0 35%, 100% 0, 99% 70%, 1% 100%);
-}
-.taktik-home .tk-lead {
-  margin-top: 1.3rem;
-  max-width: 32rem;
-  color: var(--tk-mut);
-  font-size: 1rem;
-  line-height: 1.7;
-}
-.taktik-home .tk-lead b { color: var(--tk-ink); font-weight: 600; }
-.taktik-home .tk-hero-note {
-  margin-top: 1.4rem;
-  max-width: 30rem;
-  color: var(--tk-dim);
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  line-height: 1.6;
-  letter-spacing: 0.04em;
-}
-.taktik-home .tk-hero .tk-btn-row { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 1.9rem; }
-
-/* ---- tahta ---- */
-.taktik-home .tk-board-wrap { position: relative; justify-self: center; width: min(34rem, 100%, calc((100dvh - 15rem) * 0.667)); }
-.taktik-home .tk-note { position: absolute; font-family: var(--tk-hand); font-size: 1.35rem; line-height: 1.1; color: rgba(28, 24, 12, 0.55); z-index: 2; }
-.taktik-home .tk-note .tk-y { color: var(--tk-y-ink); }
-.taktik-home .tk-note.n1 { top: 4.5%; right: 1%; transform: rotate(-3deg); }
-.taktik-home .tk-note.n2 { top: 42%; left: -2%; transform: rotate(-2deg); max-width: 9.5rem; }
-.taktik-home .tk-note.n3 { bottom: 22%; left: 33%; transform: rotate(2deg); }
-.taktik-home .tk-note.n4 { top: 34%; left: 2%; transform: rotate(-4deg); color: rgba(28, 24, 12, 0.55); }
-
-.taktik-home .tk-tag {
-  position: absolute;
-  display: inline-block;
-  padding: 0.34rem 0.6rem 0.3rem;
-  border-radius: 1px;
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  background: rgba(250, 204, 21, 0.12);
-  border: 1px solid rgba(250, 204, 21, 0.55);
-  color: var(--tk-y-ink);
-  z-index: 2;
-}
-.taktik-home .tk-tag::before {
-  content: "";
-  position: absolute;
-  top: -7px;
-  left: 50%;
-  width: 26px;
-  height: 10px;
-  transform: translateX(-50%) rotate(-2deg);
-  background: rgba(28, 24, 12, 0.14);
-}
-.taktik-home .tk-tag.t1 { top: 62%; left: 30%; transform: rotate(1.5deg); }
-.taktik-home .tk-tag.t2 { bottom: 28%; left: 5%; transform: rotate(-1.5deg); background: rgba(193, 59, 48, 0.1); border-color: rgba(193, 59, 48, 0.5); color: var(--tk-red); }
-.taktik-home .tk-tag.t3 { top: 59%; left: 57%; transform: rotate(2.2deg); }
-
-.taktik-home .tk-reg { position: absolute; width: 16px; height: 16px; color: rgba(28, 24, 12, 0.26); pointer-events: none; }
-.taktik-home .tk-reg::before, .taktik-home .tk-reg::after { content: ""; position: absolute; background: currentColor; }
-.taktik-home .tk-reg::before { left: 50%; top: 0; bottom: 0; width: 1px; transform: translateX(-50%); }
-.taktik-home .tk-reg::after { top: 50%; left: 0; right: 0; height: 1px; transform: translateY(-50%); }
-.taktik-home .tk-reg.tl { top: -10px; left: -10px; }
-.taktik-home .tk-reg.tr { top: -10px; right: -10px; }
-.taktik-home .tk-reg.bl { bottom: -10px; left: -10px; }
-.taktik-home .tk-reg.br { bottom: -10px; right: -10px; }
-
-.taktik-home .tk-pitch { display: block; width: 100%; height: auto; }
-.taktik-home .tk-pitch .frame { fill: none; stroke: rgba(28, 24, 12, 0.16); stroke-width: 1.2; }
-.taktik-home .tk-pitch .frame-outer { stroke: rgba(28, 24, 12, 0.32); stroke-width: 1.6; }
-.taktik-home .tk-pitch .frame-goal { stroke: rgba(28, 24, 12, 0.05); stroke-width: 1.8; stroke-linejoin: round; }
-.taktik-home .tk-pitch .node circle { fill: #ffffff; stroke: var(--tk-chalk-strong); stroke-width: 1.5; }
-.taktik-home .tk-pitch .node text {
-  fill: rgba(28, 24, 12, 0.05);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
-  text-anchor: middle;
-  dominant-baseline: central;
-}
-.taktik-home .tk-pitch .node.chain circle { stroke: rgba(250, 204, 21, 0.6); }
-.taktik-home .tk-pitch .node.chain text { fill: #ffffff; }
-.taktik-home .tk-pitch .link { stroke: rgba(28, 24, 12, 0.12); stroke-width: 1.4; fill: none; }
-.taktik-home .tk-pitch .signal {
-  stroke: var(--tk-y);
-  stroke-width: 1.7;
-  fill: none;
-  stroke-dasharray: 7 11;
-  animation: tk-flow 1.1s linear infinite;
-}
-.taktik-home .tk-pitch .signal.s1 { opacity: 0.4; }
-.taktik-home .tk-pitch .signal.s2 { opacity: 0.65; }
-.taktik-home .tk-pitch .signal.s3 { opacity: 0.95; }
-.taktik-home .tk-pitch .ball { fill: #141003; }
-.taktik-home .tk-pitch .hot circle { fill: rgba(250, 204, 21, 0.16); stroke: var(--tk-y); stroke-width: 1.8; }
-.taktik-home .tk-pitch .hot text { fill: var(--tk-y); }
-.taktik-home .tk-pitch .ripple {
-  fill: none;
-  stroke: rgba(250, 204, 21, 0.6);
-  stroke-width: 1.2;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: tk-ripple 2.6s var(--tk-ease) infinite;
-}
-@keyframes tk-flow { to { stroke-dashoffset: -18; } }
-@keyframes tk-ripple {
-  0% { transform: scale(0.6); opacity: 0.9; }
-  70%, 100% { transform: scale(2.1); opacity: 0; }
-}
-
-.taktik-home .tk-doodle { position: absolute; top: 46%; right: 26%; width: 84px; height: 62px; transform: rotate(-6deg); z-index: 2; pointer-events: none; }
-
-.taktik-home .tk-board-foot {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -2.4rem;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem 1.5rem;
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--tk-dim);
-}
-.taktik-home .tk-legend { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 1.1rem; }
-.taktik-home .tk-lg { display: inline-flex; align-items: center; gap: 0.5rem; }
-.taktik-home .tk-sw { width: 24px; height: 0; }
-.taktik-home .tk-sw-signal { border-top: 2px dashed rgba(250, 204, 21, 0.9); }
-.taktik-home .tk-sw-link { border-top: 1px solid rgba(28, 24, 12, 0.3); }
-.taktik-home .tk-sw-hot { width: 10px; height: 10px; border: 1.5px solid var(--tk-y); background: rgba(250, 204, 21, 0.14); }
-
-/* ---- analiz akışı ---- */
-.taktik-home .tk-drills-wrap { position: relative; }
-.taktik-home .tk-drills {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 1.5rem;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.taktik-home .tk-drills li { position: relative; min-width: 0; }
-.taktik-home .tk-drills li:not(:last-child)::after {
-  content: "";
-  position: absolute;
-  top: 16px;
-  left: 46px;
-  right: -30px;
-  height: 24px;
-  border-top: 2px dashed rgba(28, 24, 12, 0.17);
-  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
-}
-.taktik-home .tk-drill-node {
-  display: grid;
-  place-items: center;
-  width: 2.1rem;
-  height: 2.1rem;
-  border-radius: 50%;
-  border: 1.5px solid var(--tk-chalk-strong);
-  background: #ffffff;
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  color: var(--tk-mut);
-}
-.taktik-home .tk-drills h3 { margin-top: 1rem; font-size: 1rem; font-weight: 700; letter-spacing: -0.015em; }
-.taktik-home .tk-drills p { margin-top: 0.45rem; color: var(--tk-mut); font-size: 0.8125rem; line-height: 1.65; }
-.taktik-home .tk-drills-note {
-  position: absolute;
-  top: -2.6rem;
-  left: 0;
-  font-family: var(--tk-hand);
-  font-size: 1.3rem;
-  color: rgba(28, 24, 12, 0.55);
-  transform: rotate(-2deg);
-}
-
-/* ---- platform özellikleri şeridi ---- */
-.taktik-home .tk-features {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 1.5rem;
-  margin-top: 3.5rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--tk-line);
-}
-.taktik-home .tk-feature .tk-no {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  letter-spacing: 0.2em;
-  color: var(--tk-y-ink);
-  margin-bottom: 0.5rem;
-}
-.taktik-home .tk-feature h4 { font-size: 0.9rem; font-weight: 700; letter-spacing: -0.01em; }
-
-/* ---- tahta kuralları (bantlı notlar) ---- */
-.taktik-home .tk-notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.2rem; padding: 0.8rem 0 1.6rem; }
-.taktik-home .tk-note-card {
-  --tk-rot: -0.8deg;
-  --tk-ty: 0px;
-  position: relative;
-  background: var(--tk-panel);
-  border: 1px solid rgba(28, 24, 12, 0.14);
-  padding: 1.7rem 1.5rem 1.4rem;
-  transform: rotate(var(--tk-rot)) translateY(var(--tk-ty));
-  transition: transform 0.4s var(--tk-ease), border-color 0.3s ease;
-  box-shadow: 0 22px 44px -34px rgba(0, 0, 0, 0.9);
-}
-.taktik-home .tk-note-card:hover { transform: rotate(0deg) translateY(calc(var(--tk-ty) - 6px)); border-color: rgba(28, 24, 12, 0.26); }
-.taktik-home .tk-note-card::before {
-  content: "";
-  position: absolute;
-  top: -9px;
-  left: 50%;
-  width: 64px;
-  height: 16px;
-  transform: translateX(-50%) rotate(-2deg);
-  background: rgba(28, 24, 12, 0.13);
-}
-.taktik-home .tk-note-card:nth-child(1) { --tk-rot: -0.9deg; }
-.taktik-home .tk-note-card:nth-child(2) { --tk-rot: 0.6deg; --tk-ty: 16px; }
-.taktik-home .tk-note-card:nth-child(3) { --tk-rot: -0.4deg; --tk-ty: 5px; }
-.taktik-home .tk-note-card .tk-no { font-family: var(--font-mono); font-size: 0.625rem; font-weight: 700; letter-spacing: 0.2em; color: var(--tk-y-ink); }
-.taktik-home .tk-note-card h3 { margin-top: 0.6rem; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.015em; }
-.taktik-home .tk-note-card p { margin-top: 0.55rem; color: var(--tk-mut); font-size: 0.875rem; line-height: 1.7; }
-.taktik-home .tk-note-card .tk-scrawl {
-  display: block;
-  margin-top: 0.9rem;
-  padding-top: 0.8rem;
-  border-top: 1px dashed rgba(28, 24, 12, 0.14);
-  font-family: var(--tk-hand);
-  font-size: 1.25rem;
-  color: rgba(28, 24, 12, 0.55);
-}
-.taktik-home .tk-scrawl .tk-y { color: var(--tk-y-ink); }
-
-/* ---- analiz kesiti + üyelik ---- */
-.taktik-home .tk-split {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: clamp(2rem, 5vw, 4rem);
-  align-items: start;
-}
-.taktik-home .tk-snippet {
-  border: 1px solid rgba(28, 24, 12, 0.16);
-  background: var(--tk-panel);
-  padding: 1.4rem 1.4rem 1.1rem;
-}
-.taktik-home .tk-snippet-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 0.9rem;
-  border-bottom: 1px solid var(--tk-line);
-}
-.taktik-home .tk-snippet-head .tk-lbl { font-family: var(--font-mono); font-size: 0.625rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--tk-dim); }
-.taktik-home .tk-snippet-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.28rem 0.6rem;
-  border-radius: 2px;
-  border: 1px solid rgba(250, 204, 21, 0.5);
-  background: rgba(250, 204, 21, 0.12);
-  color: var(--tk-y-ink);
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.taktik-home .tk-snippet-status i { width: 6px; height: 6px; background: var(--tk-y); }
-.taktik-home .tk-snippet-teams { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 1rem; padding: 1.05rem 0; }
-.taktik-home .tk-snippet-team { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
-.taktik-home .tk-snippet-team.away { justify-content: flex-end; text-align: right; }
-.taktik-home .tk-mono-badge {
-  display: grid;
-  place-items: center;
-  width: 2.4rem;
-  height: 2.4rem;
-  flex-shrink: 0;
-  border: 1px solid rgba(28, 24, 12, 0.24);
-  border-radius: 2px;
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  font-weight: 700;
-}
-.taktik-home .tk-snippet-team b { font-size: 0.95rem; font-weight: 700; }
-.taktik-home .tk-snippet-team small { display: block; font-family: var(--font-mono); font-size: 0.5625rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--tk-dim); margin-top: 0.15rem; }
-.taktik-home .tk-snippet-vs { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.1em; color: var(--tk-dim); }
-.taktik-home .tk-snippet-metrics { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 1rem; padding: 0.9rem 0; border-top: 1px solid var(--tk-line); }
-.taktik-home .tk-snippet-metrics .tk-lbl { display: block; font-family: var(--font-mono); font-size: 0.5625rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--tk-dim); }
-.taktik-home .tk-snippet-metrics .tk-val { display: block; margin-top: 0.35rem; font-family: var(--font-mono); font-size: 0.875rem; font-weight: 600; }
-.taktik-home .tk-snippet-metrics .tk-val.warn { color: #b45309; }
-.taktik-home .tk-meter { margin-top: 0.5rem; height: 4px; background: rgba(28, 24, 12, 0.12); }
-.taktik-home .tk-meter i { display: block; height: 100%; background: var(--tk-y); }
-.taktik-home .tk-snippet-caption {
-  margin-top: 0.4rem;
-  padding-top: 0.8rem;
-  border-top: 1px solid var(--tk-line);
-  font-family: var(--font-mono);
-  font-size: 0.5625rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--tk-dim);
-}
-.taktik-home .tk-benefits { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--tk-line); }
-.taktik-home .tk-benefits li {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  padding: 0.85rem 0.2rem;
-  border-bottom: 1px solid var(--tk-line);
-  font-size: 0.9375rem;
-  font-weight: 600;
-}
-.taktik-home .tk-benefits li::before { content: ""; width: 8px; height: 8px; background: var(--tk-y); flex-shrink: 0; }
-.taktik-home .tk-soon {
-  margin-top: 1.6rem;
-  padding: 1.1rem 1.2rem;
-  border: 1px dashed rgba(28, 24, 12, 0.2);
-}
-.taktik-home .tk-soon b { display: block; font-size: 0.9375rem; font-weight: 700; }
-.taktik-home .tk-soon p { margin-top: 0.4rem; color: var(--tk-mut); font-size: 0.8125rem; line-height: 1.65; }
-
-/* ---- karar skalası ---- */
-.taktik-home .tk-tier-wrap { position: relative; }
-.taktik-home .tk-tier-panel {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  border: 1px solid rgba(28, 24, 12, 0.16);
-  background: rgba(28, 24, 12, 0.014);
-}
-.taktik-home .tk-tier-col { padding: 1.7rem 1.5rem 1.6rem; }
-.taktik-home .tk-tier-col + .tk-tier-col { border-left: 1px solid var(--tk-line-dim); }
-.taktik-home .tk-tier-top { display: flex; align-items: center; gap: 0.55rem; }
-.taktik-home .tk-tier-sq { width: 9px; height: 9px; flex-shrink: 0; }
-.taktik-home .c-primary .tk-tier-sq { background: var(--tk-y); }
-.taktik-home .c-secondary .tk-tier-sq { background: var(--tk-silver); }
-.taktik-home .c-watch .tk-tier-sq { background: #8A877D; }
-.taktik-home .c-avoid .tk-tier-sq { background: var(--tk-red); }
-.taktik-home .tk-tier-name { font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
-.taktik-home .c-primary .tk-tier-name { color: var(--tk-y-ink); }
-.taktik-home .c-secondary .tk-tier-name { color: var(--tk-silver); }
-.taktik-home .c-watch .tk-tier-name { color: #8A877D; }
-.taktik-home .c-avoid .tk-tier-name { color: var(--tk-red); }
-.taktik-home .tk-tier-role { margin-top: 0.7rem; font-size: 1rem; font-weight: 700; letter-spacing: -0.015em; }
-.taktik-home .tk-tier-desc { margin-top: 0.45rem; min-height: 4.4rem; color: var(--tk-mut); font-size: 0.8125rem; line-height: 1.65; }
-.taktik-home .tk-tier-sample {
-  display: inline-flex;
-  margin-top: 0.6rem;
-  padding: 0.35rem 0.7rem;
-  border: 1px solid rgba(28, 24, 12, 0.2);
-  border-radius: 1px;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-.taktik-home .tk-tier-foot {
-  display: block;
-  margin-top: 1.1rem;
-  padding-top: 0.85rem;
-  border-top: 1px dashed rgba(28, 24, 12, 0.12);
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--tk-dim);
-}
-.taktik-home .tk-tier-annot {
-  position: absolute;
-  top: -2.4rem;
-  right: 0.4rem;
-  font-family: var(--tk-hand);
-  font-size: 1.3rem;
-  color: rgba(28, 24, 12, 0.55);
-  transform: rotate(-2deg);
-}
-.taktik-home .tk-tier-annot .tk-y { color: var(--tk-y-ink); }
-
-/* ---- gözlem listesi ---- */
-.taktik-home .tk-league-list { border-top: 1px solid var(--tk-line); }
-.taktik-home .tk-league-row {
-  display: flex;
-  align-items: baseline;
-  gap: 1rem;
-  padding: 1rem 0.35rem;
-  border-bottom: 1px solid var(--tk-line);
-  transition: background 0.2s ease, padding-left 0.2s ease;
-}
-.taktik-home .tk-league-row:hover { background: rgba(28, 24, 12, 0.02); padding-left: 0.7rem; }
-.taktik-home .tk-code-chip {
-  flex-shrink: 0;
-  padding: 0.16rem 0.42rem;
-  border: 1px solid rgba(28, 24, 12, 0.22);
-  border-radius: 1px;
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--tk-mut);
-}
-.taktik-home .tk-league-name { font-size: 1rem; font-weight: 600; white-space: nowrap; }
-.taktik-home .tk-leader { flex: 1; min-width: 2rem; border-bottom: 1px dotted rgba(28, 24, 12, 0.22); transform: translateY(-4px); }
-.taktik-home .tk-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--tk-mut);
-}
-.taktik-home .tk-status::before { content: ""; width: 7px; height: 7px; background: var(--tk-dim); }
-.taktik-home .tk-status.on::before { background: var(--tk-y); }
-.taktik-home .tk-status.on { color: var(--tk-ink); }
-
-/* ---- kapanış ---- */
-.taktik-home .tk-cta-band { border-top: 1px solid var(--tk-line); }
-.taktik-home .tk-cta-in { padding-block: clamp(4.5rem, 9vw, 7rem); }
-.taktik-home .tk-cta-in h2 {
-  font-size: clamp(2.1rem, 4.4vw, 3.4rem);
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 1.06;
-  max-width: 46rem;
-}
-.taktik-home .tk-circled { position: relative; white-space: nowrap; }
-.taktik-home .tk-circled::after {
-  content: "";
-  position: absolute;
-  inset: -0.34em -0.58em -0.3em -0.52em;
-  border: 2px solid rgba(250, 204, 21, 0.8);
-  border-radius: 50%;
-  transform: rotate(-2deg);
-  pointer-events: none;
-  clip-path: polygon(0 0, 96% 4%, 100% 92%, 4% 100%);
-}
-.taktik-home .tk-cta-note { margin-top: 1rem; font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.08em; color: var(--tk-dim); }
-
-/* ---- footer ---- */
-.taktik-home .tk-footer { border-top: 1px solid var(--tk-line); }
-.taktik-home .tk-footer-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.8fr) minmax(0, 0.8fr);
-  gap: 2.5rem;
-  padding-block: 3.5rem 2.5rem;
-}
-.taktik-home .tk-footer-brand p { margin-top: 1rem; max-width: 28rem; color: var(--tk-dim); font-size: 0.8125rem; line-height: 1.7; }
-.taktik-home .tk-footer-col .tk-fh {
-  display: block;
-  margin-bottom: 1rem;
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--tk-dim);
-}
-.taktik-home .tk-footer-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
-.taktik-home .tk-footer-col a, .taktik-home .tk-footer-col button {
-  padding: 0;
-  color: var(--tk-mut);
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition: color 0.18s ease;
-}
-.taktik-home .tk-footer-col a:hover, .taktik-home .tk-footer-col button:hover { color: var(--tk-ink); }
-.taktik-home .tk-footer-bottom {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 1.4rem 0 1.6rem;
-  border-top: 1px solid var(--tk-line-dim);
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--tk-dim);
-}
-.taktik-home .tk-footer-legal { display: flex; flex-wrap: wrap; gap: 1.2rem; }
-.taktik-home .tk-footer-legal button { background: none; border: 0; padding: 0; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
-.taktik-home .tk-disclaimer {
-  padding: 1.1rem 0 0;
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  letter-spacing: 0.06em;
-  line-height: 1.8;
-  color: var(--tk-dim);
-}
-
-/* ---- responsive ---- */
-@media (max-width: 1080px) {
-  .taktik-home .tk-drills { grid-template-columns: repeat(3, 1fr); }
-  .taktik-home .tk-drills li::after { display: none; }
-  .taktik-home .tk-features { grid-template-columns: repeat(3, 1fr); gap: 1.25rem 1.5rem; }
-}
-@media (max-width: 980px) {
-  .taktik-home .tk-stage { grid-template-columns: 1fr; gap: 3.5rem; }
-  .taktik-home .tk-board-wrap { width: min(30rem, 100%, none); }
-  .taktik-home .tk-note.n2 { left: 0; }
-  .taktik-home .tk-notes { grid-template-columns: 1fr; gap: 2.6rem; }
-  .taktik-home .tk-note-card:nth-child(2), .taktik-home .tk-note-card:nth-child(3) { --tk-ty: 0px; }
-  .taktik-home .tk-split { grid-template-columns: 1fr; }
-  .taktik-home .tk-tier-panel { grid-template-columns: repeat(2, 1fr); }
-  .taktik-home .tk-tier-col:nth-child(3) { border-left: 0; }
-  .taktik-home .tk-tier-col:nth-child(n + 3) { border-top: 1px solid var(--tk-line-dim); }
-  .taktik-home .tk-tier-desc { min-height: 0; }
-  .taktik-home .tk-tier-annot { position: static; display: block; margin: 0 0 1rem; }
-  .taktik-home .tk-footer-grid { grid-template-columns: 1fr 1fr; }
-  .taktik-home .tk-footer-brand { grid-column: 1 / -1; }
-}
-@media (max-width: 640px) {
-  .taktik-home .tk-nav a:not(.tk-cta-mini),
-  .taktik-home .tk-nav button:not(.tk-cta-mini) { display: none; }
-  .taktik-home .tk-drills { grid-template-columns: 1fr; gap: 2rem; }
-  .taktik-home .tk-features { grid-template-columns: repeat(2, 1fr); }
-  .taktik-home .tk-tier-panel { grid-template-columns: 1fr; }
-  .taktik-home .tk-tier-col + .tk-tier-col { border-left: 0; border-top: 1px solid var(--tk-line-dim); }
-  .taktik-home .tk-league-row { flex-wrap: wrap; }
-  .taktik-home .tk-leader { display: none; }
-  .taktik-home .tk-note { font-size: 1.1rem; }
-  .taktik-home .tk-footer-grid { grid-template-columns: 1fr; }
-  .taktik-home .tk-hero .tk-btn { width: 100%; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .taktik-home .tk-reveal { opacity: 1; transform: none; transition: none; }
-  .taktik-home .tk-pitch .signal { animation: none; stroke-dasharray: none; stroke: rgba(250, 204, 21, 0.7); }
-  .taktik-home .tk-pitch .ripple { animation: none; opacity: 0.4; }
-}
-
 /* ==========================================================================
    Football Explorer & Visual Leagues Hub — Sports Broadcast Obsidian
    ========================================================================== */
@@ -12684,17 +11963,6 @@ textarea {
   height: 1.9rem;
 }
 
-.taktik-home .tk-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.taktik-home .tk-footer .tk-brand .brand-mark {
-  width: 1.5rem;
-  height: 1.5rem;
-}
-
 .route-loader-logo > span {
   position: absolute;
   inset: 0;
@@ -12715,10 +11983,6 @@ textarea {
   color: var(--text);
 }
 
-.taktik-home {
-  --tk-y-ink: #8A6A00;
-}
-
 .results-summary-card strong,
 .teams-summary-stat strong,
 .explorer-stat-value {
@@ -12732,9 +11996,9 @@ textarea {
 
 .login-intelligence {
   background:
-    radial-gradient(circle at 48% 46%, rgba(250, 204, 21, 0.22), transparent 17rem),
-    radial-gradient(circle at 28% 30%, rgba(234, 179, 8, 0.2), transparent 20rem),
-    linear-gradient(145deg, #f4f2ec, #F7F6F2);
+    radial-gradient(circle at 48% 46%, rgba(255, 196, 0, 0.2), transparent 17rem),
+    radial-gradient(circle at 28% 30%, rgba(229, 172, 0, 0.16), transparent 20rem),
+    linear-gradient(145deg, #f5f2ec, #f0ede4);
 }
 
 /* maç merkezi sekmeleri: emoji ikonlar kapalı, metin odaklı */
@@ -12748,4 +12012,48 @@ textarea {
 .dashboard-stat-success strong,
 .dashboard-stat-purple strong {
   color: var(--text);
+}
+/* ============================================================
+   v3 — Giriş / kayıt yüzeyi rötuşu (yalnızca malzeme, akış aynı)
+   ============================================================ */
+.login-form input {
+  height: 50px;
+  padding: 0 1rem;
+  border-color: var(--line);
+  border-radius: 10px;
+  font-size: 0.95rem;
+}
+
+.login-form input:focus-visible {
+  outline: none;
+  border-color: var(--text);
+  box-shadow: 0 0 0 3px rgba(255, 196, 0, 0.24);
+}
+
+.login-form button[type="submit"] {
+  height: 50px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.auth-copy h1 {
+  font-size: clamp(2rem, 3vw, 2.6rem);
+  letter-spacing: -0.04em;
+  line-height: 1.06;
+}
+
+.login-card .text-link {
+  letter-spacing: 0.08em;
+}
+
+.reason-stage {
+  border-color: var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 1px 2px rgba(29, 25, 19, 0.04), 0 34px 70px -46px rgba(29, 25, 19, 0.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
+  backdrop-filter: blur(12px) saturate(1.1);
 }
