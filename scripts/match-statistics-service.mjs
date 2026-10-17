@@ -7,15 +7,17 @@
  * capture into football_match_team_statistics.
  */
 import { spawn } from "node:child_process";
-import { mkdir, readdir, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import pg from "pg";
 
 const DATABASE_URL = process.env.DATABASE_URL;
-const INTERVAL_MS = Math.max(5, Number(process.env.MATCH_STATISTICS_INTERVAL_MINUTES || 60)) * 60_000;
-const BATCH_LIMIT = Math.max(1, Math.min(100, Number(process.env.MATCH_STATISTICS_BATCH_LIMIT || 40)));
+const INTERVAL_MS = Math.max(5, Number(process.env.MATCH_STATISTICS_INTERVAL_MINUTES || 30)) * 60_000;
+const BATCH_LIMIT = Math.max(1, Math.min(100, Number(process.env.MATCH_STATISTICS_BATCH_LIMIT || 80)));
 const LOOKBACK_DAYS = Math.max(1, Math.min(365, Number(process.env.MATCH_STATISTICS_LOOKBACK_DAYS || 120)));
 const STATE_DIR = process.env.MATCH_STATISTICS_STATE_DIR || "/var/lib/skoriq-match-statistics";
+const FAILURES_PATH = join(STATE_DIR, "failures.json");
+const FAILURE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PYTHON_BIN = process.env.PYTHON_BIN || "python3";
 const TSX_BIN = join(process.cwd(), "node_modules", ".bin", "tsx");
 const FETCH_SCRIPT = join(process.cwd(), "scripts", "sofascore_fetch_match_statistics.py");
@@ -84,7 +86,7 @@ function runSyncLog(phase, payload) {
   });
 }
 
-async function selectMissingMatches() {
+async function selectMissingMatches(limit = BATCH_LIMIT) {
   if (!pool) return [];
   const result = await pool.query(
     `
@@ -106,9 +108,46 @@ async function selectMissingMatches() {
       ORDER BY m.scheduled_start_at DESC
       LIMIT $2
     `,
-    [LOOKBACK_DAYS, BATCH_LIMIT]
+    [LOOKBACK_DAYS, limit]
   );
   return result.rows;
+}
+
+async function loadFailures() {
+  try {
+    const document = JSON.parse(await readFile(FAILURES_PATH, "utf8"));
+    if (!document || typeof document !== "object" || Array.isArray(document)) return {};
+    const cutoff = Date.now() - FAILURE_TTL_MS;
+    return Object.fromEntries(Object.entries(document).filter(([eventId, timestamp]) =>
+      /^[1-9]\d*$/.test(eventId) && typeof timestamp === "string" && Date.parse(timestamp) >= cutoff
+    ));
+  } catch {
+    return {};
+  }
+}
+
+async function saveFailures(failures) {
+  await mkdir(STATE_DIR, { recursive: true });
+  const temporary = `${FAILURES_PATH}.${process.pid}.tmp`;
+  await writeFile(temporary, JSON.stringify(failures, null, 2), "utf8");
+  await rename(temporary, FAILURES_PATH);
+}
+
+function isPermanentFailure(reason) {
+  const text = String(reason ?? "");
+  return text.startsWith("http_404") || ["missing_full_time", "empty_statistics", "partial_response", "non_json"].includes(text);
+}
+
+function recordPermanentFailures(failures, fetchSummary, importReport) {
+  const timestamp = new Date().toISOString();
+  for (const failure of fetchSummary?.failures ?? []) {
+    if (isPermanentFailure(failure?.reason)) failures[String(failure.eventId)] = timestamp;
+  }
+  for (const entry of importReport?.entries ?? []) {
+    if (entry?.status === "unknown_match" || entry?.status === "team_mismatch") {
+      failures[String(entry.eventId)] = timestamp;
+    }
+  }
 }
 
 async function pruneCaptures() {
@@ -128,16 +167,20 @@ async function pruneCaptures() {
 
 async function runOnce() {
   const startedAt = Date.now();
-  const rows = await selectMissingMatches();
-  if (rows.length === 0) {
-    log("no_missing_matches", { lookbackDays: LOOKBACK_DAYS });
+  const failures = await loadFailures();
+  const rows = await selectMissingMatches(BATCH_LIMIT * 10);
+  const candidates = rows.filter((row) => !failures[String(row.event_id)]);
+  const selected = candidates.slice(0, BATCH_LIMIT);
+  if (selected.length === 0) {
+    const skippedFailed = rows.length - candidates.length;
+    log("no_missing_matches", { lookbackDays: LOOKBACK_DAYS, skippedFailed });
     await runSyncLog("final", {
       status: "succeeded",
-      summary: { selected: 0, lookbackDays: LOOKBACK_DAYS, message: "no_missing_matches" }
+      summary: { selected: 0, skippedFailed, lookbackDays: LOOKBACK_DAYS, message: "no_missing_matches" }
     });
     return { status: "skipped" };
   }
-  const matches = rows
+  const matches = selected
     .map((row) => ({
       eventId: Number(row.event_id),
       homeTeamId: Number(row.home_team_id),
@@ -145,7 +188,8 @@ async function runOnce() {
     }))
     .filter((match) => Number.isSafeInteger(match.eventId) && match.eventId > 0 && Number.isSafeInteger(match.homeTeamId) && Number.isSafeInteger(match.awayTeamId));
   if (matches.length === 0) {
-    log("invalid_missing_matches", { selected: rows.length });
+    log("invalid_missing_matches", { selected: selected.length });
+    await runSyncLog("final", { status: "succeeded", summary: { selected: 0, invalid: selected.length } });
     return { status: "skipped" };
   }
 
@@ -165,9 +209,11 @@ async function runOnce() {
   if (!captured) {
     const error = redact(fetch.stderr).slice(-500) || `fetch exit ${fetch.code}`;
     log("fetch_failed", { error: error.slice(0, 200) });
+    recordPermanentFailures(failures, fetchSummary, null);
+    await saveFailures(failures);
     await runSyncLog("final", {
       status: "failed",
-      summary: { selected: matches.length, fetchSummary },
+      summary: { selected: matches.length, fetchSummary, rememberedFailures: Object.keys(failures).length },
       error
     });
     return { status: "failed" };
@@ -180,6 +226,11 @@ async function runOnce() {
   const succeeded = importResult.code === 0 && importReport !== null;
   const status = succeeded ? "succeeded" : "failed";
   const error = succeeded ? undefined : redact(importResult.stderr).slice(-500) || `import exit ${importResult.code}`;
+  for (const entry of importReport?.entries ?? []) {
+    if (entry?.status === "updated") delete failures[String(entry.eventId)];
+  }
+  recordPermanentFailures(failures, fetchSummary, importReport);
+  await saveFailures(failures);
   await runSyncLog("final", {
     status,
     summary: {
@@ -188,6 +239,7 @@ async function runOnce() {
       fetchFailed: fetchSummary?.failed ?? null,
       writtenMatches: importReport?.writtenMatches ?? null,
       importCounts: importReport?.counts ?? null,
+      rememberedFailures: Object.keys(failures).length,
       durationMs: Date.now() - startedAt
     },
     error
