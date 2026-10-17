@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Inject, Post, Req, Res, UnauthorizedException, UseGuards } from "@nestjs/common";
 import { IsEmail, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from "class-validator";
 import { AuthGuard } from "./auth.guard.js";
+import { AdminGuard } from "./admin.guard.js";
 import { AuthService } from "./auth.service.js";
 import type { AuthenticatedRequest, CookieResponse } from "./auth.types.js";
 
@@ -97,6 +98,11 @@ export class ChangePasswordRequestBody {
   confirmPassword?: string;
 }
 
+export class PasswordResetLinkRequestBody {
+  @IsEmail()
+  email!: string;
+}
+
 @Controller("auth")
 export class AuthController {
   constructor(@Inject(AuthService) private readonly authService: AuthService) {}
@@ -153,6 +159,12 @@ export class AuthController {
       password: body.password,
       confirmPassword: body.confirmPassword
     });
+  }
+
+  @UseGuards(AuthGuard, AdminGuard)
+  @Post("password-reset-link")
+  passwordResetLink(@Body() body: PasswordResetLinkRequestBody) {
+    return this.authService.createPasswordResetLink(body.email);
   }
 
   @Post("logout")

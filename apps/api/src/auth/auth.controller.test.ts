@@ -97,6 +97,18 @@ describe("AuthController", () => {
     });
   });
 
+  it("delegates an admin-mediated password reset link", async () => {
+    const service = mockService();
+    const controller = new AuthController(service);
+
+    await expect(controller.passwordResetLink({ email: "member@example.test" })).resolves.toEqual({
+      ok: true,
+      email: "member@example.test",
+      resetUrl: "https://skoriq.example.test/reset-password?token=fixture"
+    });
+    expect(service.createPasswordResetLink).toHaveBeenCalledWith("member@example.test");
+  });
+
   it("changes a password only for an authenticated user", async () => {
     const service = mockService();
     const controller = new AuthController(service);
@@ -159,6 +171,11 @@ function mockService(overrides: Partial<AuthService> = {}): AuthService {
     requestPasswordReset: vi.fn().mockResolvedValue({ ok: true, message: "sent" }),
     resetPassword: vi.fn().mockResolvedValue({ ok: true, message: "updated" }),
     changePassword: vi.fn().mockResolvedValue({ ok: true, message: "changed" }),
+    createPasswordResetLink: vi.fn().mockResolvedValue({
+      ok: true,
+      email: "member@example.test",
+      resetUrl: "https://skoriq.example.test/reset-password?token=fixture"
+    }),
     enabled: true,
     currentUserFromRequest: vi.fn(),
     ...overrides

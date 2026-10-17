@@ -250,6 +250,44 @@ describe("AuthService", () => {
     });
   });
 
+  it("creates an admin-mediated reset link without sending email", async () => {
+    const database = mockDatabase([
+      [
+        {
+          id: "user-2",
+          email: "member@example.test",
+          password_hash: "stored-hash",
+          role: "member",
+          status: "active",
+          created_at: new Date("2026-04-30T00:00:00.000Z"),
+          last_login_at: null
+        }
+      ],
+      [],
+      []
+    ]);
+
+    const result = await new AuthService(database, testConfig()).createPasswordResetLink(" Member@Example.TEST ");
+
+    expect(result).toEqual({
+      ok: true,
+      email: "member@example.test",
+      resetUrl: expect.stringContaining("/reset-password?token=")
+    });
+    expect(result.resetUrl).toContain("https://skoriq.example.test");
+    const calls = (database.execute as ReturnType<typeof vi.fn>).mock.calls.map((entry) => JSON.stringify(entry));
+    expect(calls.join(" ")).not.toContain("member@example.test/reset-password?token=");
+  });
+
+  it("refuses an admin-mediated reset link for unknown or inactive users", async () => {
+    await expect(new AuthService(mockDatabase([[]]), testConfig()).createPasswordResetLink("missing@example.test")).rejects.toThrow(
+      new BadRequestException("Aktif kullanıcı bulunamadı.")
+    );
+    await expect(new AuthService(mockDatabase([[]]), testConfig()).createPasswordResetLink("not-an-email")).rejects.toThrow(
+      new BadRequestException("Geçerli bir e-posta adresi girin.")
+    );
+  });
+
   it("resets a password only with a valid unused token", async () => {
     const database = mockDatabase([
       [

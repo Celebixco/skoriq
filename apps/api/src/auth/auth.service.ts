@@ -159,6 +159,36 @@ export class AuthService {
       return { ok: true, message: forgotPasswordSuccessMessage };
     }
 
+    const rawToken = await this.issuePasswordResetToken(user);
+
+    await this.passwordResetEmailSender.sendPasswordResetEmail({
+      email: user.email,
+      resetUrl: buildPasswordResetUrl(this.config, rawToken)
+    });
+
+    return { ok: true, message: forgotPasswordSuccessMessage };
+  }
+
+  async createPasswordResetLink(email: string) {
+    const normalizedEmail = normalizeEmail(email);
+    if (!isValidEmail(normalizedEmail)) {
+      throw new BadRequestException("Geçerli bir e-posta adresi girin.");
+    }
+
+    const user = await this.findUserByEmail(normalizedEmail);
+    if (!user || user.status !== "active") {
+      throw new BadRequestException("Aktif kullanıcı bulunamadı.");
+    }
+
+    const rawToken = await this.issuePasswordResetToken(user);
+    return {
+      ok: true,
+      email: user.email,
+      resetUrl: buildPasswordResetUrl(this.config, rawToken)
+    };
+  }
+
+  private async issuePasswordResetToken(user: UserRow): Promise<string> {
     const rawToken = randomBytes(32).toString("base64url");
     const tokenHash = hashPasswordResetToken(rawToken);
     const expiresAt = new Date(Date.now() + this.config.AUTH_PASSWORD_RESET_TTL_MINUTES * 60_000);
@@ -170,13 +200,7 @@ export class AuthService {
         values (${user.id}, ${tokenHash}, ${expiresAt})
       `
     );
-
-    await this.passwordResetEmailSender.sendPasswordResetEmail({
-      email: user.email,
-      resetUrl: buildPasswordResetUrl(this.config, rawToken)
-    });
-
-    return { ok: true, message: forgotPasswordSuccessMessage };
+    return rawToken;
   }
 
   async resetPassword(input: { token: string; password: string; confirmPassword?: string }) {
