@@ -30,6 +30,7 @@ export interface SofaScoreMatchesReport {
   queriesExecuted: number;
   entries: MatchEntry[];
   counts: Record<string, number>;
+  reasonCounts: Record<string, number>;
   syncJobLogged: boolean;
   loggingError?: string;
 }
@@ -168,6 +169,10 @@ export async function runSofaScoreMatchesSync(
     accumulator[entry.action] = (accumulator[entry.action] ?? 0) + 1;
     return accumulator;
   }, {});
+  const reasonCounts = entries.reduce<Record<string, number>>((accumulator, entry) => {
+    if (entry.reason) accumulator[entry.reason] = (accumulator[entry.reason] ?? 0) + 1;
+    return accumulator;
+  }, {});
   const report: SofaScoreMatchesReport = {
     mode: options.execute ? "execute" : "dry_run",
     capturePath: options.capturePath,
@@ -175,6 +180,7 @@ export async function runSofaScoreMatchesSync(
     queriesExecuted: startedQueries.count,
     entries,
     counts,
+    reasonCounts,
     syncJobLogged: false
   };
   if (database && options.logRun && syncJobId) {

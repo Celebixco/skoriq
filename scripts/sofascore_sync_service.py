@@ -246,6 +246,7 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
     import_timeout = int(env.get("SYNC_IMPORT_TIMEOUT_SECONDS", "180"))
     part_summaries: list[dict[str, Any]] = []
     aggregate_counts: dict[str, int] = {}
+    aggregate_reasons: dict[str, int] = {}
     imported_parts = 0
     for part_summary in fetch_entries:
         if not part_summary["fetched"]:
@@ -259,11 +260,14 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
         import_summary = import_part(job, part_path, env, execute, import_timeout, runner)
         part_summaries.append(import_summary)
         log_step(job, env, "import_part_result",
-                 {"tournamentId": part_summary["tournamentId"], "partStatus": import_summary["status"]}, runner=runner)
+                 {"tournamentId": part_summary["tournamentId"], "partStatus": import_summary["status"],
+                  "counts": import_summary.get("counts"), "reasonCounts": import_summary.get("reasonCounts")}, runner=runner)
         if import_summary["status"] == "executed":
             imported_parts += 1
             for action, count in (import_summary.get("counts") or {}).items():
                 aggregate_counts[action] = aggregate_counts.get(action, 0) + int(count)
+            for reason, count in (import_summary.get("reasonCounts") or {}).items():
+                aggregate_reasons[reason] = aggregate_reasons.get(reason, 0) + int(count)
 
     fetched_count = len([entry for entry in fetch_entries if entry["fetched"]])
     executed_count = len([summary for summary in part_summaries if summary["status"] == "executed"])
@@ -286,7 +290,7 @@ def run_job(job: Job, env: dict[str, str], state_dir: Path, now: datetime, *, ru
         "importStatus": import_status,
         "importError": next((entry.get("error") for entry in part_summaries if entry.get("error")), None),
         "fetchSummary": fetch_summary,
-        "importSummary": {"parts": part_summaries, "counts": aggregate_counts},
+        "importSummary": {"parts": part_summaries, "counts": aggregate_counts, "reasons": aggregate_reasons},
         "prunedCaptures": removed,
         "finishedAt": now.isoformat(timespec="seconds").replace("+00:00", "Z"),
     }
@@ -321,6 +325,7 @@ def import_part(job: Job, part_path: Path, env: dict[str, str], execute: bool, t
     summary = parse_last_json_line(result.stdout or "")
     if result.returncode == 0 and summary:
         return {"tournamentId": tournament_id, "status": "executed", "counts": summary.get("counts"),
+                "reasonCounts": summary.get("reasonCounts"),
                 "queriesExecuted": summary.get("queriesExecuted"), "progressTail": progress_tail()}
     stderr_tail = redact((result.stderr or "").strip()[-400:])
     return {"tournamentId": tournament_id, "status": "import_failed",
