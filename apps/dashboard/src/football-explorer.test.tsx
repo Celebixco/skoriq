@@ -3,10 +3,9 @@ import { CountryListPage, CountryDetailPage, CompetitionDetailPage } from "./App
 import { renderToStaticMarkup } from "react-dom/server";
 
 describe("Football Explorer Pages", () => {
-  it("CountryListPage renders premium hero and skeleton loading", () => {
+  it("CountryListPage renders the discovery heading and skeleton loading", () => {
     const html = renderToStaticMarkup(<CountryListPage navigate={vi.fn()} />);
     expect(html).toContain("Futbol Keşfi");
-    expect(html).toContain("SkorIQ Football");
     expect(html).toContain("explorer-skeleton-grid");
     expect(html).toContain("explorer-skeleton-card");
   });

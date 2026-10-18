@@ -13,6 +13,7 @@ export function appRouteContext(path: string): { section: AppSection; label: str
   if (route === "/football/analytics") return { section: "matches", label: "Maç merkezi" };
   if (route.startsWith("/football/analytics/")) return { section: "matches", label: "Maç analizi", parent: { label: "Maçlar", path: "/football/analytics" } };
   if (route.startsWith("/football/prediction-results")) return { section: "results", label: "Tahmin sonuçları" };
+  if (route.startsWith("/football/players/")) return { section: "discover", label: "Oyuncu profili", parent: { label: "Takımlar", path: "/football/teams" } };
   if (route.startsWith("/football/teams")) return { section: "discover", label: route === "/football/teams" ? "Takımlar" : "Takım profili", parent: { label: route === "/football/teams" ? "Keşfet" : "Takımlar", path: route === "/football/teams" ? "/football" : "/football/teams" } };
   if (route.startsWith("/football/competitions")) return { section: "discover", label: route === "/football/competitions" ? "Ligler" : "Lig merkezi", parent: { label: route === "/football/competitions" ? "Keşfet" : "Ligler", path: route === "/football/competitions" ? "/football" : "/football/competitions" } };
   if (route.startsWith("/football/countries/")) return { section: "discover", label: "Ülke futbolu", parent: { label: "Ülkeler", path: "/football" } };

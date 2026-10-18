@@ -37,6 +37,7 @@ describe("Authenticated arena navigation", () => {
   it.each([
     ["/football/analytics/a", "/football/analytics", "Maçlar"],
     ["/football/teams/a", "/football/teams", "Takımlar"],
+    ["/football/players/a", "/football/teams", "Takımlar"],
     ["/football/competitions/a", "/football/competitions", "Ligler"],
     ["/football/countries/a", "/football", "Ülkeler"],
     ["/football/predictions/drafts/a", "/football/predictions/drafts", "Draft tahminler"],

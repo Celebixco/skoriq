@@ -43,7 +43,6 @@ import type {
   FootballMatchLineupsResponse,
   FootballMatchStatisticsResponse,
   FootballMemberPredictionPreviewResponse,
-  FootballPlayerProfileResponse,
   FootballMatchPredictionSettlementsResponse,
   FootballPredictionDraftDetail,
   FootballPredictionDraftFilters,
@@ -787,7 +786,6 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
     <>
       <header className="hero analytics-header">
         <div>
-          <p className="eyebrow">SkorIQ Futbol</p>
           <h1>Yaklaşan Maçlar</h1>
           <p>Bir maça dokun; SkorIQ o maç için ne bulduğunu sade bir dille anlatsın.</p>
         </div>
@@ -1768,7 +1766,6 @@ export function MatchCenterSeasonTelemetryComparison({
       <section className="panel season-telemetry-empty-panel">
         <div className="section-header">
           <div>
-            <p className="eyebrow">SofaScore Sezon Telemetrisi</p>
             <h2>Sezon İstatistikleri</h2>
           </div>
           <span className="badge badge-muted">Veri Bekleniyor</span>
@@ -1802,8 +1799,7 @@ export function MatchCenterSeasonTelemetryComparison({
     <section className="panel season-telemetry-panel">
       <div className="section-header">
         <div>
-          <p className="eyebrow">SofaScore Sezon Telemetrisi</p>
-          <h2>Sezon Telemetrisi Karşılaştırması</h2>
+          <h2>Sezon Karşılaştırması</h2>
         </div>
       </div>
 
@@ -2129,7 +2125,6 @@ export function MatchTelemetrySection({ statistics, showEmptyNotice = false }: {
         <section className="panel match-telemetry-empty-panel">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Telemetri Durumu</p>
               <h2>Maç İstatistikleri & xG Analizi</h2>
             </div>
             <span className="badge badge-muted">Beklemede</span>
@@ -2150,10 +2145,8 @@ export function MatchTelemetrySection({ statistics, showEmptyNotice = false }: {
     <section className="panel match-telemetry-panel">
       <div className="section-header">
         <div>
-          <p className="eyebrow">SofaScore Telemetrisi</p>
           <h2>Maç İstatistikleri & xG Analizi</h2>
         </div>
-        <span className="live-telemetry-badge">Doğrulanmış Maç Verisi</span>
       </div>
 
       <div className="telemetry-key-metrics">
@@ -2947,7 +2940,6 @@ function TeamListPage({ navigate }: { navigate: (path: string) => void }) {
     <>
       <header className="hero teams-header">
         <div>
-          <p className="eyebrow">SkorIQ Futbol</p>
           <h1>Takımlar</h1>
           <p>Tüm liglerdeki takımları, logoları ve analiz kapsamlarını incele.</p>
         </div>
@@ -3305,7 +3297,11 @@ function PlayerDetailPage({ playerId, navigate }: { playerId: string; navigate: 
               )}
             </div>
             <div className="player-profile-copy">
-              <p className="eyebrow">{profile.player.team?.name ?? "Serbest oyuncu"}</p>
+              {profile.player.team ? (
+                <button type="button" className="player-team-link" onClick={() => navigate(`/football/teams/${profile.player.team!.id}`)}>
+                  {profile.player.team.name}
+                </button>
+              ) : <p className="eyebrow">Serbest oyuncu</p>}
               <h1>{profile.player.name}</h1>
               <p className="muted">
                 {[profile.player.position, profile.player.shirtNumber ? `#${profile.player.shirtNumber}` : null]
@@ -3317,20 +3313,19 @@ function PlayerDetailPage({ playerId, navigate }: { playerId: string; navigate: 
               <div className="player-summary-card"><span>Maç</span><strong>{profile.summary.appearances}</strong></div>
               <div className="player-summary-card"><span>İlk 11</span><strong>{profile.summary.starts}</strong></div>
               <div className="player-summary-card"><span>Yedek</span><strong>{profile.summary.substitutes}</strong></div>
-              <div className="player-summary-card"><span>Ort. Rating</span><strong>{profile.summary.averageRating !== null ? profile.summary.averageRating.toFixed(1) : "—"}</strong></div>
+              <div className="player-summary-card"><span>Ort. Puan</span><strong>{profile.summary.averageRating !== null ? profile.summary.averageRating.toFixed(1) : "—"}</strong></div>
             </div>
           </section>
 
           <section className="panel">
             <div className="panel-header">
               <div>
-                <p className="eyebrow">Maç Geçmişi</p>
-                <h2>Son Lineup Kayıtları</h2>
+                <h2>Son Kadro Kayıtları</h2>
               </div>
               {profile.recentMatches.length > 0 ? <span className="badge badge-muted">{profile.recentMatches.length} Maç</span> : null}
             </div>
             {profile.recentMatches.length === 0 ? (
-              <p className="muted">Bu oyuncu için lineup kaydı henüz yok.</p>
+              <p className="muted">Bu oyuncu için henüz kadro kaydı yok.</p>
             ) : (
               <div className="recent-matches-list">
                 {profile.recentMatches.map((match) => (
@@ -3509,8 +3504,7 @@ export function TeamSeasonTelemetrySection({ seasonStatistics }: { seasonStatist
     <section className="panel team-season-telemetry">
       <div className="section-header">
         <div>
-          <p className="eyebrow">SofaScore Sezon Metrikleri</p>
-          <h2>Takım Sezon İstatistikleri & Telemetrisi</h2>
+          <h2>Sezon İstatistikleri</h2>
         </div>
       </div>
       <div className="standing-stats season-telemetry-grid">
@@ -3553,9 +3547,7 @@ export function TeamProfileHero({
               >
                 <span>{team.primaryCompetition.name}</span>
               </button>
-            ) : (
-              <span className="eyebrow">Futbol takımı</span>
-            )}
+            ) : null}
             {team.country ? (
               <span className="team-hero-country-pill">{team.country}</span>
             ) : (
@@ -3844,7 +3836,6 @@ export function TeamFormTrendChart({
     <section className="panel team-form-analytics-panel">
       <div className="section-header">
         <div>
-          <p className="eyebrow">Form Grafikleri & Telemetri</p>
           <h2>Takım Formu & Momentum Trendi</h2>
         </div>
         {overall ? (
@@ -4033,7 +4024,6 @@ export function TeamSquadSection({ players }: { players: FootballTeamPlayersResp
     <section className="panel team-squad-panel">
       <div className="section-header">
         <div>
-          <p className="eyebrow">Resmi Kadro & Roster</p>
           <h2>Takım Kadrosu</h2>
         </div>
         <span className="live-telemetry-badge">{players.length} Futbolcu</span>
@@ -4236,7 +4226,6 @@ function CompetitionListPage({ navigate }: { navigate: (path: string) => void })
     <div className="competitions-shell">
       <header className="hero competitions-hero">
         <div>
-          <p className="eyebrow">SkorIQ Futbol Keşfi</p>
           <h1>Ligler & Turnuvalar</h1>
           <p>Normalize futbol verisinden doğrulanmış lig kapsamı, puan durumları ve analiz hazırlık özetleri.</p>
         </div>
@@ -4666,7 +4655,6 @@ function DraftPredictionListPage({ navigate }: { navigate: (path: string) => voi
     <>
       <header className="hero">
         <div>
-          <p className="eyebrow">SkorIQ Futbol</p>
           <h1>Draft Tahminler</h1>
           <p>İç inceleme için taslak adaylar. Yayınlama, settlement veya tahmin kombini işlemi yapılmaz.</p>
         </div>
@@ -5055,7 +5043,6 @@ export function PredictionResultsPage({ navigate }: { navigate: (path: string) =
     <>
       <header className="hero results-header">
         <div>
-          <p className="eyebrow">SkorIQ Futbol</p>
           <h1>Sonuçlar</h1>
           <p>SkorIQ tahminlerinin maç sonuçlarına göre değerlendirmesini incele.</p>
           <p className="results-helper-note">Bu sayfada yalnızca sonuçlanmış veya değerlendirilmeyi bekleyen tahminler gösterilir.</p>
@@ -5616,7 +5603,6 @@ function SettlementListPage({ navigate }: { navigate: (path: string) => void }) 
     <>
       <header className="hero">
         <div>
-          <p className="eyebrow">SkorIQ Futbol</p>
           <h1>Tahmin Sonuçları</h1>
           <p>Settlement sonuçları yalnızca iç denetim içindir. Public yayın, üye yayını veya tahmin kombini işlemi yapılmaz.</p>
         </div>
@@ -5908,7 +5894,6 @@ function PublicEligibilityListPage({ navigate }: { navigate: (path: string) => v
     <>
       <header className="hero">
         <div>
-          <p className="eyebrow">SkorIQ Futbol</p>
           <h1>Public Uygunluk</h1>
           <p>Settled tahminlerin public başarılı tahmin adayı olup olmadığını salt okunur olarak değerlendir.</p>
         </div>
@@ -6712,7 +6697,6 @@ export function CountryListPage({ navigate }: { navigate: (path: string) => void
     <div className="explorer-shell">
       {/* Broadcast Header */}
       <header className="explorer-hero-header">
-        <span className="explorer-hero-eyebrow">SkorIQ Football</span>
         <h1 className="explorer-hero-title">Futbol Keşfi</h1>
         <p className="explorer-hero-desc">Ligleri keşfet, takımları ve maç analizlerini incele.</p>
       </header>
@@ -6762,12 +6746,11 @@ export function CountryListPage({ navigate }: { navigate: (path: string) => void
             </div>
           </section>
 
-          {/* Section 1: Vitrin — Öne Çıkan Turnuvalar (Official Visual League Crests) */}
+          {/* Featured competitions */}
           {featuredCompetitions.length > 0 && !search.trim() && countryFilter === "all" ? (
             <section className="featured-leagues-section" aria-label="Öne çıkan turnuvalar">
               <div className="section-title-strip">
                 <span className="section-title-label">Öne Çıkan Ligler</span>
-                <span className="section-title-tag">Resmi Yayın Logoları</span>
               </div>
               <div className="featured-leagues-grid">
                 {featuredCompetitions.map((league) => (
@@ -7010,7 +6993,6 @@ export function CountryDetailPage({ countryId, navigate }: { countryId: string; 
         ← Ülkelere dön
       </button>
       <header className="country-detail-hero">
-        <span className="country-detail-eyebrow">Futbol Federasyonu</span>
         <h1 className="country-detail-title">{countryName}</h1>
         <p className="country-detail-desc">{competitions ? `${competitions.length} resmi lig ve kupa turnuvası` : "Ligler yükleniyor..."}</p>
       </header>

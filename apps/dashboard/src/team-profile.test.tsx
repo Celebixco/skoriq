@@ -214,7 +214,6 @@ describe("TeamProfileHero", () => {
         standing={null}
       />
     );
-    expect(html).toContain("Futbol takımı");
     expect(html).toContain("Ülke bilgisi yok");
     expect(html).not.toContain("Sıra");
     expect(html).not.toContain("Puan");
