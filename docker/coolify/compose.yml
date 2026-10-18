@@ -357,6 +357,26 @@ services:
       postgres:
         condition: service_healthy
 
+  prediction-settlement:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["node", "scripts/prediction-settlement-service.mjs"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
+      DB_EXECUTION_TARGET: local
+      AUTH_ENABLED: "true"
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Set a random AUTH_JWT_SECRET of at least 32 characters}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set the deployed frontend origin}
+      PREDICTION_SETTLEMENT_INTERVAL_MINUTES: ${PREDICTION_SETTLEMENT_INTERVAL_MINUTES:-15}
+      PREDICTION_SETTLEMENT_LOOKBACK_HOURS: ${PREDICTION_SETTLEMENT_LOOKBACK_HOURS:-48}
+      TZ: Europe/Istanbul
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   dragonfly_data:
