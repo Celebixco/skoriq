@@ -71,9 +71,9 @@ export interface FootballMarketProbabilities {
 }
 
 const DEFAULTS: Required<FootballPoissonModelOptions> = {
-  iterations: 450,
-  learningRate: 0.035,
-  regularization: 0.02,
+  iterations: 500,
+  learningRate: 0.6,
+  regularization: 0.01,
   timeDecayHalfLifeDays: 365,
   dixonColesRho: -0.06,
   maxGoals: 10
@@ -134,7 +134,7 @@ export function fitFootballPoissonModel(matches: readonly FootballModelMatch[], 
       defenseGradient[match.homeTeamId]! -= awayResidual;
     }
 
-    const scale = resolved.learningRate / Math.max(1, totalWeight);
+    const scale = resolved.learningRate / Math.max(1, rows.length);
     leagueIntercept += scale * interceptGradient;
     homeAdvantage = clamp(homeAdvantage + scale * homeGradient, -0.8, 0.8);
     for (const teamId of teams) {

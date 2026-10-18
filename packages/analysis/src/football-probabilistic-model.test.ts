@@ -38,7 +38,7 @@ describe("football probabilistic model", () => {
 
     expect(model.trainedMatches).toBe(48);
     expect(model.teams.strong?.matches).toBe(32);
-    expect(prediction.homeWin).toBeGreaterThan(prediction.awayWin);
+    expect(prediction.homeWin).toBeGreaterThan(0.5);
     expect(prediction.homeWin).toBeGreaterThan(prediction.draw);
     expect(prediction.homeWin + prediction.draw + prediction.awayWin).toBeCloseTo(1, 6);
   });

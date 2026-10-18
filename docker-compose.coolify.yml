@@ -319,7 +319,7 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: "no"
-    command: ["node_modules/.bin/tsx", "scripts/football-model-backtest.ts", "--limit=10000", "--min-training=5000", "--refit-every=100", "--max-predictions=800", "--iterations=120"]
+    command: ["node_modules/.bin/tsx", "scripts/football-model-backtest.ts", "--limit=10000", "--min-training=5000", "--refit-every=100", "--max-predictions=800", "--iterations=400"]
     environment:
       NODE_ENV: production
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
