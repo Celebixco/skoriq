@@ -91,6 +91,8 @@ export interface BuildFootballHeadToHeadOptions {
   asOfMatchId?: string;
   competitionId?: string;
   seasonId?: string | null;
+  /** Include meetings from earlier seasons and other competitions for the same pair. */
+  includeHistory?: boolean;
   windowSizes?: readonly number[];
   includeMatchId?: string;
 }
@@ -126,8 +128,8 @@ export class FootballHeadToHeadFeatureBuilder implements AnalysisFeatureBuilder 
         teamBId: pair.teamBId,
         asOfDate,
         limit: windowSize,
-        competitionId: options.competitionId,
-        seasonId: options.seasonId,
+        competitionId: options.includeHistory ? undefined : options.competitionId,
+        seasonId: options.includeHistory ? undefined : options.seasonId,
         includeMatchId: options.includeMatchId
       });
       const feature = calculateFootballHeadToHeadFeature({
@@ -159,6 +161,7 @@ export class FootballHeadToHeadFeatureBuilder implements AnalysisFeatureBuilder 
       asOfMatchId: match.id,
       competitionId: match.competitionId,
       seasonId: match.seasonId ?? null,
+      includeHistory: true,
       windowSizes: options.windowSizes
     });
   }
@@ -178,6 +181,7 @@ export class FootballHeadToHeadFeatureBuilder implements AnalysisFeatureBuilder 
       asOfMatchId: match.id,
       competitionId: match.competitionId,
       seasonId: match.seasonId ?? null,
+      includeHistory: true,
       includeMatchId: match.id
     });
   }
@@ -198,6 +202,7 @@ export class FootballHeadToHeadFeatureBuilder implements AnalysisFeatureBuilder 
       const result = await this.buildForPair(pair.teamAId, pair.teamBId, {
         competitionId,
         seasonId,
+        includeHistory: true,
         windowSizes: options.windowSizes
       });
       changedFeatureRows += result.changedFeatureRows;

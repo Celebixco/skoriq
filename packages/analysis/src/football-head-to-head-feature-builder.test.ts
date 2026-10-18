@@ -128,6 +128,24 @@ describe("football head-to-head feature builder", () => {
     expect(repositories.features.get(`${teamAId}|${teamBId}|competition-1|season-1|target|5`)).toMatchObject({ matchesPlayed: 1, teamAGoalsFor: 2 });
   });
 
+  it("buildForMatch includes prior-season and cross-competition meetings", async () => {
+    const target = baseMatch("target", "2026-05-01", teamBId, teamAId, "scheduled");
+    const prior = matchRow("prior", "2025-11-01", teamAId, teamBId, 3, 1);
+    prior.match.seasonId = "season-old";
+    prior.match.competitionId = "cup-competition";
+    const repositories = createInMemoryRepositories([prior, { match: target, score: { homeScoreFulltime: 5, awayScoreFulltime: 0 } }]);
+    const builder = new FootballHeadToHeadFeatureBuilder(repositories);
+
+    const result = await builder.buildForMatch("target");
+
+    expect(result.changedFeatureRows).toBe(2);
+    expect(repositories.features.get(`${teamAId}|${teamBId}|competition-1|season-1|target|5`)).toMatchObject({
+      matchesPlayed: 1,
+      teamAGoalsFor: 3,
+      teamBGoalsFor: 1
+    });
+  });
+
   it("rebuildAfterMatch includes the final target match", async () => {
     const repositories = createInMemoryRepositories([matchRow("target", "2026-04-20", teamAId, teamBId, 3, 1)]);
     const builder = new FootballHeadToHeadFeatureBuilder(repositories);
