@@ -51,7 +51,7 @@ jobs:
             -H "Authorization: Bearer $COOLIFY_TOKEN" \
             -H "Content-Type: application/json" \
             --data "{\"uuid\":\"$COOLIFY_APP_UUID\",\"force\":false}")
-          deployment_uuid=$(node -e "const d=JSON.parse(process.argv[1]); process.stdout.write(d.deployments?.[0]?.deployment_uuid ?? '')" "$response")
+          deployment_uuid=$(printf '%s' "$response" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const d=JSON.parse(s);process.stdout.write(d.deployments?.[0]?.deployment_uuid ?? '')})")
           if [ -z "$deployment_uuid" ]; then
             echo "Coolify did not return a deployment UUID"
             echo "$response"
@@ -70,7 +70,7 @@ jobs:
             response=$(curl -fsS "$COOLIFY_BASE_URL/api/v1/deployments/$DEPLOYMENT_UUID" \
               -H "Authorization: Bearer $COOLIFY_TOKEN" \
               -H "Accept: application/json")
-            status=$(node -e "const d=JSON.parse(process.argv[1]); process.stdout.write(String(d.status ?? ''))" "$response")
+            status=$(printf '%s' "$response" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const d=JSON.parse(s);process.stdout.write(String(d.status ?? ''))})")
             echo "deployment status: $status (attempt $attempt)"
             case "$status" in
               finished) exit 0 ;;
