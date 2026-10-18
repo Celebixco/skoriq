@@ -367,6 +367,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
       DB_EXECUTION_TARGET: local
+      ALLOW_PRODUCTION_LOCAL_DB: "true"
       AUTH_ENABLED: "true"
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Set a random AUTH_JWT_SECRET of at least 32 characters}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set the deployed frontend origin}
