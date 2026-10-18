@@ -12,8 +12,8 @@ import { join } from "node:path";
 import pg from "pg";
 
 const DATABASE_URL = process.env.DATABASE_URL;
-const INTERVAL_MS = Math.max(5, Number(process.env.MATCH_STATISTICS_INTERVAL_MINUTES || 30)) * 60_000;
-const BATCH_LIMIT = Math.max(1, Math.min(100, Number(process.env.MATCH_STATISTICS_BATCH_LIMIT || 80)));
+const INTERVAL_MS = Math.max(5, Number(process.env.MATCH_STATISTICS_INTERVAL_MINUTES || 20)) * 60_000;
+const BATCH_LIMIT = Math.max(1, Math.min(100, Number(process.env.MATCH_STATISTICS_BATCH_LIMIT || 100)));
 const LOOKBACK_DAYS = Math.max(1, Math.min(365, Number(process.env.MATCH_STATISTICS_LOOKBACK_DAYS || 120)));
 const STATE_DIR = process.env.MATCH_STATISTICS_STATE_DIR || "/var/lib/skoriq-match-statistics";
 const FAILURES_PATH = join(STATE_DIR, "failures.json");
@@ -298,3 +298,4 @@ main().catch((error) => {
   log("service_fatal", { error: redact(error instanceof Error ? error.message : String(error)) });
   process.exitCode = 1;
 });
+

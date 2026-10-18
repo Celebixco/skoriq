@@ -178,9 +178,38 @@ export interface FootballMatchLineupsResponse {
     };
     formation: string | null;
     confirmed: boolean;
-    startingXi: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
-    substitutes: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
-    unavailable: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
+    startingXi: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null; rating: number | null }>;
+    substitutes: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null; rating: number | null }>;
+    unavailable: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null; rating: number | null }>;
+  }>;
+}
+
+export interface FootballPlayerProfileResponse {
+  player: {
+    id: string;
+    name: string;
+    position: string | null;
+    shirtNumber: number | null;
+    photoUrl: string | null;
+    team: { id: string; name: string; logoUrl: string | null } | null;
+  };
+  summary: {
+    appearances: number;
+    starts: number;
+    substitutes: number;
+    averageRating: number | null;
+  };
+  recentMatches: Array<{
+    matchId: string;
+    competition: { id: string; name: string };
+    kickoffAt: string;
+    status: string;
+    homeTeam: { id: string; name: string; logoUrl: string | null };
+    awayTeam: { id: string; name: string; logoUrl: string | null };
+    role: string;
+    position: string | null;
+    shirtNumber: number | null;
+    rating: number | null;
   }>;
 }
 
@@ -637,6 +666,7 @@ interface MatchLineupRow {
   position: string | null;
   shirt_number: string | number | null;
   order_index: string | number | null;
+  rating: string | number | null;
 }
 
 interface PlayerAvailabilityRow {
@@ -833,8 +863,104 @@ export class FootballCatalogService {
     };
   }
 
-  async getTeamPlayers(teamId: string): Promise<FootballTeamPlayersResponse> {
-    const identity = await this.findTeamProfileIdentity(teamId);
+  async getPlayerProfile(playerId: string): Promise<FootballPlayerProfileResponse> {
+    const playerRows = await executeRows<{
+      id: string;
+      name: string;
+      position: string | null;
+      jersey_number: string | number | null;
+      photo_url: string | null;
+      team_id: string | null;
+      team_name: string | null;
+      team_logo_url: string | null;
+    }>(
+      this.database,
+      sql`
+        select p.id, p.name, p.position, p.jersey_number, p.photo_url,
+          t.id as team_id, t.name as team_name, t.logo_url as team_logo_url
+        from players p
+        left join teams t on t.id = p.current_team_id
+        where p.id = ${playerId}
+        limit 1
+      `
+    );
+    const player = playerRows[0];
+    if (!player) throw new NotFoundException("Football player not found.");
+
+    const rows = await executeRows<{
+      match_id: string;
+      competition_id: string;
+      competition_name: string;
+      kickoff_at: Date | string;
+      status: string;
+      home_team_id: string;
+      home_team_name: string;
+      home_team_logo_url: string | null;
+      away_team_id: string;
+      away_team_name: string;
+      away_team_logo_url: string | null;
+      role: string;
+      position: string | null;
+      shirt_number: string | number | null;
+      rating: string | number | null;
+    }>(
+      this.database,
+      sql`
+        select m.id as match_id, c.id as competition_id, c.name as competition_name,
+          m.scheduled_start_at as kickoff_at, m.status,
+          home.id as home_team_id, home.name as home_team_name, home.logo_url as home_team_logo_url,
+          away.id as away_team_id, away.name as away_team_name, away.logo_url as away_team_logo_url,
+          lp.role, lp.position, lp.shirt_number,
+          (lp.metadata_json->>'rating')::numeric as rating
+        from football_match_lineup_players lp
+        inner join football_match_lineups l on l.id = lp.match_lineup_id
+        inner join matches m on m.id = lp.match_id
+        inner join competitions c on c.id = m.competition_id
+        inner join teams home on home.id = m.home_team_id
+        inner join teams away on away.id = m.away_team_id
+        where lp.player_id = ${playerId}
+        order by m.scheduled_start_at desc
+        limit 20
+      `
+    );
+    const ratings = rows.map((row) => numberOrNull(row.rating)).filter((rating): rating is number => rating !== null);
+    const averageRating = ratings.length > 0
+      ? Math.round((ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length) * 10) / 10
+      : null;
+
+    return {
+      player: {
+        id: player.id,
+        name: player.name,
+        position: player.position,
+        shirtNumber: integer(player.jersey_number),
+        photoUrl: player.photo_url,
+        team: player.team_id && player.team_name
+          ? { id: player.team_id, name: player.team_name, logoUrl: player.team_logo_url }
+          : null
+      },
+      summary: {
+        appearances: rows.length,
+        starts: rows.filter((row) => row.role === "starting").length,
+        substitutes: rows.filter((row) => row.role === "substitute").length,
+        averageRating
+      },
+      recentMatches: rows.map((row) => ({
+        matchId: row.match_id,
+        competition: { id: row.competition_id, name: row.competition_name },
+        kickoffAt: toIso(row.kickoff_at),
+        status: row.status,
+        homeTeam: { id: row.home_team_id, name: row.home_team_name, logoUrl: row.home_team_logo_url },
+        awayTeam: { id: row.away_team_id, name: row.away_team_name, logoUrl: row.away_team_logo_url },
+        role: row.role,
+        position: row.position,
+        shirtNumber: integer(row.shirt_number),
+        rating: numberOrNull(row.rating)
+      }))
+    };
+  }
+
+  async getTeamPlayers(teamId: string): Promise<FootballTeamPlayersResponse> {    const identity = await this.findTeamProfileIdentity(teamId);
     if (!identity) {
       throw new NotFoundException("Football team not found.");
     }
@@ -913,7 +1039,8 @@ export class FootballCatalogService {
         playerId: row.player_id,
         name: row.player_name,
         position: row.position,
-        shirtNumber: integer(row.shirt_number)
+        shirtNumber: integer(row.shirt_number),
+        rating: numberOrNull(row.rating)
       };
       if (row.role === "starting") lineup.startingXi.push(player);
       else if (row.role === "substitute") lineup.substitutes.push(player);
@@ -1618,7 +1745,8 @@ export class FootballCatalogService {
           lp.role,
           lp.position,
           lp.shirt_number,
-          lp.order_index
+          lp.order_index,
+          (lp.metadata_json->>'rating')::numeric as rating
         from football_match_lineups l
         inner join teams t on t.id = l.team_id
         inner join football_match_lineup_players lp on lp.match_lineup_id = l.id

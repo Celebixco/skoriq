@@ -718,6 +718,35 @@ export interface FootballTeamPlayersResponse {
   }>;
 }
 
+export interface FootballPlayerProfileResponse {
+  player: {
+    id: string;
+    name: string;
+    position: string | null;
+    shirtNumber: number | null;
+    photoUrl: string | null;
+    team: TeamSummary | null;
+  };
+  summary: {
+    appearances: number;
+    starts: number;
+    substitutes: number;
+    averageRating: number | null;
+  };
+  recentMatches: Array<{
+    matchId: string;
+    competition: { id: string; name: string };
+    kickoffAt: string;
+    status: string;
+    homeTeam: TeamSummary;
+    awayTeam: TeamSummary;
+    role: string;
+    position: string | null;
+    shirtNumber: number | null;
+    rating: number | null;
+  }>;
+}
+
 export interface FootballMatchLineupsResponse {
   match: {
     id: string;
@@ -730,9 +759,9 @@ export interface FootballMatchLineupsResponse {
     team: TeamSummary;
     formation: string | null;
     confirmed: boolean;
-    startingXi: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
-    substitutes: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
-    unavailable: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null }>;
+    startingXi: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null; rating: number | null }>;
+    substitutes: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null; rating: number | null }>;
+    unavailable: Array<{ playerId: string; name: string; position: string | null; shirtNumber: number | null; rating: number | null }>;
   }>;
 }
 

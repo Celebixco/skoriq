@@ -42,6 +42,12 @@ export class FootballCatalogController {
     return this.catalogService.getTeamAvailability(teamId);
   }
 
+  @Get("players/:playerId")
+  async getFootballPlayerProfile(@Param("playerId") playerId: string) {
+    validateUuid("playerId", playerId);
+    return this.catalogService.getPlayerProfile(playerId);
+  }
+
   @Get("teams/:teamId/players")
   async getFootballTeamPlayers(@Param("teamId") teamId: string) {
     validateUuid("teamId", teamId);

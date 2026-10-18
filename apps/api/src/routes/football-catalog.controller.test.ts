@@ -20,6 +20,7 @@ import {
 import type { FootballCatalogService } from "./football-catalog.service.js";
 
 const teamId = "b4235ef3-4d8c-4461-aeec-37e9abef3130";
+const playerId = "2f6c0f1e-7d4a-4b6e-9c2d-3a5e8f1b7c90";
 const competitionId = "e91bf32e-3683-49f6-8077-6247889e58a5";
 const countryId = "0fbbf7f8-e5f8-438f-9e8e-befef85d587b";
 
@@ -77,6 +78,7 @@ describe("FootballCatalogController", () => {
     await controller.getFootballTeam(teamId);
     await controller.getFootballTeamProfile(teamId);
     await controller.getFootballTeamAvailability(teamId);
+    await controller.getFootballPlayerProfile(playerId);
     await controller.getFootballCompetitionProfile(competitionId);
     await controller.getFootballCompetition(competitionId);
     await controller.getFootballMatchPlayerAvailability("89759e35-758d-416e-b0d3-ad07436c8a9b");
@@ -84,6 +86,7 @@ describe("FootballCatalogController", () => {
     expect(service.getTeam).toHaveBeenCalledWith(teamId);
     expect(service.getTeamProfile).toHaveBeenCalledWith(teamId);
     expect(service.getTeamAvailability).toHaveBeenCalledWith(teamId);
+    expect(service.getPlayerProfile).toHaveBeenCalledWith(playerId);
     expect(service.getCompetitionProfile).toHaveBeenCalledWith(competitionId);
     expect(service.getCompetition).toHaveBeenCalledWith(competitionId);
     expect(service.getMatchPlayerAvailability).toHaveBeenCalledWith("89759e35-758d-416e-b0d3-ad07436c8a9b");
@@ -95,6 +98,7 @@ describe("FootballCatalogController", () => {
     await expect(controller.getFootballTeam("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
     await expect(controller.getFootballTeamProfile("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
     await expect(controller.getFootballTeamAvailability("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
+    await expect(controller.getFootballPlayerProfile("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
     await expect(controller.listFootballCountryCompetitions("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
     await expect(controller.getFootballCompetitionProfile("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
     await expect(controller.getFootballCompetition("not-a-uuid")).rejects.toBeInstanceOf(BadRequestException);
@@ -382,6 +386,11 @@ function mockService(overrides: Partial<FootballCatalogService> = {}): FootballC
         logoUrl: "https://example.test/dortmund.png"
       },
       items: []
+    }),
+    getPlayerProfile: vi.fn().mockResolvedValue({
+      player: { id: playerId, name: "Player One", position: "M", shirtNumber: 8, photoUrl: null, team: { id: teamId, name: "Borussia Dortmund", logoUrl: null } },
+      summary: { appearances: 1, starts: 1, substitutes: 0, averageRating: 7.4 },
+      recentMatches: []
     }),
     listCompetitions: vi.fn().mockResolvedValue({
       items: [mapCompetitionRow(competitionRow())],

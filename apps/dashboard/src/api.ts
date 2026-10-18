@@ -14,6 +14,7 @@ import type {
   FootballMatchLineupsResponse,
   FootballMatchStatisticsResponse,
   FootballMemberPredictionPreviewResponse,
+  FootballPlayerProfileResponse,
   FootballMatchPublicEligibilityResponse,
   FootballMatchPredictionSettlementsResponse,
   FootballPredictionDraftDetail,
@@ -138,6 +139,10 @@ export async function fetchFootballTeam(teamId: string): Promise<FootballTeamDet
 
 export async function fetchFootballTeamProfile(teamId: string): Promise<FootballTeamProfileResponse> {
   return requestJson<FootballTeamProfileResponse>(`/football/teams/${encodeURIComponent(teamId)}/profile`);
+}
+
+export async function fetchFootballPlayerProfile(playerId: string): Promise<FootballPlayerProfileResponse> {
+  return requestJson<FootballPlayerProfileResponse>(`/football/players/${encodeURIComponent(playerId)}`);
 }
 
 export async function fetchFootballTeamPlayers(teamId: string): Promise<FootballTeamPlayersResponse> {
