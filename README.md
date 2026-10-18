@@ -1,6 +1,6 @@
 # SkorIQ
 
-SkorIQ â€” Veri Destekli MaÃ§ Analizi.
+SkorIQ Ã¢â‚¬â€ Veri Destekli MaÃƒÂ§ Analizi.
 
 SkorIQ (`skoriq.com`) is a protected match-analysis platform for inspecting normalized football and basketball data, analytics readiness, feature coverage, and reasoning signals. The repository still keeps internal package, table, and script names stable to avoid unnecessary churn.
 
@@ -13,7 +13,7 @@ Current Tahmin foundation status:
 - Football prediction settlement foundation can evaluate existing outputs against normalized football scores with a manual dry-run-first command.
 - Settlement does not publish predictions, does not make outputs member-visible, does not create public successful prediction cards, and does not power tahmin kombini.
 - Public eligibility foundation can dry-run which settled successful outputs would be future public candidates; it does not mutate statuses or create public cards.
-- Football goal-feature expansion is underway so future Tahmin outputs can focus on explainable goal profiles such as MS 1.5 Ãœst, MS 2.5 Alt, Ä°Y 0.5 Ãœst, KG Var/Yok, and team-total goals before exact score work. Implemented slices now add team-form goal rates, first-half goal evidence, match-level goal-profile proxy snapshots, and dry-run candidate generation that consumes those profiles. The signal map documents feature -> signal -> causal reasoning -> prediction support.
+- Football goal-feature expansion is underway so future Tahmin outputs can focus on explainable goal profiles such as MS 1.5 ÃƒÅ“st, MS 2.5 Alt, Ã„Â°Y 0.5 ÃƒÅ“st, KG Var/Yok, and team-total goals before exact score work. Implemented slices now add team-form goal rates, first-half goal evidence, match-level goal-profile proxy snapshots, and dry-run candidate generation that consumes those profiles. The signal map documents feature -> signal -> causal reasoning -> prediction support.
 
 Dashboard overview:
 
@@ -30,7 +30,7 @@ Member-safe prediction preview:
 - `npm run pipeline:football:daily-prematch -- --all-competitions --execute` is the daily 09:00 Europe/Istanbul scan command used by the `analytics` service for the SofaScore production dataset. The `--all-reviewed-enabled` scope remains for APIFootball reviewed test leagues. Both use normalized DB data only and keep outputs draft-only.
 - `npm run provider:football:finished-sync -- --all-reviewed-enabled --lookback-hours=72 --execute` refreshes recent final scores for reviewed/enabled leagues only.
 - `npm run analytics:football:settle-predictions -- --all-reviewed-enabled --lookback-hours=96 --execute` stores internal settlement results without publishing or changing member visibility.
-- `GET /api/football/prediction-results` and `/summary` power the member-safe Tahmin SonuÃ§larÄ± page.
+- `GET /api/football/prediction-results` and `/summary` power the member-safe Tahmin SonuÃƒÂ§larÃ„Â± page.
 - It is separate from admin draft review endpoints and does not expose conflicts, raw metadata, expectation snapshots, audit-only rows, blocked/avoid candidates, provider IDs, or generated-after-kickoff candidates.
 - It does not publish predictions, mark outputs member-visible, run settlement, call providers, run ingestion, or generate tahmin kombini output.
 
@@ -190,7 +190,7 @@ Reviewed APIFootball.com football test slices can be tested with a guarded local
 
 - `country_id=4`, `league_id=171`, `2. Bundesliga`
 - `country_id=4`, `league_id=175`, `Bundesliga`
-- `country_id=111`, `league_id=322`, `SÃ¼per Lig`
+- `country_id=111`, `league_id=322`, `SÃƒÂ¼per Lig`
 - `country_id=44`, `league_id=152`, `Premier League`
 - `country_id=6`, `league_id=302`, `La Liga`
 - `country_id=5`, `league_id=207`, `Serie A`
@@ -199,17 +199,17 @@ Reviewed APIFootball.com football test slices can be tested with a guarded local
 
 Italy Serie A is reviewed/enabled: `country_id=5`, `league_id=207`, `league_name=Serie A`, `dryRunAllowed=true`, `reviewed=true`, and `enabled=true`. Discovery selected the exact Italy `Serie A` row after comparing similar leagues such as Serie B, Serie C, Serie D, Serie A Women, Coppa Italia, Super Cup, Primavera leagues/cups, plus non-Italy Serie A names in Brazil and Mexico. Review evidence: teams/logos 20/20 with 19/20 logos and one standings-name enrichment, standings 20/20, recent finished events/scores 10/10 with FT/HT scores 10/10, and upcoming events/scores 9/10. The one upcoming skipped row was a live APIFootball numeric `match_status` that must remain skipped until the provider returns a supported final/scheduled status; it is non-fatal because finished-score evidence is clean. Run a narrow countries/leagues execute before teams, standings, or events execute.
 
-France Ligue 1 is reviewed/enabled: `country_id=3`, `league_id=168`, `league_name=Ligue 1`, `dryRunAllowed=true`, `reviewed=true`, and `enabled=true`. Discovery selected the exact France `Ligue 1` row after comparing similar French competitions such as Ligue 2, Coupe de la Ligue, National 1/2/3, PremiÃ¨re Ligue, and TrophÃ©e des Champions, plus non-France `Ligue 1` rows in other countries. Review evidence: teams/logos 18/18, standings 18/18, upcoming events 9/9, recent finished events/scores 9/9, FT/HT scores 9/9, unresolved rows 0. Run a narrow countries/leagues execute before teams, standings, or events execute.
+France Ligue 1 is reviewed/enabled: `country_id=3`, `league_id=168`, `league_name=Ligue 1`, `dryRunAllowed=true`, `reviewed=true`, and `enabled=true`. Discovery selected the exact France `Ligue 1` row after comparing similar French competitions such as Ligue 2, Coupe de la Ligue, National 1/2/3, PremiÃƒÂ¨re Ligue, and TrophÃƒÂ©e des Champions, plus non-France `Ligue 1` rows in other countries. Review evidence: teams/logos 18/18, standings 18/18, upcoming events 9/9, recent finished events/scores 9/9, FT/HT scores 9/9, unresolved rows 0. Run a narrow countries/leagues execute before teams, standings, or events execute.
 
 Netherlands Eredivisie is reviewed/enabled: `country_id=82`, `league_id=244`, `league_name=Eredivisie`, `dryRunAllowed=true`, `reviewed=true`, and `enabled=true`. Discovery selected the exact Netherlands `Eredivisie` row after comparing similar Dutch competitions such as KNVB Beker (`243`, `1194`), Eerste Divisie (`245`), Derde Divisie (`242`), Eredivisie Women (`481`), Reserve League (`721`), Super Cup (`391`), Tweede Divisie (`584`), and U18/U19/U21 Divisie rows. Review evidence: teams 22/22, logos 21/22 with one missing non-fatal, one standings-name enrichment, standings 18/18, and recent finished events/scores 8/8 with FT/HT scores 8/8. The upcoming slice mapped 10/11 and skipped one `After Pen.` non-standard status; this is accepted as a non-fatal caveat, remains skipped unless an explicit policy is added, and must not create normal league score rows. Run a narrow countries/leagues execute before teams, standings, or events execute.
 
-SÃ¼per Lig is reviewed/enabled after teams, standings, and events dry-run evidence. Teams mapped 18/18 after exact standings-name enrichment for two missing `team_name` rows. Logo coverage is 16/18; the two missing logos are accepted as non-fatal. Execute is allowed only through the guarded manual command and still requires an approved local or Neon test database target.
+SÃƒÂ¼per Lig is reviewed/enabled after teams, standings, and events dry-run evidence. Teams mapped 18/18 after exact standings-name enrichment for two missing `team_name` rows. Logo coverage is 16/18; the two missing logos are accepted as non-fatal. Execute is allowed only through the guarded manual command and still requires an approved local or Neon test database target.
 
 Premier League is reviewed/enabled after controlled dry-run evidence: teams/logos 20/20, standings 20/20, events/scores 10/10, unresolved rows 0. Because its competition provider mapping does not exist yet on the current test branch, run a narrow countries/leagues execute before teams, standings, or events execute.
 
-Spain La Liga is reviewed/enabled after controlled dry-run evidence: teams/logos 20/20, standings 20/20, upcoming events 10/10, recent finished events/scores 10/10, FT/HT scores 10/10, unresolved rows 0. Discovery selected the exact Spain `La Liga` row after comparing similar Spanish competitions such as Segunda DivisiÃ³n, Copa del Rey, Super Cup, Primera DivisiÃ³n RFEF, and Primera DivisiÃ³n Femenina. Because its competition provider mapping does not exist yet on the current test branch, run a narrow countries/leagues execute before teams, standings, or events execute.
+Spain La Liga is reviewed/enabled after controlled dry-run evidence: teams/logos 20/20, standings 20/20, upcoming events 10/10, recent finished events/scores 10/10, FT/HT scores 10/10, unresolved rows 0. Discovery selected the exact Spain `La Liga` row after comparing similar Spanish competitions such as Segunda DivisiÃƒÂ³n, Copa del Rey, Super Cup, Primera DivisiÃƒÂ³n RFEF, and Primera DivisiÃƒÂ³n Femenina. Because its competition provider mapping does not exist yet on the current test branch, run a narrow countries/leagues execute before teams, standings, or events execute.
 
-SÃ¼per Lig is analysis-only for prediction MVP readiness. The current test branch has 18 teams, 18 standings rows, 38 finished matches, 9 upcoming matches, 38 score rows, and 38/38 halftime score coverage, but all upcoming matches are still `partial` because scoped samples are low and H2H is 0. Do not force candidate generation, persist drafts, include SÃ¼per Lig in tahmin kombini, or expose member/public predictions until readiness improves.
+SÃƒÂ¼per Lig is analysis-only for prediction MVP readiness. The current test branch has 18 teams, 18 standings rows, 38 finished matches, 9 upcoming matches, 38 score rows, and 38/38 halftime score coverage, but all upcoming matches are still `partial` because scoped samples are low and H2H is 0. Do not force candidate generation, persist drafts, include SÃƒÂ¼per Lig in tahmin kombini, or expose member/public predictions until readiness improves.
 
 During APIFootball manual ingestion, missing team names may be enriched only from same-league standings rows with an exact provider team ID match. This fallback fills the name only, reports `enrichedTeamNamesCount` and `enrichedFrom=standings`, and never infers logos or creates fake provider IDs.
 
@@ -383,7 +383,7 @@ npm run analytics:football:reasoning:build -- \
   --match-id=<match-uuid>
 ```
 
-This read-only command uses the same local/Neon-test database readiness guard, prints deterministic reasoning signals, and never writes to the database. It explains readiness, positive signals, risk factors, missing data, Tahmin eligibility, public-use ineligibility, and GÃ¼ven skoru. It is not a prediction model or AI explanation service.
+This read-only command uses the same local/Neon-test database readiness guard, prints deterministic reasoning signals, and never writes to the database. It explains readiness, positive signals, risk factors, missing data, Tahmin eligibility, public-use ineligibility, and GÃƒÂ¼ven skoru. It is not a prediction model or AI explanation service.
 
 Football match analytics can be viewed as one complete read-only report:
 
@@ -441,12 +441,12 @@ npm run auth:create-admin
 
 The bootstrap command refuses `NODE_ENV=production`, lowercases the email, hashes the password, and does not print passwords or hashes. This is membership access only; billing, subscription plans, prediction models, and public successful-prediction flows are not implemented.
 
-Member registration is available through `POST /api/auth/register` and the dashboard `/register` route. Registration collects ad, soyad, Turkish `+90` telefon numarasÄ±, e-posta, ÅŸifre, ÅŸifre tekrar, and a simple math security question; login remains e-posta + ÅŸifre only. Registration creates `role=member`, `status=active`, uses the same HTTP-only cookie auth strategy, and auto-logs the member in. It never creates admin users; admins are still created only through `npm run auth:create-admin`. Password management now includes `POST /api/auth/change-password` for authenticated users, the `forgot-password` / `reset-password` routes used by the dashboard, and `POST /api/auth/password-reset-link` (admin-only) for generating a one-time reset URL without email delivery. Reset email delivery requires `RESEND_API_KEY` and `AUTH_PASSWORD_RESET_FROM_EMAIL`; without them the forgot-password endpoint returns `503`, while the change-password and admin reset-link endpoints remain available. Email verification, social login, billing, and subscription plans are not implemented yet.
+Member registration is available through `POST /api/auth/register` and the dashboard `/register` route. Registration collects ad, soyad, Turkish `+90` telefon numarasÃ„Â±, e-posta, Ã…Å¸ifre, Ã…Å¸ifre tekrar, and a simple math security question; login remains e-posta + Ã…Å¸ifre only. Registration creates `role=member`, `status=active`, uses the same HTTP-only cookie auth strategy, and auto-logs the member in. It never creates admin users; admins are still created only through `npm run auth:create-admin`. Password management now includes `POST /api/auth/change-password` for authenticated users, the `forgot-password` / `reset-password` routes used by the dashboard, and `POST /api/auth/password-reset-link` (admin-only) for generating a one-time reset URL without email delivery. Reset email delivery requires `RESEND_API_KEY` and `AUTH_PASSWORD_RESET_FROM_EMAIL`; without them the forgot-password endpoint returns `503`, while the change-password and admin reset-link endpoints remain available. Email verification, social login, billing, and subscription plans are not implemented yet.
 
 Role-based access control:
 
 - Members can access overview, football match analytics, teams, competitions, `/api/auth/me`, and logout.
-- Admins can additionally access internal Draft Tahminler, Tahmin SonuÃ§larÄ±, Public Uygunluk, and future provider/system/audit areas.
+- Admins can additionally access internal Draft Tahminler, Tahmin SonuÃƒÂ§larÃ„Â±, Public Uygunluk, and future provider/system/audit areas.
 - Admin-only APIs return `401` for anonymous requests and `403` for authenticated non-admin users.
 
 Public/member access policy is planned in `docs/product/member-access-policy.md`, `docs/product/public-successful-predictions.md`, and `docs/product/public-prediction-eligibility-policy.md`. The future football prediction output, consistency, and settlement workflow is planned in `docs/product/football-prediction-output-workflow.md`, `docs/product/prediction-consistency-engine.md`, and `docs/product/prediction-settlement-policy.md`. Anonymous visitors may later see only limited settled successful predictions; they must not access the dashboard, active/upcoming predictions, full reasoning, analytics feature coverage, provider/admin pages, or any future tahmin kombini feature. Generated predictions must pass consistency checks before member visibility, public eligibility, or future tahmin kombini use. `settled_success` does not automatically mean public eligibility, and `Uzak Dur` / blocked audit-only outputs remain internal even if they settle successfully.
@@ -530,7 +530,7 @@ Configuration: `MATCH_STATISTICS_INTERVAL_MINUTES` (default 20), `MATCH_STATISTI
 
 A second `lineups` service fills `football_match_lineups` and `football_match_lineup_players` for finished matches that have no lineup row yet. It fetches `/event/{id}/lineups` with the same `chrome` impersonation profile, stores formation, confirmation state, starting XI, substitutes, shirt numbers, positions, order, and match ratings, and creates player records (with a SofaScore player mapping) when a player is not known yet. Existing lineups are replaced idempotently per match and team; player records and mappings are reused. Permanently unavailable events are remembered for 7 days so they cannot block the queue. Runs appear as `sofascore.lineups` in the admin sync telemetry.
 
-Configuration: `LINEUPS_INTERVAL_MINUTES` (default 20), `LINEUPS_BATCH_LIMIT` (default 100), and `LINEUPS_LOOKBACK_DAYS` (default 120). It selects finished matches without a confirmed lineup and scheduled/not-started matches within the next 24 hours; projected lineups are stored with `confirmed=false` and refreshed until they become confirmed.
+Configuration: `LINEUPS_INTERVAL_MINUTES` (default 20), `LINEUPS_BATCH_LIMIT` (default 100), and `LINEUPS_LOOKBACK_DAYS` (default 120). Match lineup responses include SofaScore match ratings when available, and GET /api/football/players/:playerId returns the player profile, current team, last 20 lineup appearances, starts/substitutes, and average rating. It selects finished matches without a confirmed lineup and scheduled/not-started matches within the next 24 hours; projected lineups are stored with `confirmed=false` and refreshed until they become confirmed.
 
 ### Historical seasons and H2H depth
 
@@ -611,11 +611,11 @@ Dashboard routes:
 - `/football/competitions`
 - `/football/competitions/<competition-uuid>`
 
-The dashboard consumes only read-only football analytics/catalog APIs. It renders persisted `teams.logo_url` values where available and falls back to neutral team initials when a logo is missing. It also includes internal read-only Draft Tahminler and Tahmin SonuÃ§larÄ± review pages for persisted candidates, consistency conflicts, and settlement audit results. With auth enabled, unauthenticated users are redirected to `/login`, and the API client sends the HTTP-only cookie with requests. It does not call providers, write to the database, run ingestion, publish/member-visible predictions, settle outcomes from the UI, create public successful predictions, generate tahmin kombini output, or generate final Tahmin output. See `docs/frontend/analytics-dashboard-plan.md`.
+The dashboard consumes only read-only football analytics/catalog APIs. It renders persisted `teams.logo_url` values where available and falls back to neutral team initials when a logo is missing. It also includes internal read-only Draft Tahminler and Tahmin SonuÃƒÂ§larÃ„Â± review pages for persisted candidates, consistency conflicts, and settlement audit results. With auth enabled, unauthenticated users are redirected to `/login`, and the API client sends the HTTP-only cookie with requests. It does not call providers, write to the database, run ingestion, publish/member-visible predictions, settle outcomes from the UI, create public successful predictions, generate tahmin kombini output, or generate final Tahmin output. See `docs/frontend/analytics-dashboard-plan.md`.
 
 Member users do not see admin/internal review navigation. Direct member navigation to admin-only review routes shows a `403` page, while backend admin guards prevent hidden internal data from being returned.
 
-Dashboard smoke-test milestone: local API `http://localhost:3000/api` and local dashboard `http://127.0.0.1:5173` were tested against the approved Neon test branch. `/football/analytics` and `/football/analytics/89759e35-758d-416e-b0d3-ad07436c8a9b` loaded Borussia Dortmund vs Freiburg with `Ready`, Tahmin uygunluÄŸu `Yes`, BaÅŸarÄ±lÄ± tahminler `No`, coverage `64%`, H2H missing, reasoning signals, risk factors, and the required â€œnot a final predictionâ€ safety copy. A local CORS issue was found and fixed for GET-only dashboard origins. No secrets or raw payloads were visible, and typecheck, lint, tests, and build passed.
+Dashboard smoke-test milestone: local API `http://localhost:3000/api` and local dashboard `http://127.0.0.1:5173` were tested against the approved Neon test branch. `/football/analytics` and `/football/analytics/89759e35-758d-416e-b0d3-ad07436c8a9b` loaded Borussia Dortmund vs Freiburg with `Ready`, Tahmin uygunluÃ„Å¸u `Yes`, BaÃ…Å¸arÃ„Â±lÃ„Â± tahminler `No`, coverage `64%`, H2H missing, reasoning signals, risk factors, and the required Ã¢â‚¬Å“not a final predictionÃ¢â‚¬Â safety copy. A local CORS issue was found and fixed for GET-only dashboard origins. No secrets or raw payloads were visible, and typecheck, lint, tests, and build passed.
 
 Prediction models, production frontend polish, basketball head-to-head, and live recalculation remain unimplemented.
 
@@ -644,7 +644,7 @@ Production services require `AUTH_ENABLED=true`, a non-placeholder JWT secret of
 
 ### Controlled SofaScore team-season refresh
 
-SofaScore remains the selected source. Public team Statistics pages were readable in a normal browser for Manchester City (Premier League 26/27) and Amed (SÃ¼per Lig 26/27). This is a supervised capture workflow, not a verified scheduled production scraper. Ordinary direct HTTP requests returned 403 and stopped; no retry or access workaround followed.
+SofaScore remains the selected source. Public team Statistics pages were readable in a normal browser for Manchester City (Premier League 26/27) and Amed (SÃƒÂ¼per Lig 26/27). This is a supervised capture workflow, not a verified scheduled production scraper. Ordinary direct HTTP requests returned 403 and stopped; no retry or access workaround followed.
 
 Convert a saved visible-page capture without network or database access (Python required):
 
@@ -744,4 +744,5 @@ The current moderate audit findings are tied to development/build tooling around
 - `docs/providers/football-provider-field-map.md`
 - `docs/providers/basketball-provider-field-map.md`
 - `docs/agents/agent-contracts.md`
+
 
