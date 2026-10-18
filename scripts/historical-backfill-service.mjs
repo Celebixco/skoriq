@@ -111,7 +111,7 @@ async function main() {
     IMPORT_SCRIPT, "--capture", outputPath, "--execute", "--no-log-run"
   ]);
   const report = parseLastJson(importResult.stdout);
-  const succeeded = importResult.code === 0 && report !== null;
+  const succeeded = importResult.code === 0;
   const counts = report?.counts ?? null;
   const error = succeeded ? undefined : redact(importResult.stderr).slice(-700) || `import exit ${importResult.code}`;
   if (succeeded) {

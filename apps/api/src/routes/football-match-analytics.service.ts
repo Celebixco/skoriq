@@ -194,7 +194,7 @@ export class FootballMatchAnalyticsService {
           coalesce(f.h2h_feature_id, dyn_h2h.id) as h2h_feature_id,
           coalesce(f.home_form_coverage_score, dyn_hf.coverage_score, 100) as home_form_coverage_score,
           coalesce(f.away_form_coverage_score, dyn_af.coverage_score, 100) as away_form_coverage_score,
-          coalesce(f.h2h_coverage_score, dyn_h2h.coverage_score) as h2h_coverage_score,
+          coalesce(dyn_h2h.coverage_score, 0) as h2h_coverage_score,
           coalesce(
             f.combined_coverage_score,
             round(
@@ -203,15 +203,12 @@ export class FootballMatchAnalyticsService {
               2
             )
           ) as combined_coverage_score,
-          coalesce(
-            f.metadata_json,
-            jsonb_build_object(
-              'homeFormSampleSize', coalesce(dyn_hf.sample_size, 0),
-              'awayFormSampleSize', coalesce(dyn_af.sample_size, 0),
-              'h2hSampleSize', coalesce(dyn_h2h.sample_size, 0),
-              'h2hMissing', coalesce(dyn_h2h.sample_size, 0) = 0
-            )
-          ) as metadata_json,
+          (coalesce(f.metadata_json, '{}'::jsonb) || jsonb_build_object(
+            'homeFormSampleSize', coalesce(dyn_hf.sample_size, 0),
+            'awayFormSampleSize', coalesce(dyn_af.sample_size, 0),
+            'h2hSampleSize', coalesce(dyn_h2h.sample_size, 0),
+            'h2hMissing', coalesce(dyn_h2h.sample_size, 0) = 0
+          )) as metadata_json,
           coalesce(home_form.scope, dyn_hf.scope, 'overall') as home_form_scope,
           coalesce(home_form.window_size, dyn_hf.window_size, 5) as home_form_window_size,
           coalesce(away_form.scope, dyn_af.scope, 'overall') as away_form_scope,
@@ -360,17 +357,14 @@ export class FootballMatchAnalyticsService {
           coalesce(f.h2h_feature_id, dyn_h2h.id) as h2h_feature_id,
           coalesce(f.home_form_coverage_score, dyn_hf.coverage_score, 100) as home_form_coverage_score,
           coalesce(f.away_form_coverage_score, dyn_af.coverage_score, 100) as away_form_coverage_score,
-          coalesce(f.h2h_coverage_score, dyn_h2h.coverage_score) as h2h_coverage_score,
+          coalesce(dyn_h2h.coverage_score, 0) as h2h_coverage_score,
           coalesce(f.combined_coverage_score, 100) as combined_coverage_score,
-          coalesce(
-            f.metadata_json,
-            jsonb_build_object(
-              'homeFormSampleSize', coalesce(dyn_hf.sample_size, 0),
-              'awayFormSampleSize', coalesce(dyn_af.sample_size, 0),
-              'h2hSampleSize', coalesce(dyn_h2h.sample_size, 0),
-              'h2hMissing', coalesce(dyn_h2h.sample_size, 0) = 0
-            )
-          ) as metadata_json,
+          (coalesce(f.metadata_json, '{}'::jsonb) || jsonb_build_object(
+            'homeFormSampleSize', coalesce(dyn_hf.sample_size, 0),
+            'awayFormSampleSize', coalesce(dyn_af.sample_size, 0),
+            'h2hSampleSize', coalesce(dyn_h2h.sample_size, 0),
+            'h2hMissing', coalesce(dyn_h2h.sample_size, 0) = 0
+          )) as metadata_json,
           coalesce(home_form.scope, dyn_hf.scope, 'overall') as home_form_scope,
           coalesce(home_form.window_size, dyn_hf.window_size, 5) as home_form_window_size,
           coalesce(away_form.scope, dyn_af.scope, 'overall') as away_form_scope,
