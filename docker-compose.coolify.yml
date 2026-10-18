@@ -330,6 +330,20 @@ services:
       postgres:
         condition: service_healthy
 
+  model-shadow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: "no"
+    command: ["node_modules/.bin/tsx", "scripts/football-model-shadow.ts", "--window-hours=72", "--min-training=200"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
+      TZ: Europe/Istanbul
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   dragonfly_data:

@@ -33,6 +33,14 @@ const JOBS = [
     script: "scripts/analytics-football-predictions-settle.ts",
     args: ["--all-competitions", "--lookback-hours=96", "--execute"],
     timeoutSeconds: 900
+  },
+  {
+    key: "model-shadow",
+    hour: 9,
+    minute: 45,
+    script: "scripts/football-model-shadow.ts",
+    args: ["--window-hours=72", "--min-training=200"],
+    timeoutSeconds: 900
   }
 ];
 
