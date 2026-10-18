@@ -44,6 +44,16 @@ const JOBS = [
   }
 ];
 
+const INTERVAL_JOBS = [
+  {
+    key: "settlement",
+    intervalMinutes: 15,
+    script: "scripts/analytics-football-predictions-settle.ts",
+    args: ["--all-competitions", "--lookback-hours=48", "--execute"],
+    timeoutSeconds: 300
+  }
+];
+
 let stopping = false;
 let currentChild;
 
@@ -210,7 +220,7 @@ async function bootstrap(state) {
 }
 
 async function main() {
-  log("service_started", { stateDir: STATE_DIR, jobs: JOBS.map((job) => job.key) });
+  log("service_started", { stateDir: STATE_DIR, jobs: JOBS.map((job) => job.key), intervalJobs: INTERVAL_JOBS.map((job) => job.key) });
   const state = await loadState();
   const freshVolume = !(await fileExists(STATE_FILE));
   if (freshVolume) {
@@ -218,11 +228,25 @@ async function main() {
     await bootstrap(state);
     log("bootstrap_finished", { state });
   }
+  const intervalLast = new Map();
+  for (const job of INTERVAL_JOBS) {
+    if (stopping) break;
+    await runJob(job);
+    intervalLast.set(job.key, Date.now());
+  }
   while (!stopping) {
     const now = localParts();
     for (const job of JOBS) {
       if (stopping) break;
       await runDueJob(job, state, now);
+    }
+    for (const job of INTERVAL_JOBS) {
+      if (stopping) break;
+      const last = intervalLast.get(job.key) ?? 0;
+      if (Date.now() - last >= job.intervalMinutes * 60_000) {
+        await runJob(job);
+        intervalLast.set(job.key, Date.now());
+      }
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_MS));
   }
