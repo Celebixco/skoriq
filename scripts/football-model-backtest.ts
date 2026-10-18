@@ -2,9 +2,13 @@ import "dotenv/config";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
 import {
+  coverageAtConfidence,
+  evaluateCalibration,
+  fitTemperatureScaling,
   fitFootballPoissonModel,
   outcomeOf,
   predictFootballMarkets,
+  type FootballCalibrationSample,
   type FootballModelMatch
 } from "@sports-data/analysis";
 import { writeSyncRunLog } from "./sync-run-log.js";
@@ -37,6 +41,7 @@ interface BacktestAccumulator {
   homePicks: number;
   drawPicks: number;
   awayPicks: number;
+  calibrationSamples: FootballCalibrationSample[];
   probabilityBuckets: Map<string, { count: number; correct: number; probabilitySum: number }>;
 }
 
@@ -56,6 +61,18 @@ export interface BacktestReport {
   drawPickRate: number;
   awayPickRate: number;
   probabilityBuckets: Array<{ bucket: string; count: number; accuracy: number; averageProbability: number }>;
+  calibration: {
+    temperature: number;
+    calibrationSamples: number;
+    evaluationSamples: number;
+    rawLogLoss: number;
+    calibratedLogLoss: number;
+    rawBrierScore: number;
+    calibratedBrierScore: number;
+    rawEce: number;
+    calibratedEce: number;
+    coverage: Array<{ threshold: number; coverage: number; selected: number; accuracy: number }>;
+  };
   firstPredictionAt: string | null;
   lastPredictionAt: string | null;
 }
@@ -141,6 +158,7 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
       homePicks: 0,
       drawPicks: 0,
       awayPicks: 0,
+      calibrationSamples: [],
       probabilityBuckets: new Map()
     };
     let model: ReturnType<typeof fitFootballPoissonModel> | null = null;
@@ -173,6 +191,10 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
         continue;
       }
       const actual = outcomeOf(target.homeGoals, target.awayGoals);
+      accumulator.calibrationSamples.push({
+        probabilities: { home: probabilities.homeWin, draw: probabilities.draw, away: probabilities.awayWin },
+        outcome: actual
+      });
       const predicted = probabilities.homeWin >= probabilities.draw && probabilities.homeWin >= probabilities.awayWin
         ? "home"
         : probabilities.draw >= probabilities.awayWin
@@ -207,6 +229,13 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
     }
 
     if (accumulator.predictions === 0) throw new Error("No predictions were produced.");
+    const samples = accumulator.calibrationSamples;
+    const split = Math.min(samples.length - 1, Math.floor(samples.length / 2));
+    const calibrationSet = samples.slice(0, split);
+    const evaluationSet = samples.slice(split);
+    const temperature = fitTemperatureScaling(calibrationSet);
+    const rawCalibration = evaluateCalibration(evaluationSet, 1);
+    const calibratedCalibration = evaluateCalibration(evaluationSet, temperature);
     return {
       competitionId: options.competitionId ?? null,
       trainingMatches: matches.length,
@@ -233,6 +262,18 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
           accuracy: ratio(value.correct, value.count),
           averageProbability: ratio(value.probabilitySum, value.count)
         })),
+      calibration: {
+        temperature,
+        calibrationSamples: calibrationSet.length,
+        evaluationSamples: evaluationSet.length,
+        rawLogLoss: rawCalibration.logLoss,
+        calibratedLogLoss: calibratedCalibration.logLoss,
+        rawBrierScore: rawCalibration.brierScore,
+        calibratedBrierScore: calibratedCalibration.brierScore,
+        rawEce: rawCalibration.expectedCalibrationError,
+        calibratedEce: calibratedCalibration.expectedCalibrationError,
+        coverage: [0.5, 0.6, 0.7, 0.8].map((threshold) => coverageAtConfidence(evaluationSet, temperature, threshold))
+      },
       firstPredictionAt,
       lastPredictionAt
     };
