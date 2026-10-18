@@ -217,6 +217,26 @@ services:
       postgres:
         condition: service_healthy
 
+  historical-backfill:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.sync
+    restart: "no"
+    command: ["node", "scripts/historical-backfill-service.mjs"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
+      HISTORICAL_STATE_DIR: /var/lib/skoriq-historical
+      HISTORICAL_SEASONS: ${HISTORICAL_SEASONS:-2}
+      HISTORICAL_PAGES: ${HISTORICAL_PAGES:-2}
+      PYTHON_BIN: python3
+      TZ: Europe/Istanbul
+    volumes:
+      - historical_backfill_state:/var/lib/skoriq-historical
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   dragonfly_data:
@@ -224,3 +244,4 @@ volumes:
   analytics_state_v2:
   match_statistics_state:
   lineups_state:
+  historical_backfill_state:

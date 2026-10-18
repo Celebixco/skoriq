@@ -532,6 +532,13 @@ A second `lineups` service fills `football_match_lineups` and `football_match_li
 
 Configuration: `LINEUPS_INTERVAL_MINUTES` (default 30), `LINEUPS_BATCH_LIMIT` (default 80), and `LINEUPS_LOOKBACK_DAYS` (default 120). It selects finished matches without a confirmed lineup and scheduled/not-started matches within the next 24 hours; projected lineups are stored with `confirmed=false` and refreshed until they become confirmed.
 
+### Historical seasons and H2H depth
+
+The one-shot `historical-backfill` service fetches the previous two seasons for every catalog league and imports them through the same SofaScore matches importer. Historical captures are marked `season_kind=historical`; the importer creates missing `seasons` rows (never reuses the current season) so prior matches cannot pollute the current-year form. This is the data prerequisite for real head-to-head history. The run is recorded as `sofascore.historical-backfill` and a `completed.json` marker prevents a second import on later deployments; set `HISTORICAL_FORCE=1` to rerun deliberately.
+
+Configuration: `HISTORICAL_SEASONS` (default 2, max 5) and `HISTORICAL_PAGES` (default 2, max 5). The service keeps the capture under `/var/lib/skoriq-historical` and exits after the import.
+
+
 The sync scheduler floors every interval at 15 minutes. A configured `SYNC_FINISHED_INTERVAL_MINUTES=5` therefore runs every 15 minutes; set the value to 15 to make the effective cadence explicit.
 
 Internal public eligibility review is available through authenticated, read-only API/dashboard surfaces:

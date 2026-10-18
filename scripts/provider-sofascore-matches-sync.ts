@@ -45,6 +45,9 @@ interface MatchEntry {
 interface CapturedEvent {
   sofascoreId: string;
   tournamentId: string;
+  seasonId: string;
+  seasonName?: string;
+  seasonKind: "current" | "historical";
   startTimestamp: number;
   statusType: "finished" | "notstarted";
   round: number | null;
@@ -276,6 +279,35 @@ async function resolveSeasonId(database: DatabaseClient, context: ImportContext,
   return result;
 }
 
+async function resolveSeasonForEvent(database: DatabaseClient, context: ImportContext, competitionId: string, event: CapturedEvent): Promise<Resolution> {
+  if (event.seasonKind !== "historical" || !event.seasonName) {
+    return resolveSeasonId(database, context, competitionId);
+  }
+  const cacheKey = `historical:${competitionId}:${event.seasonName}`;
+  const cached = context.seasonCache.get(cacheKey);
+  if (cached) return cached;
+  context.startedQueries.count++;
+  const existing = (await database.query(resolveSeasonByNameSql, [competitionId, event.seasonName])).rows;
+  if (existing.length > 1) {
+    const conflict: Resolution = { status: "conflict" };
+    context.seasonCache.set(cacheKey, conflict);
+    return conflict;
+  }
+  if (existing.length === 1) {
+    const resolved = resolveSingle(existing, "id");
+    context.seasonCache.set(cacheKey, resolved);
+    return resolved;
+  }
+  const inserted = (await database.query(insertSeasonSql, [competitionId, event.seasonName])).rows;
+  let resolved: Resolution = resolveSingle(inserted, "id");
+  if (resolved.status === "missing") {
+    context.startedQueries.count++;
+    resolved = resolveSingle((await database.query(resolveSeasonByNameSql, [competitionId, event.seasonName])).rows, "id");
+  }
+  context.seasonCache.set(cacheKey, resolved);
+  return resolved;
+}
+
 async function resolveTeamId(database: DatabaseClient, context: ImportContext, providerTeamId: string): Promise<{ status: "ok"; id: string } | { status: "skipped"; reason: string }> {
   const cached = context.teamCache.get(providerTeamId);
   if (cached) {
@@ -302,7 +334,7 @@ async function importEvent(
   if (competition.status !== "ok") {
     return { ...base, action: "skipped", reason: competition.status === "missing" ? "unknown_competition" : "identity_conflict" };
   }
-  const season = await resolveSeasonId(database, context, competition.id);
+  const season = await resolveSeasonForEvent(database, context, competition.id, event);
   if (season.status !== "ok") {
     return { ...base, action: "skipped", reason: "unknown_season" };
   }
@@ -513,7 +545,14 @@ function validateCapture(capture: unknown): CapturedEvent[] {
   for (const rawTournament of capture.tournaments) {
     if (!isRecord(rawTournament)) throw new Error("Capture tournaments must be objects.");
     const tournamentId = positiveIntegerString(rawTournament.sofascore_tournament_id, "tournament id");
-    positiveIntegerString(rawTournament.season_id, "season id");
+    const seasonId = positiveIntegerString(rawTournament.season_id, "season id");
+    const seasonName = typeof rawTournament.season_name === "string" && rawTournament.season_name.trim()
+      ? rawTournament.season_name.trim()
+      : undefined;
+    const seasonKind = rawTournament.season_kind === undefined ? "current" : rawTournament.season_kind;
+    if (seasonKind !== "current" && seasonKind !== "historical") {
+      throw new Error("Capture season kind must be current or historical.");
+    }
     if (!Array.isArray(rawTournament.events)) throw new Error("Capture tournament events must be an array.");
     for (const rawEvent of rawTournament.events) {
       if (!isRecord(rawEvent)) throw new Error("Capture events must be objects.");
@@ -529,6 +568,9 @@ function validateCapture(capture: unknown): CapturedEvent[] {
       events.push({
         sofascoreId,
         tournamentId,
+        seasonId,
+        seasonName,
+        seasonKind,
         startTimestamp,
         statusType,
         round: optionalRound(rawEvent.round),
@@ -612,6 +654,16 @@ const resolveSeasonSql = `SELECT id::text AS id
   WHERE competition_id = $1::uuid AND is_current = true
   ORDER BY start_date DESC NULLS LAST, updated_at DESC
   LIMIT 1`;
+
+const resolveSeasonByNameSql = `SELECT id::text AS id
+  FROM seasons
+  WHERE competition_id = $1::uuid AND name = $2
+  LIMIT 2`;
+
+const insertSeasonSql = `INSERT INTO seasons (competition_id, name, is_current)
+  VALUES ($1::uuid, $2, false)
+  ON CONFLICT (competition_id, name) DO NOTHING
+  RETURNING id::text AS id`;
 
 const resolveTeamSql = `SELECT 'mapping' AS kind, pm.internal_entity_id::text AS id, pm.internal_entity_type,
     t.id IS NOT NULL AS team_exists
