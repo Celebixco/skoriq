@@ -46,7 +46,7 @@ describe("MatchListPage analytics search and filter area", () => {
     expect(html).toContain(">Analizi Hazır<span");
     expect(html).toContain(">Tahmine Uygun<span");
     expect(html).toContain(">Çok Yakında<span");
-    expect(html).toContain(">Geçmiş Maçlar<span");
+    expect(html).toContain(">İkili Rekabet<span");
     expect(html).toContain(">Tahmin Hazır<span");
   });
 
@@ -98,7 +98,7 @@ describe("QuickFilterChips", () => {
     expect(html).toContain(">Analizi Hazır<span");
     expect(html).toContain(">Tahmine Uygun<span");
     expect(html).toContain(">Çok Yakında<span");
-    expect(html).toContain(">Geçmiş Maçlar<span");
+    expect(html).toContain(">İkili Rekabet<span");
     expect(html).toContain(">Tahmin Hazır<span");
     expect(html).toContain(">5</span>");
     expect(html).toContain(">3</span>");

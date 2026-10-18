@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { DependencyList, FormEvent, KeyboardEvent, ReactNode } from "react";
+import type { DependencyList, KeyboardEvent, ReactNode } from "react";
 import {
   fetchDashboardOverview,
   fetchFootballAnalyticsMatch,
@@ -27,11 +27,6 @@ import {
   fetchFootballTeamProfile,
   fetchFootballTeams,
   fetchCurrentUser,
-  ApiError,
-  login as loginRequest,
-  requestPasswordReset as requestPasswordResetRequest,
-  register as registerRequest,
-  resetPassword as resetPasswordRequest,
   logout as logoutRequest
 } from "./api";
 import { CompetitionLogo, MetricCard, ProgressBar, StatusBadge, TeamLogo } from "./components";
@@ -40,15 +35,12 @@ import type {
   FeatureStatus,
   AuthUser,
   DashboardOverviewResponse,
-  DashboardUpcomingMatch,
   FootballAnalyticsMatchReport,
   FootballAnalyticsMatchFilters,
   FootballAnalyticsMatchListResponse,
-  FootballCompetitionsListResponse,
   FootballMatchPredictionDraftsResponse,
   FootballMatchLineupsResponse,
   FootballMatchStatisticsResponse,
-  FootballMatchTeamTelemetryItem,
   FootballMemberPredictionPreviewResponse,
   FootballMatchPredictionSettlementsResponse,
   FootballPredictionDraftDetail,
@@ -77,6 +69,9 @@ import "./styles.css";
 import { LandingPage } from "./landing/LandingPage";
 import { AppShell } from "./app/AppShell";
 import "./app/app.css";
+import { LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage } from "./arena/AuthPages";
+import { ArenaHome } from "./arena/ArenaHome";
+import "./arena/theme.css";
 
 export { LandingPage };
 
@@ -237,7 +232,7 @@ export function QuickFilterChips({ activeChip, onChipClick, counts }: {
     { id: "ready", label: "Analizi Hazır", count: counts.ready, hint: "İncelemesi tamamlanmış maçlar" },
     { id: "predictionEligible", label: "Tahmine Uygun", count: counts.predictionEligible, hint: "SkorIQ bu maç için tahmin üretebiliyor" },
     { id: "within24h", label: "Çok Yakında", count: counts.within24h, hint: "Başlamasına 36 saatten az kalan maçlar" },
-    { id: "hasH2h", label: "Geçmiş Maçlar", count: counts.hasH2h, hint: "İki takım daha önce karşılaşmış" },
+    { id: "hasH2h", label: "İkili Rekabet", count: counts.hasH2h, hint: "İki takım daha önce karşılaşmış" },
     { id: "hasPrediction", label: "Tahmin Hazır", count: counts.hasPrediction, hint: "SkorIQ bu maç için tahminini yayınladı" },
   ];
 
@@ -537,416 +532,6 @@ export function shouldRenderOverviewPage(routeKind: ReturnType<typeof resolveRou
   return routeKind === "overview" || routeKind === "landing";
 }
 
-function AuthScene() {
-  return (
-    <div className="login-intelligence" aria-hidden="true">
-      <div className="reason-stage">
-        <div className="rs-head">
-          <span className="rs-live"><i />Canlı Analiz</span>
-          <span className="rs-match">BVB — SCF · 26. Hafta</span>
-        </div>
-        <div className="rs-bar"><i /></div>
-        <ol className="rs-steps">
-          <li className="rs-row rs-1">
-            <span className="rs-box" />
-            <span className="rs-label">Veri Toplama</span>
-            <span className="rs-val">5/5 form · %64 kapsam</span>
-          </li>
-          <li className="rs-row rs-2">
-            <span className="rs-box" />
-            <span className="rs-label">Sinyal Ayrıştırma</span>
-            <span className="rs-val">gol profili ↑ · H2H ∅</span>
-          </li>
-          <li className="rs-row rs-3">
-            <span className="rs-box" />
-            <span className="rs-label">Neden-Sonuç</span>
-            <span className="rs-val">2 destek · 1 çürütücü</span>
-          </li>
-          <li className="rs-row rs-4">
-            <span className="rs-box" />
-            <span className="rs-label">Tahmin Desteği</span>
-            <span className="rs-val">Tahminim: 2,5 Üst</span>
-          </li>
-          <li className="rs-row rs-5">
-            <span className="rs-box" />
-            <span className="rs-label">Risk Açıklaması</span>
-            <span className="rs-val">1 uyarı · güven tavanı</span>
-          </li>
-        </ol>
-        <div className="rs-tags">
-          <span className="rs-tag rs-tag1">Aday · 2,5 Üst</span>
-          <span className="rs-tag rs-tag2">Risk · H2H ∅</span>
-        </div>
-      </div>
-      <span className="scene-foot" aria-hidden="true">SkorIQ Analiz Motoru — veri hattı canlı</span>
-    </div>
-  );
-}
-
-function LoginPage({ onLogin, navigate }: { onLogin: (user: AuthUser) => void; navigate: (path: string) => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await loginRequest(email, password);
-      onLogin(response.user);
-      navigate("/football/analytics");
-    } catch (error) {
-      setError(error instanceof ApiError && error.status < 500 ? error.message : "Giriş servisine şu an ulaşılamıyor. Lütfen birazdan tekrar deneyin.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <main className="login-shell">
-      <section className="login-experience" aria-label="SkorIQ giriş ekranı">
-        <AuthScene />
-        <section className="login-card">
-          <div className="login-brand">
-            <BrandMark size={26} /><span className="brand-text">Skor<i>IQ</i></span>
-          </div>
-          <div className="auth-copy">
-            <p className="auth-kicker">SkorIQ — Üye Girişi</p>
-            <h1>Tahtaya giriş yap.</h1>
-            <p>Analiz paneline erişmek için hesabına giriş yap. Her maçı veriyle oku, gerekçesiyle gör.</p>
-          </div>
-          <form className="login-form" onSubmit={submit}>
-            <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="E-posta" aria-label="E-posta" required />
-            <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" placeholder="Şifre" aria-label="Şifre" required />
-            {error ? <p className="error-text">{error}</p> : null}
-            <button type="submit" disabled={loading}>
-              {loading ? "Giriş yapılıyor..." : "Giriş yap"}
-            </button>
-          </form>
-          <p className="auth-link-row">
-            <button type="button" className="text-link" onClick={() => navigate("/forgot-password")}>
-              Şifremi unuttum
-            </button>
-          </p>
-          <p className="auth-switch">
-            Hesabın yok mu?{" "}
-            <button type="button" className="text-link" onClick={() => navigate("/register")}>
-              Kayıt ol
-            </button>
-          </p>
-        </section>
-      </section>
-    </main>
-  );
-}
-
-function ForgotPasswordPage({ navigate }: { navigate: (path: string) => void }) {
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const response = await requestPasswordResetRequest(email);
-      setSuccess(response.message);
-    } catch (error) {
-      setError(error instanceof ApiError && error.status < 500 ? error.message : "Şifre sıfırlama servisine şu an ulaşılamıyor. Lütfen birazdan tekrar deneyin.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <main className="login-shell">
-      <section className="login-experience" aria-label="SkorIQ şifre sıfırlama ekranı">
-                <AuthScene />
-<section className="login-card">
-          <div className="login-brand">
-            <BrandMark size={26} /><span className="brand-text">Skor<i>IQ</i></span>
-          </div>
-          <div className="auth-copy">
-            <p className="auth-kicker">SkorIQ — Erişim</p>
-            <h1>Şifreni yenile</h1>
-            <p>E-posta adresini gir. Hesabın varsa sana güvenli bir yenileme bağlantısı gönderelim.</p>
-          </div>
-          <form className="login-form" onSubmit={submit}>
-            <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="E-posta" aria-label="E-posta" required />
-            {error ? <p className="error-text">{error}</p> : null}
-            {success ? <p className="success-text">{success}</p> : null}
-            <button type="submit" disabled={loading}>
-              {loading ? "Baglanti hazirlaniyor..." : "Sıfırlama bağlantısı gönder"}
-            </button>
-          </form>
-          <p className="auth-switch">
-            <button type="button" className="text-link" onClick={() => navigate("/login")}>
-              Giriş ekranına dön
-            </button>
-          </p>
-        </section>
-      </section>
-    </main>
-  );
-}
-
-function ResetPasswordPage({ navigate }: { navigate: (path: string) => void }) {
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const token = new URLSearchParams(window.location.search).get("token")?.trim() ?? "";
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!token) {
-      setError("Şifre sıfırlama bağlantısı eksik veya geçersiz.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("Şifre onayı eşleşmiyor.");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const response = await resetPasswordRequest({ token, password, confirmPassword });
-      setSuccess(response.message);
-      window.setTimeout(() => navigate("/login"), 1200);
-    } catch (error) {
-      setError(error instanceof ApiError && error.status < 500 ? error.message : "Şifre yenileme işlemi şu an tamamlanamıyor. Lütfen birazdan tekrar deneyin.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <main className="login-shell">
-      <section className="login-experience" aria-label="SkorIQ yeni şifre ekranı">
-                <AuthScene />
-<section className="login-card">
-          <div className="login-brand">
-            <BrandMark size={26} /><span className="brand-text">Skor<i>IQ</i></span>
-          </div>
-          <div className="auth-copy">
-            <p className="auth-kicker">SkorIQ — Güvenlik</p>
-            <h1>Yeni şifreni belirle</h1>
-            <p>En az 12 karakter; büyük harf, küçük harf ve rakam içeren güçlü bir şifre kullan.</p>
-          </div>
-          {!token ? <p className="error-text">Şifre sıfırlama bağlantısı eksik veya geçersiz.</p> : null}
-          <form className="login-form" onSubmit={submit}>
-            <input
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              type="password"
-              autoComplete="new-password"
-              placeholder="Yeni şifre"
-              aria-label="Yeni şifre"
-              minLength={12}
-              required
-            />
-            <input
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              type="password"
-              autoComplete="new-password"
-              placeholder="Yeni şifre tekrar"
-              aria-label="Yeni şifre tekrar"
-              minLength={12}
-              required
-            />
-            {error ? <p className="error-text">{error}</p> : null}
-            {success ? <p className="success-text">{success}</p> : null}
-            <button type="submit" disabled={loading || !token}>
-              {loading ? "Şifre güncelleniyor..." : "Şifreyi güncelle"}
-            </button>
-          </form>
-          <p className="auth-switch">
-            <button type="button" className="text-link" onClick={() => navigate("/login")}>
-              Giriş ekranına dön
-            </button>
-          </p>
-        </section>
-      </section>
-    </main>
-  );
-}
-
-function RegisterPage({ onRegister, navigate }: { onRegister: (user: AuthUser) => void; navigate: (path: string) => void }) {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [mathChallenge, setMathChallenge] = useState(() => createMathChallenge());
-  const [mathAnswer, setMathAnswer] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setLoading(true);
-    setError(null);
-    if (password !== confirmPassword) {
-      setError("Şifre onayı eşleşmiyor.");
-      setLoading(false);
-      return;
-    }
-    if (mathAnswer.trim() === "" || Number(mathAnswer) !== mathChallenge.answer) {
-      setError("Güvenlik sorusunu kontrol edip tekrar deneyin.");
-      setMathChallenge(createMathChallenge());
-      setMathAnswer("");
-      setLoading(false);
-      return;
-    }
-    try {
-      const response = await registerRequest({
-        email,
-        firstName,
-        lastName,
-        phoneNumber: `+90${phoneNumber}`,
-        password,
-        confirmPassword,
-        mathLeft: mathChallenge.left,
-        mathOperator: mathChallenge.operator,
-        mathRight: mathChallenge.right,
-        mathAnswer: Number(mathAnswer)
-      });
-      onRegister(response.user);
-      navigate("/football/analytics");
-    } catch (error) {
-      setError(error instanceof ApiError && error.status < 500 ? error.message : "Kayıt servisine şu an ulaşılamıyor. Birazdan tekrar deneyin.");
-      setMathChallenge(createMathChallenge());
-      setMathAnswer("");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <main className="login-shell">
-      <section className="login-experience" aria-label="SkorIQ kayıt ekranı">
-                <AuthScene />
-<section className="login-card">
-          <div className="login-brand">
-            <BrandMark size={26} /><span className="brand-text">Skor<i>IQ</i></span>
-          </div>
-          <div className="auth-copy">
-            <p className="auth-kicker">SkorIQ — Üyelik</p>
-            <h1>Tahtaya katıl.</h1>
-            <p>Ücretsiz hesap oluştur; yaklaşan maçların veri kapsamı, sinyalleri ve riskleri tek tahtada toplansın.</p>
-          </div>
-          <form className="login-form" onSubmit={submit}>
-            <input value={firstName} onChange={(event) => setFirstName(event.target.value)} type="text" autoComplete="given-name" placeholder="Ad" aria-label="Ad" minLength={2} maxLength={80} required />
-            <input value={lastName} onChange={(event) => setLastName(event.target.value)} type="text" autoComplete="family-name" placeholder="Soyad" aria-label="Soyad" minLength={2} maxLength={80} required />
-            <label className="phone-field">
-              <span className="phone-prefix" aria-hidden="true">
-                <span className="flag-tr">TR</span>
-                +90
-              </span>
-              <input
-                value={phoneNumber}
-                onChange={(event) => setPhoneNumber(onlyDigits(event.target.value).slice(0, 10))}
-                type="tel"
-                inputMode="numeric"
-                autoComplete="tel-national"
-                placeholder="5XX XXX XX XX"
-                aria-label="Telefon numarası"
-                minLength={10}
-                maxLength={10}
-                pattern="[0-9]{10}"
-                required
-              />
-            </label>
-            <input className="email-field" value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="E-posta adresi" aria-label="E-posta" required />
-            <div className="password-field">
-              <input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                placeholder="Şifre"
-                aria-label="Şifre"
-                minLength={12}
-                required
-              />
-              <button type="button" aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"} onClick={() => setShowPassword((value) => !value)}>
-                {showPassword ? "Gizle" : "Göster"}
-              </button>
-            </div>
-            <div className="password-field">
-              <input
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                placeholder="Şifre tekrar"
-                aria-label="Şifre tekrar"
-                minLength={12}
-                required
-              />
-            </div>
-            <label className="math-field">
-              <span>{mathChallenge.left} {mathChallenge.operator} {mathChallenge.right} = ?</span>
-              <input
-                value={mathAnswer}
-                onChange={(event) => setMathAnswer(onlyDigits(event.target.value).slice(0, 2))}
-                type="text"
-                inputMode="numeric"
-                placeholder="Cevap"
-                aria-label="Güvenlik sorusu cevabı"
-                required
-              />
-            </label>
-            <p className="auth-hint">En az 12 karakter; büyük harf, küçük harf ve rakam içermeli.</p>
-            {error ? <p className="error-text">{error}</p> : null}
-            <button type="submit" disabled={loading}>
-              {loading ? "Kayıt oluşturuluyor..." : "Kayıt Ol"}
-            </button>
-          </form>
-          <p className="auth-switch">
-            Zaten hesabın var mı?{" "}
-            <button type="button" className="text-link" onClick={() => navigate("/login")}>
-              Giriş yap
-            </button>
-          </p>
-        </section>
-      </section>
-    </main>
-  );
-}
-
-function onlyDigits(value: string) {
-  return value.replace(/\D/g, "");
-}
-
-function createMathChallenge() {
-  const operator: "+" | "-" = Math.random() > 0.5 ? "+" : "-";
-  const left = randomInt(3, 12);
-  const right = operator === "-" ? randomInt(1, left - 1) : randomInt(1, 9);
-
-  return {
-    left,
-    operator,
-    right,
-    answer: operator === "+" ? left + right : left - right
-  };
-}
-
-function randomInt(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 function OverviewPage({ navigate, user }: { navigate: (path: string) => void; user: AuthUser }) {
   const overview = useLoad(() => fetchDashboardOverview(), []);
 
@@ -965,398 +550,15 @@ type LoadState<T> = {
   error: string | null;
 };
 
-export function OverviewDashboardView({
-  user,
-  overview,
-  navigate
-}: {
+export function OverviewDashboardView({ user, overview, navigate }: {
   user: AuthUser;
   overview: LoadState<DashboardOverviewResponse>;
   navigate: (path: string) => void;
 }) {
-  const data = overview.data;
-  const items = data?.upcomingMatches ?? [];
-  const health = buildOverviewHealth(data, overview);
-  const currentDate = new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" }).format(new Date());
-  const previewCount = data?.predictionPreview.items.length ?? 0;
-  const greetingName = user.firstName?.trim() || displayUserName(user);
-  const hour = new Date().getHours();
-  const greeting = hour < 6 ? "İyi geceler" : hour < 12 ? "Günaydın" : hour < 18 ? "İyi günler" : "İyi akşamlar";
-
-  return (
-    <div className="overview-dashboard">
-      <header className="overview-hero">
-        <div>
-          <p className="eyebrow">Genel Bakış · Analiz Masası</p>
-          <h1>{greeting}, {greetingName}.</h1>
-          <p>Veri destekli analizlerle maçları daha bilinçli değerlendir.</p>
-        </div>
-        <div className="overview-hero-side">
-          <span>{data?.user.email ?? user.email}</span>
-          <span>{currentDate}</span>
-          <strong>Rol: {roleLabel(data?.user.role ?? user.role)}</strong>
-          <strong>Veri Durumu: {overview.error ? "Kontrol edilemedi" : overview.loading ? "Kontrol ediliyor" : dataStatusSummary(data)}</strong>
-        </div>
-      </header>
-
-      <div className="overview-stat-grid">
-        <DashboardStatCard title="Analiz Edilen Maç" value={overview.loading ? "..." : data?.overview.analyzedMatchesCount ?? "—"} helper="Listelenen analiz raporları" tone="blue" />
-        <DashboardStatCard title="Hazır Analiz" value={overview.loading ? "..." : data?.overview.readyMatchesCount ?? "—"} helper="Tahmine uygun analizler" tone="success" />
-        <DashboardStatCard title="Ortalama Veri Kapsamı" value={overview.loading ? "..." : formatPercent(data?.overview.averageCombinedCoverageScore ?? null)} helper="Genel veri kapsamı" tone="cyan" />
-        <DashboardStatCard title="Ön Tahmin" value={overview.loading ? "..." : data ? previewCount || data.overview.predictionEligibleCount : "—"} helper={previewCount ? "Güvenli önizleme adayı" : "Hazır olduğunda görünür"} tone="purple" />
-      </div>
-
-      <div className="overview-main-grid">
-        <DashboardSectionCard
-          className="overview-matches-card"
-          title="Yaklaşan maçlar"
-          actionLabel="Tümü"
-          onAction={() => navigate("/football/analytics")}
-        >
-          {overview.loading ? <OverviewInlineState text="Dashboard özeti yükleniyor..." /> : null}
-          {overview.error ? <OverviewInlineState text="Dashboard özeti yüklenemedi." tone="warning" /> : null}
-          {!overview.loading && !overview.error && items.length === 0 ? <OverviewEmptyState title="Gösterilecek maç bulunmuyor." /> : null}
-          {items.length > 0 ? (
-            <div className="overview-match-list">
-              {items.map((item) => (
-                <OverviewMatchRow key={item.matchId} item={item} navigate={navigate} />
-              ))}
-            </div>
-          ) : null}
-        </DashboardSectionCard>
-
-        <div className="overview-side-stack">
-          <DashboardSectionCard title="Analiz Dağılımı">
-            <OverviewDistribution overview={data} />
-          </DashboardSectionCard>
-          <DashboardSectionCard title="Veri Kapsamı Ortalamaları">
-            <OverviewCoverageAverages overview={data} />
-          </DashboardSectionCard>
-        </div>
-
-        <div className="overview-side-stack">
-          <DashboardSectionCard title="SkorIQ Tahmin Yorumu">
-            <OverviewPredictionPreview overview={overview} />
-          </DashboardSectionCard>
-          <DashboardSectionCard title="Veri Durumu">
-            <OverviewHealthList items={health} />
-          </DashboardSectionCard>
-        </div>
-      </div>
-
-      <div className="overview-bottom-grid">
-        {data?.admin ? (
-          <DashboardSectionCard title="İç Denetim Özeti">
-            <OverviewAdminSummary admin={data.admin} />
-          </DashboardSectionCard>
-        ) : (
-          <DashboardSectionCard title="Özet Notu">
-            <OverviewEmptyState title="Üye görünümü aktif." body="İç denetim özetleri yalnızca admin kullanıcılar için gösterilir." />
-          </DashboardSectionCard>
-        )}
-        <DashboardSectionCard title="Hızlı İşlemler">
-          <OverviewQuickActions userRole={data?.user.role ?? user.role} navigate={navigate} />
-        </DashboardSectionCard>
-      </div>
-
-      <p className="overview-disclaimer">SkorIQ, istatistiksel modelleme ve veri destekli analizlerle hazırlanır. Analizler kesin sonuç garantisi vermez.</p>
-    </div>
-  );
-}
-
-function DashboardStatCard({ title, value, helper, tone }: { title: string; value: ReactNode; helper: string; tone: "blue" | "cyan" | "success" | "purple" }) {
-  return (
-    <section className={`dashboard-stat-card dashboard-stat-${tone}`}>
-      <div className="dashboard-stat-icon" aria-hidden="true" />
-      <span>{title}</span>
-      <strong>{value}</strong>
-      <p>{helper}</p>
-    </section>
-  );
-}
-
-function DashboardSectionCard({
-  title,
-  children,
-  className = "",
-  actionLabel,
-  onAction,
-  hideHeader = false
-}: {
-  title: string;
-  children: ReactNode;
-  className?: string;
-  actionLabel?: string;
-  onAction?: () => void;
-  hideHeader?: boolean;
-}) {
-  return (
-    <section className={`overview-section-card ${className}`} aria-label={hideHeader ? title : undefined}>
-      {!hideHeader ? (
-        <div className="overview-section-header">
-          <h2>{title}</h2>
-          {actionLabel && onAction ? (
-            <button type="button" onClick={onAction}>
-              {actionLabel}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-      {children}
-    </section>
-  );
-}
-
-function OverviewMatchRow({ item, navigate }: { item: DashboardUpcomingMatch; navigate: (path: string) => void }) {
-  const detailPath = `/football/analytics/${item.matchId}`;
-  const openDetail = () => navigate(detailPath);
-  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      openDetail();
-    }
-  };
-
-  return (
-    <article
-      className="overview-match-row"
-      role="button"
-      tabIndex={0}
-      aria-label={`${item.homeTeam.name} - ${item.awayTeam.name} maç analizini aç`}
-      onClick={openDetail}
-      onKeyDown={handleKeyDown}
-    >
-      <div className="overview-match-time">
-        <strong>{formatDateTime(item.kickoffAt)}</strong>
-        <span>{item.competition.name || "Lig bilgisi yok"}</span>
-      </div>
-      <div className="overview-match-teams">
-        <div className="overview-match-team overview-match-home">
-          <TeamLogo name={item.homeTeam.name} logoUrl={item.homeTeam.logoUrl} size="sm" />
-          <span className="dashboard-match-name">{item.homeTeam.name}</span>
-        </div>
-        <em>VS</em>
-        <div className="overview-match-team overview-match-away">
-          <TeamLogo name={item.awayTeam.name} logoUrl={item.awayTeam.logoUrl} size="sm" />
-          <span className="dashboard-match-name">{item.awayTeam.name}</span>
-        </div>
-      </div>
-      <div className="overview-match-meta">
-        {item.featureStatus ? <StatusBadge status={item.featureStatus} /> : null}
-        {item.combinedCoverageScore !== null && item.combinedCoverageScore !== undefined ? <span>{formatPercent(item.combinedCoverageScore)}</span> : null}
-        {item.predictionEligible ? <span className="badge badge-good">Tahmine uygun</span> : null}
-        {item.hasPredictionPreview ? <span className="badge badge-info">Ön tahmin var</span> : null}
-      </div>
-    </article>
-  );
-}
-
-function OverviewDistribution({ overview }: { overview: DashboardOverviewResponse | null }) {
-  const distribution = overview?.analysisDistribution ?? { ready: 0, partial: 0, insufficient: 0, unknown: 0 };
-  const total = distribution.ready + distribution.partial + distribution.insufficient + distribution.unknown;
-  const rows = [
-    { label: "Hazır", value: distribution.ready, tone: "success" },
-    { label: "Kısmi", value: distribution.partial, tone: "warning" },
-    { label: "Yetersiz", value: distribution.insufficient, tone: "muted" },
-    { label: "Bilinmeyen", value: distribution.unknown, tone: "muted" }
-  ];
-  return (
-    <div className="overview-bars">
-      {rows.map((row) => (
-        <div className="overview-bar-row" key={row.label}>
-          <span>{row.label}</span>
-          <div className="overview-bar-track">
-            <i className={`overview-bar-fill overview-bar-${row.tone}`} style={{ width: `${total > 0 ? (row.value / total) * 100 : 0}%` }} />
-          </div>
-          <strong>{row.value}</strong>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function OverviewCoverageAverages({ overview }: { overview: DashboardOverviewResponse | null }) {
-  const summary = overview?.coverageSummary;
-  const rows = [
-    ["Genel kapsam", summary?.averageCombinedCoverageScore ?? null],
-    ["Ev sahibi formu", summary?.averageHomeFormCoverage ?? null],
-    ["Deplasman formu", summary?.averageAwayFormCoverage ?? null],
-    ["Takımlar arası geçmiş", summary?.averageH2hCoverage ?? null]
-  ].filter(([, value]) => value !== null) as Array<[string, number]>;
-  if (rows.length === 0) return <OverviewEmptyState title="Veri kapsamı ortalaması yok." />;
-  return (
-    <div className="overview-bars">
-      {rows.map(([label, value]) => (
-        <div className="overview-bar-row" key={label}>
-          <span>{label}</span>
-          <div className="overview-bar-track">
-            <i className="overview-bar-fill overview-bar-cyan" style={{ width: `${value ?? 0}%` }} />
-          </div>
-          <strong>{formatPercent(value)}</strong>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function OverviewPredictionPreview({ overview }: { overview: LoadState<DashboardOverviewResponse> }) {
-  if (overview.loading) return <OverviewInlineState text="Tahmin yorumları kontrol ediliyor..." />;
-  if (overview.error) return <OverviewInlineState text="Tahmin yorumu şu anda alınamadı." tone="warning" />;
-  const preview = overview.data?.predictionPreview;
-  if (!preview || preview.status !== "available" || preview.items.length === 0) {
-    return <OverviewEmptyState title={predictionPreviewEmptyTitle(preview?.status)} body={predictionPreviewEmptyBody(preview?.status)} />;
-  }
-  return (
-    <div className="overview-preview-list">
-      {preview.items.slice(0, 5).map((item) => (
-        <article className="overview-preview-row" key={`${item.matchId}-${item.displayLabel}-${item.recommendationTier}`}>
-          <div>
-            <strong>{item.displayLabel}</strong>
-            <span>{item.matchLabel}</span>
-          </div>
-          <div>
-            <span className="badge badge-muted">{tierLabel(item.recommendationTier)}</span>
-            <small>Güven Skoru: {formatScore(item.confidenceScore)}</small>
-            <small>Risk: {riskLabel(item.riskLevel)}</small>
-          </div>
-        </article>
-      ))}
-    </div>
-  );
-}
-
-function OverviewHealthList({ items }: { items: Array<{ label: string; value: string; ok: boolean | null }> }) {
-  return (
-    <div className="overview-health-list">
-      {items.map((item) => (
-        <div className="overview-health-row" key={item.label}>
-          <span className={item.ok === true ? "health-dot ok" : item.ok === false ? "health-dot warn" : "health-dot muted"} />
-          <span>{item.label}</span>
-          <strong>{item.value}</strong>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function OverviewAdminSummary({ admin }: { admin: NonNullable<DashboardOverviewResponse["admin"]> }) {
-  const rows = [
-    ["Draft tahmin", admin.draftPredictionCount],
-    ["Settlement sonucu", admin.settlementCount],
-    ["Public uygun", admin.publicEligibilityEligibleCount],
-    ["Public hariç", admin.publicEligibilityExcludedCount],
-    ["Rebuild gerekli", admin.rebuildRequiredCount]
-  ] as const;
-  return (
-    <div className="overview-update-list">
-      {rows.map(([label, value]) => (
-        <div className="overview-update-row" key={label}>
-          <span>İç denetim</span>
-          <p>{label}</p>
-          <strong>{value ?? "—"}</strong>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function OverviewQuickActions({ userRole, navigate }: { userRole: AuthUser["role"]; navigate: (path: string) => void }) {
-  const actions = [
-    { label: "Maç Analizleri", path: "/football/analytics" },
-    { label: "Takımlar", path: "/football/teams" },
-    { label: "Ligler", path: "/football/competitions" },
-    { label: "Sonuçlar", path: "/football/prediction-results" }
-  ];
-  const adminActions = [
-    { label: "Draft Tahminler", path: "/football/predictions/drafts" },
-    { label: "Tahmin Sonuçları", path: "/football/predictions/settlements" },
-    { label: "Public Uygunluk", path: "/football/public-eligibility" }
-  ];
-  return (
-    <div className="overview-action-grid">
-      {[...actions, ...(userRole === "admin" ? adminActions : [])].map((action) => (
-        <button key={action.path} type="button" onClick={() => navigate(action.path)}>
-          {action.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function OverviewInlineState({ text, tone = "muted" }: { text: string; tone?: "muted" | "warning" }) {
-  return <p className={`overview-inline-state overview-inline-${tone}`}>{text}</p>;
-}
-
-function OverviewEmptyState({ title, body }: { title: string; body?: string }) {
-  return (
-    <div className="overview-empty-state">
-      <strong>{title}</strong>
-      {body ? <span>{body}</span> : null}
-    </div>
-  );
-}
-
-function buildOverviewHealth(data: DashboardOverviewResponse | null, overview: LoadState<DashboardOverviewResponse>) {
-  const status = data?.dataStatus;
-  return [
-    { label: "Analiz API", value: statusValue(status?.analyticsApi, overview), ok: statusOk(status?.analyticsApi, overview) },
-    { label: "Takım verisi", value: statusValue(status?.teamsCatalog, overview), ok: statusOk(status?.teamsCatalog, overview) },
-    { label: "Lig verisi", value: statusValue(status?.competitionsCatalog, overview), ok: statusOk(status?.competitionsCatalog, overview) },
-    { label: "Tahmin önizleme", value: statusValue(status?.predictionPreview, overview), ok: statusOk(status?.predictionPreview, overview) }
-  ];
-}
-
-function statusValue(status: DashboardOverviewResponse["dataStatus"][keyof DashboardOverviewResponse["dataStatus"]] | undefined, overview: LoadState<DashboardOverviewResponse>) {
-  if (overview.loading) return "Kontrol ediliyor";
-  if (overview.error || status === "error") return "Erişilemedi";
-  if (status === "empty") return "Boş";
-  if (status === "ok") return "Bağlı";
-  return "Bilinmiyor";
-}
-
-function statusOk(status: DashboardOverviewResponse["dataStatus"][keyof DashboardOverviewResponse["dataStatus"]] | undefined, overview: LoadState<DashboardOverviewResponse>) {
-  if (overview.loading) return null;
-  if (overview.error || status === "error") return false;
-  if (status === "ok") return true;
-  return null;
-}
-
-function dataStatusSummary(data: DashboardOverviewResponse | null) {
-  if (!data) return "Bilinmiyor";
-  const values = Object.values(data.dataStatus);
-  if (values.some((value) => value === "error")) return "Kısmi hata";
-  if (values.every((value) => value === "ok")) return "Kontrol edildi";
-  return "Kısmi veri";
-}
-
-function roleLabel(role: AuthUser["role"]) {
-  return role === "admin" ? "Admin" : "Üye";
-}
-
-function predictionPreviewEmptyTitle(status?: DashboardOverviewResponse["predictionPreview"]["status"]) {
-  if (status === "stale") return "Tahmin yorumu yenilenmeli.";
-  if (status === "not_ready") return "Tahmin yorumu hazır değil.";
-  return "Henüz yayınlanabilir tahmin yorumu yok.";
-}
-
-function predictionPreviewEmptyBody(status?: DashboardOverviewResponse["predictionPreview"]["status"]) {
-  if (status === "stale") return "Bu maç için tahminler güncel analiz penceresinde yenilenmelidir.";
-  if (status === "not_ready") return "Yeterli veri oluştuğunda ön tahmin burada görünür.";
-  return "Tahminler analiz penceresi içinde hazırlandığında burada görünür.";
-}
-
-function riskLabel(risk: string) {
-  const labels: Record<string, string> = {
-    low: "Düşük",
-    medium: "Orta",
-    high: "Yüksek",
-    unknown: "Bilinmiyor"
-  };
-  return labels[risk] ?? risk;
-}
-
-function displayUserName(user: AuthUser) {
-  return user.email ? user.email.split("@")[0] : user.role === "admin" ? "SkorIQ Admin" : "SkorIQ Üye";
+  return <>
+    <ArenaHome overview={overview} navigate={navigate} authenticated />
+    {user.role === "admin" && overview.data?.admin ? <details className="arena-admin-overview"><summary>İç Denetim Özeti</summary><div><p>Draft Tahminler: {overview.data.admin.draftPredictionCount}</p><p>Tahmin Sonuçları: {overview.data.admin.settlementCount}</p><p>Public Uygunluk: {overview.data.admin.publicEligibilityEligibleCount ?? "—"}</p></div></details> : null}
+  </>;
 }
 
 function ForbiddenPage({ navigate }: { navigate: (path: string) => void }) {
@@ -2485,7 +1687,6 @@ function FormMetricSplitRow({
   awayVal,
   homeStr,
   awayStr,
-  maxVal = 100,
   lowerIsBetter = false
 }: {
   label: string;
@@ -2584,8 +1785,6 @@ function seasonComparisonMetric(home: Record<string, unknown>, away: Record<stri
 }
 
 export function MatchCenterSeasonTelemetryComparison({
-  homeTeam,
-  awayTeam,
   homeProfile,
   awayProfile
 }: {
@@ -3749,7 +2948,7 @@ function TeamListPage({ navigate }: { navigate: (path: string) => void }) {
     const pages: number[] = [];
     const maxVisible = 7;
     let start = Math.max(1, safePage - Math.floor(maxVisible / 2));
-    let end = Math.min(totalPages, start + maxVisible - 1);
+    const end = Math.min(totalPages, start + maxVisible - 1);
     if (end - start + 1 < maxVisible) {
       start = Math.max(1, end - maxVisible + 1);
     }
@@ -3818,7 +3017,7 @@ function TeamListPage({ navigate }: { navigate: (path: string) => void }) {
           <select
             className="team-filter-select"
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
             aria-label="Sıralama ölçütü"
           >
             <option value="name">İsim (A-Z)</option>
@@ -5040,7 +4239,7 @@ function CompetitionListPage({ navigate }: { navigate: (path: string) => void })
                 id="comp-sort-select"
                 className="competition-sort-select"
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
               >
                 <option value="matches">En Çok Maç</option>
                 <option value="teams">En Çok Takım</option>
@@ -7148,32 +6347,6 @@ type NavIconName =
   | "collapse"
   | "expand"
   | "menu";
-
-function NavButton({
-  icon,
-  label,
-  path,
-  currentPath,
-  navigate,
-  activeWhen
-}: {
-  icon: NavIconName;
-  label: string;
-  path: string;
-  currentPath: string;
-  navigate: (path: string) => void;
-  activeWhen?: (path: string) => boolean;
-}) {
-  const active = activeWhen ? activeWhen(currentPath) : path === "/" ? currentPath === "/" : currentPath.startsWith(path);
-  return (
-    <button className={`nav-item${active ? " active" : ""}`} type="button" onClick={() => navigate(path)}>
-      <span className="nav-label">
-        <NavIcon name={icon} />
-        <span>{label}</span>
-      </span>
-    </button>
-  );
-}
 
 function BrandMark({ size = 26 }: { size?: number }) {
   return (
