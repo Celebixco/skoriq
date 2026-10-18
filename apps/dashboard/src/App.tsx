@@ -1183,14 +1183,6 @@ export function MatchDetailReportView({
         </div>
       </header>
 
-      <section className="match-report-notice">
-        <span className="match-report-info-icon">i</span>
-        <div>
-          <strong>Bu bir maç analizi raporudur, nihai tahmin değildir.</strong>
-          <p>Güven skoru kazanma olasılığı değildir. Tahmin üretimi ve public yayın ayrı kontrollü süreçlerdir.</p>
-        </div>
-      </section>
-
       {/* Match Center Segmented Sub-Navigation */}
       <SectionTabs idPrefix="match-details" label="Maç analiz sekmeleri" value={activeTab} onChange={setActiveTab} items={[
         { id: "overview", label: "Genel Bakış", icon: "overview" },

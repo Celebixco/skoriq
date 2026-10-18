@@ -83,7 +83,7 @@
 .arena-shell :where(.metric-card p) { color: var(--muted); margin: 0 0 8px; font-size: 12px; }
 .arena-shell :where(.metric-card strong) { display: block; color: var(--text); font-family: "Barlow Condensed", sans-serif; font-size: 38px; line-height: 1; }
 .arena-shell :where(.metric-card > span) { color: var(--muted); font-size: 12px; }
-.arena-shell :where(.notice, .match-report-notice) { padding: 16px 20px; border: 1px solid #ffc40040; border-left: 3px solid var(--yellow); border-radius: 10px; background: #ffc40008; color: #e5dcc0; font-size: 13px; }
+.arena-shell :where(.notice) { padding: 16px 20px; border: 1px solid #ffc40040; border-left: 3px solid var(--yellow); border-radius: 10px; background: #ffc40008; color: #e5dcc0; font-size: 13px; }
 .arena-shell :where(.notice) { display: grid; gap: 5px; margin-block: 20px; }
 .arena-shell :where(.notice strong) { color: #f5e5ab; }
 .arena-shell :where(.badge) { max-width: 100%; padding: 5px 9px; border-radius: 5px; font-size: 10px; line-height: 1.4; font-weight: 700; letter-spacing: .015em; }
@@ -161,7 +161,7 @@
   .arena-shell :where(.metric-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
   .arena-shell :where(.metric-card) { padding: 12px 8px; min-height: 94px; }
   .arena-shell :where(.metric-card strong) { font-size: 33px; }
-  .arena-shell :where(.notice, .match-report-notice) { font-size: 12px; padding: 14px 16px; }
+  .arena-shell :where(.notice) { font-size: 12px; padding: 14px 16px; }
   .arena-shell :where(.draft-grid, .draft-tier-grid) { grid-template-columns: minmax(0, 1fr); }
   .arena-shell :where(.draft-card) { padding: 14px 0; }
   .arena-shell :where(.draft-card-header) { flex-wrap: wrap; }

@@ -377,10 +377,6 @@
 .arena-shell .match-scoreboard-display { display: grid; justify-items: center; gap: 10px; }
 .arena-shell .scoreboard-score { color: #f1ede0; font-family: "Barlow Condensed", sans-serif; font-size: clamp(40px, 5vw, 66px); line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .arena-shell .scoreboard-badge { padding: 4px 8px; border: 1px solid #f1ede033; border-radius: 4px; color: #bac5b2; font-family: "JetBrains Mono", monospace; font-size: 10px; }
-.arena-shell .match-report-notice { gap: 12px; align-items: start; padding: 10px 14px; border: 0; border-left: 2px solid #ffc400; border-radius: 0; background: none; box-shadow: none; }
-.arena-shell .match-report-info-icon { width: 25px; height: 25px; border: 1px solid #ffc40055; border-radius: 50%; background: none; color: #ffc400; font-family: "JetBrains Mono", monospace; font-size: 12px; }
-.arena-shell .match-report-notice strong { color: #eeeade; font-size: 12px; line-height: 1.65; font-weight: 600; }
-.arena-shell .match-report-notice p { margin-top: 4px; color: #b3bba8; font-size: 11px; line-height: 1.7; }
 .arena-shell .match-report-layout .match-center-tab-bar {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -682,10 +678,6 @@
   .arena-shell .match-report-vs { min-width: 34px; min-height: 30px; font-size: 23px; }
   .arena-shell .scoreboard-score { font-size: 37px; }
   .arena-shell .scoreboard-badge { font-size: 8px; }
-  .arena-shell .match-report-notice { grid-template-columns: auto minmax(0, 1fr); gap: 10px; padding: 10px 12px; }
-  .arena-shell .match-report-info-icon { width: 21px; height: 21px; font-size: 10px; }
-  .arena-shell .match-report-notice strong { font-size: 11px; line-height: 1.7; }
-  .arena-shell .match-report-notice p { margin-top: 6px; font-size: 10px; line-height: 1.8; }
   .arena-shell .match-report-layout .match-center-tab-bar { gap: 3px; padding: 3px 0; border-radius: 0; }
   .arena-shell .match-report-layout .match-center-tab-btn { min-height: 52px; gap: 5px; padding: 10px 5px; font-size: 10px; line-height: 1.5; }
   .arena-shell .match-report-layout .match-center-tab-btn .tab-icon { font-size: 12px; }

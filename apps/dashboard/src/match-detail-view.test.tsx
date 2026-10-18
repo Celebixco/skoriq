@@ -218,12 +218,9 @@ describe("MatchDetailReportView", () => {
     expect(html).not.toContain("shots");
   });
 
-  it("renders signals, risks, missing data, and required report copy dynamically", () => {
+  it("renders signals, risks, missing data, and report summary dynamically", () => {
     const html = renderReport(mockReport());
 
-    expect(html).toContain("Bu bir maç analizi raporudur, nihai tahmin değildir.");
-    expect(html).toContain("Güven skoru kazanma olasılığı değildir.");
-    expect(html).toContain("Tahmin üretimi ve public yayın ayrı kontrollü süreçlerdir.");
     expect(html).toContain("Ev sahibi son maçlarda üretken");
     expect(html).toContain("Deplasman örneklemi sınırlı");
     expect(html).toContain("H2H pencere verisi düşük");
