@@ -1,0 +1,456 @@
+/* Daylight keeps the stadium photography, typography and match-day movement,
+   while putting every reading surface on warm paper. Dark mode is untouched. */
+html[data-theme="light"] .arena-home {
+  --arena-gold: var(--day-accent-ink);
+  --arena-muted: var(--day-muted);
+  --arena-border: var(--day-line);
+  color: var(--day-ink);
+  background: var(--day-bg);
+}
+
+html[data-theme="light"] .arena-home :is(button, summary, input):focus-visible {
+  outline-color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-home .arena-hero {
+  border-color: var(--day-line);
+  background:
+    linear-gradient(90deg, rgb(246 245 239 / 97%), rgb(246 245 239 / 84%) 48%, rgb(246 245 239 / 68%)),
+    linear-gradient(0deg, var(--day-bg), transparent 42%),
+    url("/assets/arena-stadium.webp") center 55% / cover;
+  background-color: var(--day-bg);
+}
+
+html[data-theme="light"] .arena-home .arena-hero h1 {
+  color: var(--day-ink);
+  text-shadow: none;
+}
+
+html[data-theme="light"] .arena-home .arena-hero-description {
+  color: #354c3c;
+}
+
+html[data-theme="light"] .arena-home :is(.arena-eyebrow, .arena-card-kicker) {
+  color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-home .arena-primary-action {
+  color: var(--day-ink);
+  border-color: #d8a800;
+  background: var(--day-accent);
+  box-shadow: inset 0 1px rgb(255 255 255 / 55%), 0 7px 18px rgb(113 91 24 / 12%);
+}
+
+html[data-theme="light"] .arena-home .arena-primary-action:hover {
+  background: #ffd028;
+  border-color: #b68d00;
+}
+
+html[data-theme="light"] .arena-home :is(.arena-hero-note, .arena-kickoff, .arena-versus, .arena-sample-label) {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-home .arena-prediction-card {
+  color: var(--day-ink);
+  border-color: #c3ac65;
+  background:
+    linear-gradient(140deg, rgb(244 210 111 / 12%), transparent 40%),
+    repeating-linear-gradient(160deg, rgb(97 91 56 / 1.2%) 0 1px, transparent 1px 4px),
+    var(--day-surface);
+  box-shadow:
+    0 0 0 3px #f1eee2,
+    0 0 0 4px #d3c48d,
+    8px 9px 0 3px #e3e4d7,
+    0 22px 40px rgb(36 57 39 / 14%),
+    inset 0 1px 4px rgb(255 255 255 / 80%);
+}
+
+html[data-theme="light"] .arena-home .arena-prediction-card::before {
+  border-color: rgb(118 86 0 / 15%);
+}
+
+html[data-theme="light"] .arena-home :is(.arena-prediction-top, .arena-prediction-body) {
+  border-color: var(--day-line);
+}
+
+html[data-theme="light"] .arena-home :is(.arena-team > strong, .arena-prediction-result > h2, .arena-confidence > strong, .arena-fixtures-heading > h2) {
+  color: var(--day-ink);
+}
+
+html[data-theme="light"] .arena-home .arena-team .team-logo-fallback {
+  color: #45614a;
+  border-color: #a4b49c;
+  background: #e6edde;
+  box-shadow: inset 0 0 0 3px #f3f5ed;
+}
+
+/* Demo monograms retain their club colours; real club images stay unfiltered. */
+html[data-theme="light"] .arena-home-demo .arena-prediction-card .arena-team:first-child .team-logo-fallback {
+  color: #ffc738;
+  border-color: #efb72e;
+  background: #761a16;
+  box-shadow: none;
+}
+
+html[data-theme="light"] .arena-home-demo .arena-prediction-card .arena-team:last-child .team-logo-fallback {
+  color: #ffc738;
+  border-color: #efb72e;
+  background: #0b2440;
+  box-shadow: none;
+}
+
+html[data-theme="light"] .arena-home :is(.arena-readiness, .arena-confidence > span, .arena-confidence small, .arena-reasoning p, .arena-state-card > p) {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-home .arena-readiness.is-ready {
+  color: #237352;
+}
+
+html[data-theme="light"] .arena-home .arena-readiness.is-ready > i {
+  box-shadow: none;
+}
+
+html[data-theme="light"] .arena-home .arena-confidence-track {
+  background: #e1e5d8;
+}
+
+html[data-theme="light"] .arena-home .arena-confidence-track > span {
+  background: #d1a000;
+}
+
+html[data-theme="light"] .arena-home .arena-signals > li {
+  color: #3f5545;
+}
+
+html[data-theme="light"] .arena-home .arena-signals svg {
+  color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-home .arena-signals .arena-risk svg {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-home .arena-reasoning {
+  border-color: #b9a353;
+  background: rgb(255 196 0 / 5%);
+}
+
+html[data-theme="light"] .arena-home .arena-reasoning > summary {
+  color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-home .arena-reasoning > summary:hover {
+  background: rgb(255 196 0 / 10%);
+}
+
+html[data-theme="light"] .arena-home .arena-text-action {
+  color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-home .arena-text-action:hover {
+  color: #4e3d00;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+html[data-theme="light"] .arena-home .arena-tactics {
+  color: #9b7a0b;
+  opacity: .32;
+}
+
+html[data-theme="light"] .arena-home .arena-ambient {
+  opacity: .08;
+  mix-blend-mode: multiply;
+}
+
+html[data-theme="light"] .arena-home .arena-filter-group > button {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-home .arena-filter-group > button:hover {
+  color: var(--day-ink);
+  background: var(--day-soft);
+}
+
+html[data-theme="light"] .arena-home .arena-filter-group > button.is-active {
+  color: var(--day-accent-ink);
+  border-color: #bba14a;
+  background: #f8edbd;
+}
+
+html[data-theme="light"] .arena-home .arena-filter-toggle {
+  color: var(--day-ink);
+  border-color: #b9c4b6;
+  background: var(--day-surface);
+}
+
+html[data-theme="light"] .arena-home .arena-filter-toggle:hover {
+  border-color: #849580;
+  background: var(--day-soft);
+}
+
+html[data-theme="light"] .arena-home .arena-filter-toggle.is-active {
+  color: var(--day-accent-ink);
+  border-color: #bba14a;
+  background: #f8edbd;
+}
+
+html[data-theme="light"] .arena-home .arena-search-panel {
+  border-color: var(--day-line);
+  background: var(--day-soft);
+}
+
+html[data-theme="light"] .arena-home .arena-search-panel > label {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-home .arena-search-panel input {
+  color: var(--day-ink);
+  border-color: #adbba8;
+  background: var(--day-surface);
+  color-scheme: light;
+}
+
+html[data-theme="light"] .arena-home .arena-search-panel input::placeholder {
+  color: #68776a;
+  opacity: 1;
+}
+
+html[data-theme="light"] .arena-home .arena-search-panel button {
+  color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-home .arena-match-card {
+  color: var(--day-ink);
+  border-color: var(--day-line);
+  background: rgb(255 254 249 / 55%);
+}
+
+html[data-theme="light"] .arena-shell--home .arena-home .arena-match-card {
+  background: transparent;
+}
+
+html[data-theme="light"] .arena-home .arena-match-card:hover {
+  background: var(--day-soft);
+}
+
+html[data-theme="light"] .arena-home .arena-competition {
+  color: #4d6151;
+}
+
+html[data-theme="light"] .arena-home :is(.arena-match-action, .arena-outline-action) {
+  color: var(--day-accent-ink);
+  border-color: #b9a353;
+  background: rgb(255 196 0 / 5%);
+}
+
+html[data-theme="light"] .arena-home :is(.arena-match-action, .arena-outline-action):hover {
+  color: #514000;
+  border-color: #907620;
+  background: #f6e8ac;
+}
+
+html[data-theme="light"] .arena-home :is(.arena-fixtures-footer, .arena-safety-note) {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-home .arena-state-card > svg {
+  color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-home .arena-fixture-state {
+  color: var(--day-ink);
+  border-color: var(--day-line);
+  background: transparent;
+}
+
+html[data-theme="light"] .arena-home .arena-fixture-state p {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-home .arena-fixture-state[role="alert"] strong {
+  color: #9b3025;
+}
+
+html[data-theme="light"] .arena-home .arena-loading-line {
+  background: #e4dcb9;
+}
+
+html[data-theme="light"] .arena-home .arena-loading-line::after {
+  background: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-public-footer {
+  color: var(--day-muted);
+  border-color: var(--day-line);
+  background: var(--day-bg);
+}
+
+html[data-theme="light"] .arena-public-footer button {
+  color: #405743;
+}
+
+html[data-theme="light"] .arena-public-footer button:hover {
+  color: var(--day-accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+html[data-theme="light"] .arena-auth {
+  --auth-cream: var(--day-surface);
+  --auth-ink: var(--day-ink);
+  --auth-yellow: var(--day-accent);
+  color: var(--day-ink);
+  background: var(--day-bg);
+}
+
+html[data-theme="light"] .arena-auth::before {
+  opacity: .36;
+}
+
+html[data-theme="light"] .arena-auth::after {
+  background:
+    linear-gradient(90deg, rgb(246 245 239 / 94%), rgb(246 245 239 / 50%) 62%, rgb(246 245 239 / 72%)),
+    linear-gradient(180deg, rgb(246 245 239 / 18%), rgb(246 245 239 / 62%));
+}
+
+html[data-theme="light"] .arena-auth > .arena-ambient {
+  opacity: .06;
+  mix-blend-mode: multiply;
+}
+
+html[data-theme="light"] .arena-auth :is(a, button, input):focus-visible {
+  outline-color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-auth :is(.arena-auth__brand, .arena-auth__back, .arena-auth__story h1) {
+  color: var(--day-ink);
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__eyebrow {
+  color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__story h1 {
+  text-shadow: none;
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__story-copy {
+  color: #3c5141;
+  text-shadow: none;
+}
+
+html[data-theme="light"] .arena-auth :is(.arena-auth__sideline, .arena-auth__footnote) {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__sideline > span {
+  background: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__ticket {
+  color: var(--day-ink);
+  border-color: #fff;
+  background-color: var(--day-surface);
+  box-shadow: 0 18px 65px rgb(44 65 43 / 13%);
+}
+
+html[data-theme="light"] .arena-auth :is(.arena-auth__kicker, .arena-auth__ticket h2, .arena-auth__field label, .arena-auth__challenge, .arena-auth__phone > span) {
+  color: var(--day-ink);
+}
+
+html[data-theme="light"] .arena-auth :is(.arena-auth__subtitle, .arena-auth__hint, .arena-auth__secure) {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__label-row a {
+  color: #405843;
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__label-row a:hover {
+  color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__form input {
+  color: var(--day-ink);
+  border-color: #aab7a4;
+  background: #fcfcf7;
+  caret-color: var(--day-ink);
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__form input::placeholder {
+  color: #68776a;
+  opacity: 1;
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__form input:focus-visible {
+  border-color: var(--day-accent-ink);
+  outline-color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__form input[aria-invalid="true"] {
+  border-color: #a52b20;
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__password button {
+  color: #405843;
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__password button:hover {
+  color: var(--day-ink);
+  background: var(--day-soft);
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__phone > span {
+  border-color: var(--day-line);
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__message--error {
+  color: #8c231c;
+  border-color: #d8a69e;
+  background: #f8e8e2;
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__message--success {
+  color: #28603f;
+  border-color: #acc5a6;
+  background: #eaf2e4;
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__form .arena-auth__submit {
+  color: var(--day-ink);
+  border-color: #d8a800;
+  background: var(--day-accent);
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__form .arena-auth__submit:hover:not(:disabled) {
+  border-color: #b68d00;
+  background: #ffd028;
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__ticket-footer {
+  color: var(--day-muted);
+  border-color: var(--day-line);
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__ticket-footer a {
+  color: var(--day-ink);
+}
+
+html[data-theme="light"] .arena-auth .arena-auth__ticket-footer a:hover {
+  color: var(--day-accent-ink);
+}
+
+@media (max-width: 620px) {
+  html[data-theme="light"] .arena-home .arena-hero {
+    background-position: 54% top;
+    background-size: auto 640px;
+    background-repeat: no-repeat;
+    background-color: var(--day-bg);
+  }
+
+  html[data-theme="light"] .arena-auth::after {
+    background: linear-gradient(180deg, rgb(246 245 239 / 87%), rgb(246 245 239 / 65%) 44%, rgb(246 245 239 / 93%));
+  }
+}

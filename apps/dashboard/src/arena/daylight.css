@@ -1,0 +1,103 @@
+@import "./day-home-auth.css";
+@import "./day-workspace.css";
+@import "./day-match.css";
+
+/* Daylight shares the same hierarchy and geometry as Maç Gecesi. */
+html[data-theme="dark"] { color-scheme: dark; background: #070b08; }
+html[data-theme="dark"] body { background: #070b08; }
+html[data-theme="light"] {
+  color-scheme: light;
+  --day-bg: #f6f5ef;
+  --day-surface: #fffef9;
+  --day-soft: #edf1e8;
+  --day-ink: #172b20;
+  --day-muted: #59685e;
+  --day-line: #d9dfd5;
+  --day-accent: #ffc400;
+  --day-accent-ink: #765600;
+  --day-positive: #18724c;
+  --day-negative: #b03932;
+  --day-away: #596f59;
+  background: var(--day-bg);
+  color: var(--day-ink);
+}
+html[data-theme="light"],
+html[data-theme="light"] .app-shell.arena-shell {
+  --bg: var(--day-bg);
+  --bg-soft: var(--day-soft);
+  --surface: var(--day-surface);
+  --surface-strong: var(--day-surface);
+  --surface-muted: var(--day-soft);
+  --line: var(--day-line);
+  --line-subtle: #172b2014;
+  --line-strong: #172b2040;
+  --text: var(--day-ink);
+  --muted: var(--day-muted);
+  --muted-strong: #3f5345;
+  --yellow: var(--day-accent);
+  --yellow-ink: var(--day-accent-ink);
+  --blue: #235c87;
+  --cyan: #235c87;
+  --green: var(--day-positive);
+  --win: var(--day-positive);
+  --amber: #8b5c08;
+  --red: var(--day-negative);
+  --neutral: var(--day-muted);
+  --silver: #526157;
+  --bronze: #765d32;
+  --shadow: 0 12px 28px #172b200a;
+  --shadow-subtle: 0 1px 0 #172b2008;
+}
+html[data-theme="light"] :is(body, .arena-public, .app-shell.arena-shell, .arena-session-loading) {
+  background: var(--day-bg);
+  color: var(--day-ink);
+}
+html[data-theme="light"] .arena-session-loading .state-panel {
+  background: var(--day-surface);
+  border-color: var(--day-line);
+}
+html[data-theme="light"] .arena-site-header,
+html[data-theme="light"] .arena-shell .arena-site-header--member {
+  background: #f6f5eff5;
+  border-color: var(--day-line);
+}
+html[data-theme="light"] :is(.arena-brand, .arena-header-login, .arena-mobile-context, .arena-mobile-back, .arena-auth__brand, .arena-icon-button) { color: var(--day-ink); }
+html[data-theme="light"] .skoriq-brand-mark { filter: brightness(0) saturate(100%); opacity: .88; }
+html[data-theme="light"] :is(.team-logo, .competition-logo) { filter: none; box-shadow: none; }
+html[data-theme="light"] .arena-primary-nav > button { color: var(--day-muted); }
+html[data-theme="light"] .arena-primary-nav > button:hover,
+html[data-theme="light"] .arena-primary-nav > button[aria-current] { color: var(--day-ink); }
+html[data-theme="light"] .arena-primary-nav > button[aria-current]::after { background: var(--day-ink); }
+html[data-theme="light"] .arena-icon-button:hover { background: var(--day-soft); }
+html[data-theme="light"] .arena-account-toggle { color: var(--day-muted); }
+html[data-theme="light"] .arena-account-toggle > span { border-color: #c7d2c2; background: var(--day-soft); color: #324e35; }
+html[data-theme="light"] .arena-account-menu,
+html[data-theme="light"] .arena-shell .arena-account-menu { border-color: var(--day-line); background: var(--day-surface); box-shadow: 0 14px 40px #172b2018; }
+html[data-theme="light"] .arena-account-menu > strong,
+html[data-theme="light"] .arena-account-menu > button { color: var(--day-ink); }
+html[data-theme="light"] .arena-account-menu > :is(span, small) { color: var(--day-muted); border-color: var(--day-line); }
+html[data-theme="light"] .arena-account-menu > button:hover { background: var(--day-soft); }
+html[data-theme="light"] .arena-account-menu > .arena-account-logout,
+html[data-theme="light"] .arena-account-menu .arena-account-error { color: var(--day-negative); }
+html[data-theme="light"] .arena-shell .arena-page-wayfinding { border-color: var(--day-line); }
+html[data-theme="light"] .arena-page-wayfinding li > span { color: var(--day-ink); }
+html[data-theme="light"] .arena-page-wayfinding button { color: var(--day-muted); }
+html[data-theme="light"] .arena-page-wayfinding button:hover { color: var(--day-accent-ink); }
+html[data-theme="light"] :is(.arena-shell, .arena-public, .arena-site-header) :focus-visible { outline-color: #315d3f; }
+html[data-theme="light"] .arena-shell .app-route-loading { color: var(--day-accent-ink); }
+html[data-theme="light"] .arena-public-footer { border-color: var(--day-line); color: var(--day-muted); }
+html[data-theme="light"] .arena-public-footer button { color: var(--day-ink); }
+html[data-theme="light"] .arena-admin-overview { color: var(--day-muted); }
+html[data-theme="light"] .arena-shell .telemetry-table-card { background: transparent; border-color: var(--day-line); }
+html[data-theme="light"] .arena-shell .telemetry-table-card h3 { color: var(--day-ink); border-color: var(--day-line); }
+html[data-theme="light"] .arena-shell :is(.telemetry-stat-label, .telemetry-side-val) { color: var(--day-muted); }
+html[data-theme="light"] .arena-shell .telemetry-side-val.lead { color: var(--day-accent-ink); }
+html[data-theme="light"] .arena-shell .telemetry-stat-row { background: transparent; }
+html[data-theme="light"] .arena-shell :is(.match-telemetry-empty-panel, .season-telemetry-empty-panel) { background: transparent; border-color: var(--day-line); }
+@media (max-width: 620px) {
+  html[data-theme="light"] .arena-primary-nav { background: var(--day-surface); border-color: var(--day-line); box-shadow: 0 14px 24px #172b2010; }
+  html[data-theme="light"] .arena-shell .arena-app-dock { background: #fffef9f5; border-color: var(--day-line); box-shadow: 0 -8px 24px #172b2008; }
+  html[data-theme="light"] .arena-app-dock > button { color: var(--day-muted); }
+  html[data-theme="light"] .arena-app-dock > button[aria-current] { color: var(--day-ink); }
+  html[data-theme="light"] .arena-app-dock > button[aria-current] .arena-app-dock__icon { background: var(--day-accent); }
+}

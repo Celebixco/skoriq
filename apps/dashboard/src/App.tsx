@@ -80,6 +80,7 @@ import "./arena/workspace.css";
 import "./arena/match-center.css";
 import "./arena/explorer.css";
 import "./arena/results.css";
+import "./arena/daylight.css";
 
 export { LandingPage };
 

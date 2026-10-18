@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { AuthUser } from "../types";
 import { AppNavIcon, appDestinations, appRouteContext } from "./app-navigation";
 import { SkorIQMark } from "./SkorIQMark";
+import { ThemeToggle } from "./ThemeToggle";
 
 type Navigate = (path: string) => void;
 type Props = { currentPath?: string; navigate: Navigate; user?: AuthUser; onLogout?: () => Promise<void>; busy?: boolean };
@@ -69,6 +70,7 @@ export function ArenaNavigation({ currentPath = "/", navigate, user, onLogout, b
     {user ? <span className="arena-mobile-context">{routeContext.label}</span> : null}
     <nav id="arena-main-navigation" ref={navRef} className={`arena-primary-nav${navOpen ? " is-open" : ""}`} aria-label="Ana menü">{items.map((item) => <button type="button" key={item.path} aria-current={item.active ? "page" : undefined} onClick={() => go(item.path)}>{item.label}</button>)}</nav>
     <div className="arena-header-actions">
+      <ThemeToggle />
       {user ? <>
         <button type="button" className="arena-icon-button arena-header-search" onClick={search} aria-label="Maç ara"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.8" /><path d="m16 16 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button>
         <div className="arena-account" ref={accountRef}>

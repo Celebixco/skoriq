@@ -2,6 +2,7 @@ import type { MouseEvent, ReactNode } from "react";
 import "./auth.css";
 import { ArenaAmbient } from "./ArenaAmbient";
 import { SkorIQMark } from "./SkorIQMark";
+import { ThemeToggle } from "./ThemeToggle";
 
 export type AuthNavigate = (path: string) => void;
 
@@ -36,7 +37,7 @@ export function AuthLayout({ variant = "login", navigate, kicker, title, subtitl
           <SkorIQMark size={42} />
           <span>SkorIQ</span>
         </AuthLink>
-        <AuthLink to="/" navigate={navigate} className="arena-auth__back"><AuthArrow back /><span>Ana sayfaya dön</span></AuthLink>
+        <div className="arena-auth__header-actions"><ThemeToggle /><AuthLink to="/" navigate={navigate} className="arena-auth__back"><AuthArrow back /><span>Ana sayfaya dön</span></AuthLink></div>
       </header>
       <div className="arena-auth__content">
         <section className="arena-auth__story" aria-labelledby="arena-auth-headline">

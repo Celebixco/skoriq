@@ -1,0 +1,403 @@
+/* Daylight keeps the open, compact data desk; only its materials change. */
+html[data-theme="light"] .arena-shell :is(input, select, textarea),
+html[data-theme="light"] .arena-shell .filters :is(input, select),
+html[data-theme="light"] .arena-shell .filter-bar :is(input, select),
+html[data-theme="light"] .arena-shell .results-search-bar input,
+html[data-theme="light"] .arena-shell .results-filter-bar :is(input, select),
+html[data-theme="light"] .arena-shell :is(.explorer-search-input, .teams-search-wrap input, .competition-search-input, .team-filter-select, .competition-sort-select) {
+  color: var(--day-ink);
+  border-color: var(--day-line);
+  background: var(--day-surface);
+  color-scheme: light;
+}
+
+html[data-theme="light"] .arena-shell input::placeholder,
+html[data-theme="light"] .arena-shell textarea::placeholder,
+html[data-theme="light"] .arena-shell :is(.explorer-search-input, .teams-search-wrap input, .competition-search-input)::placeholder {
+  color: var(--day-muted);
+  opacity: 1;
+}
+
+html[data-theme="light"] .arena-shell select option,
+html[data-theme="light"] .arena-shell :is(.team-filter-select, .competition-sort-select) option {
+  color: var(--day-ink);
+  background: var(--day-surface);
+}
+
+html[data-theme="light"] .arena-shell :is(input, select, textarea):focus {
+  border-color: #9e7900;
+  outline-color: #9e7900;
+}
+
+html[data-theme="light"] .arena-shell :is(.button-row > button, .hero-actions > button, .back-button, .state-panel button, .forbidden-panel button, .panel-header > button) {
+  color: var(--day-ink);
+  background: var(--day-surface);
+  border-color: var(--day-line);
+}
+
+html[data-theme="light"] .arena-shell :is(.button-row > button:first-child, .hero-actions > button:first-child) {
+  color: var(--day-accent-ink);
+  border-color: #cab857;
+}
+
+html[data-theme="light"] .arena-shell :is(.button-row > button:hover, .hero-actions > button:hover, .back-button:hover) {
+  background: #fff4c6;
+  border-color: #a78618;
+}
+
+html[data-theme="light"] .arena-shell :is(.notice, .warning-list) {
+  color: #72561c;
+  background: #fff5d2;
+  border-color: #dfca81;
+}
+
+html[data-theme="light"] .arena-shell .notice strong {
+  color: #5f4510;
+}
+html[data-theme="light"] .arena-shell .warning-list :is(strong, span) {
+  color: #72561c;
+}
+
+html[data-theme="light"] .arena-shell .panel pre {
+  color: var(--day-ink);
+  background: var(--day-soft);
+}
+
+html[data-theme="light"] .arena-shell :is(.progress, .team-card-coverage .progress) {
+  background: #dce3d7;
+}
+
+html[data-theme="light"] .arena-shell :is(th, .standings-table th) {
+  color: var(--day-muted);
+  background: var(--day-soft);
+}
+
+html[data-theme="light"] .arena-shell :is(td, th) {
+  border-color: var(--day-line);
+}
+
+html[data-theme="light"] .arena-shell tbody tr:hover {
+  background: #eff2e9;
+}
+
+/* Shared operational states: draft review, eligibility, settlement and errors. */
+html[data-theme="light"] .arena-shell :is(.badge-ready, .badge-good, .badge-passed, .status-ready) {
+  color: #176c46;
+  background: #e4f1e6;
+  border-color: #b6d4ba;
+}
+
+html[data-theme="light"] .arena-shell :is(.badge-partial, .badge-warn, .badge-warning, .status-partial) {
+  color: #845910;
+  background: #fff2cc;
+  border-color: #ddc57e;
+}
+
+html[data-theme="light"] .arena-shell :is(.badge-blocked, .badge-danger, .badge-insufficient_data, .badge-settled_failed, .badge-tier-avoid) {
+  color: #a43b32;
+  background: #fae8e3;
+  border-color: #e2b8ae;
+}
+
+html[data-theme="light"] .arena-shell :is(.badge-muted, .badge-neutral, .badge-unknown, .badge-info) {
+  color: var(--day-muted);
+  background: var(--day-soft);
+  border-color: var(--day-line);
+}
+
+html[data-theme="light"] .arena-shell :is(.badge-tier-primary, .badge-tier-try) {
+  color: var(--day-accent-ink);
+  background: #fff1bd;
+  border-color: #d7bd5d;
+}
+
+html[data-theme="light"] .arena-shell .draft-main strong {
+  color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-shell :is(.player-match-rating.has-rating, .lineup-rating-badge) {
+  color: #176c46;
+}
+
+/* Country / league catalog, filters and the compact club directory. */
+html[data-theme="light"] .arena-shell :is(.explorer-hero-header, .country-detail-hero, .teams-header, .competitions-hero, .competition-detail-hero, .team-profile-hero, .explorer-global-stats, .teams-summary-grid, .explorer-summary-cards, .explorer-controls-shell, .teams-toolbar, .competition-filter-bar, .section-title-strip, .featured-league-card, .explorer-league-row-card, .country-league-detail-card, .country-league-pill-btn, .country-stream-block, .competition-bento-card, .competition-tab-bar, .explorer-panel-header, .explorer-team-card, .explorer-match-row, .team-card, .team-pagination-bar) {
+  border-color: var(--day-line);
+}
+
+html[data-theme="light"] .arena-shell :is(.explorer-hero-title, .country-detail-title, .explorer-hero h1, .team-hero-name, .explorer-stat-value, .teams-summary-stat strong, .summary-card-value, .section-title-label, .featured-card-name, .league-row-title, .cld-name, .country-stream-name, .pill-comp-name, .comp-card-title, .comp-telemetry-val, .explorer-team-name, .explorer-match-team, .team-directory-panel > .panel-header h2, .team-card-body h3, .team-pagination-info strong, .explorer-panel-header h2) {
+  color: var(--day-ink);
+}
+
+html[data-theme="light"] .arena-shell :is(.explorer-hero-eyebrow, .country-detail-eyebrow, .featured-card-arrow, .league-row-action, .pill-btn-arrow, .cld-cta, .country-stream-view-all, .comp-view-link, .explorer-match-cta) {
+  color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-shell :is(.explorer-hero-desc, .country-detail-desc, .explorer-stat-label, .teams-summary-stat span, .summary-card-label, .competition-sort-wrap, .alphabet-ribbon-label, .featured-card-country, .league-row-country-tag, .featured-card-meta, .league-stat, .pill-comp-meta, .cld-telemetry-row, .country-stream-meta, .comp-country-pill, .comp-telemetry-lbl, .explorer-panel-header .muted, .standings-legend, .explorer-match-vs, .explorer-match-score, .explorer-match-kickoff, .empty-message, .team-card-meta, .team-card-stats span, .team-pagination-info, .empty-results-box, .empty-competitions-panel, .arena-table-hint) {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-shell :is(.featured-card-meta, .league-stat, .cld-telemetry-row) strong,
+html[data-theme="light"] .arena-shell .team-card-stats strong {
+  color: var(--day-ink);
+}
+
+html[data-theme="light"] .arena-shell :is(.explorer-search-box svg, .teams-search-wrap .search-icon, .competition-search-wrap .search-icon, .explorer-search-clear, .teams-search-clear, .competition-search-wrap .search-clear-btn) {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-shell :is(.explorer-tab-btn, .explorer-chip, .team-filter-chip, .country-chip, .alphabet-letter-btn, .team-page-btn, .squad-tab-btn, .team-nav-tab),
+html[data-theme="light"] .arena-shell .competition-tab-bar .match-center-tab-btn {
+  color: var(--day-muted);
+  background: transparent;
+}
+
+html[data-theme="light"] .arena-shell :is(.explorer-tab-btn, .explorer-chip, .team-filter-chip, .country-chip, .alphabet-letter-btn, .team-page-btn, .squad-tab-btn, .team-nav-tab).active,
+html[data-theme="light"] .arena-shell .competition-tab-bar .match-center-tab-btn.active {
+  color: var(--day-accent-ink);
+  border-color: #b7930c;
+  background: transparent;
+}
+
+html[data-theme="light"] .arena-shell .alphabet-letter-btn:disabled {
+  color: #8c968a;
+}
+
+html[data-theme="light"] .arena-shell :is(.league-cov-pill, .cld-cov-badge, .coverage-pill) {
+  color: #795d16;
+  background: #fff4ce;
+  border-color: #deca85;
+}
+
+html[data-theme="light"] .arena-shell .league-ready-pill,
+html[data-theme="light"] .arena-shell :is(.competition-detail-shell, .country-detail-shell) .status-ready {
+  color: #176c46;
+  background: #e4f1e6;
+  border-color: #b6d4ba;
+}
+
+html[data-theme="light"] .arena-shell :is(.competition-detail-shell, .country-detail-shell) .status-partial {
+  color: #845910;
+  background: #fff2cc;
+  border-color: #ddc57e;
+}
+
+html[data-theme="light"] .arena-shell :is(.competition-detail-shell, .country-detail-shell) .status-insufficient {
+  color: var(--day-muted);
+  background: var(--day-soft);
+  border-color: var(--day-line);
+}
+
+html[data-theme="light"] .arena-shell :is(.country-stream-initials, .squad-player-initials, .team-logo-fallback, .competition-logo-fallback, .player-photo-fallback) {
+  color: #415b3a;
+  background: #e7eddf;
+  border-color: var(--day-line);
+}
+
+html[data-theme="light"] .arena-shell .standings-table-wrap,
+html[data-theme="light"] .arena-shell .form-results-strip {
+  scrollbar-color: #94a187 var(--day-soft);
+}
+
+html[data-theme="light"] .arena-shell .standings-table td {
+  color: var(--day-muted);
+  background: transparent;
+}
+
+html[data-theme="light"] .arena-shell .standings-team {
+  color: var(--day-ink);
+}
+
+html[data-theme="light"] .arena-shell .standings-table .points-cell {
+  color: var(--day-accent-ink);
+  background: #ffc4000d;
+}
+
+html[data-theme="light"] .arena-shell .standings-table .gd-positive {
+  color: #176c46;
+}
+
+html[data-theme="light"] .arena-shell .standings-table .gd-negative {
+  color: #a43b32;
+}
+
+html[data-theme="light"] .arena-shell .standings-table .pos-indicator {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-shell .team-card-meta span + span::before {
+  color: #9ca696;
+}
+
+html[data-theme="light"] .arena-shell .team-card-action {
+  color: var(--day-muted);
+  background: transparent;
+}
+
+html[data-theme="light"] .arena-shell .explorer-skeleton-line {
+  background: #dce3d7;
+}
+
+/* Club and player dossiers: editorial telemetry, form, split charts, squad. */
+html[data-theme="light"] .arena-shell :is(.explorer-breadcrumbs, .explorer-breadcrumbs button, .team-hero-country-pill, .team-hero-quick-strip .quick-label, .team-hero-stat span, .team-profile-standing .standing-stat span, .season-stat-group > h3, .season-telemetry-grid .standing-stat > small, .form-summary-row span, .goal-profile-compact-item span, .recent-match-homeaway, .upcoming-match-homeaway, .recent-match-halftime, .form-streak-badge, .form-opponent-name, .form-venue, .split-metric-label, .split-val small, .team-squad-panel .live-telemetry-badge, .squad-pos-tag) {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-shell :is(.breadcrumb-current, .quick-metric strong, .team-profile-grid h2, .team-profile-standing .standing-stat strong, .season-telemetry-grid .standing-stat > strong, .season-telemetry-grid .season-stat-featured > strong, .form-summary-row strong, .goal-profile-compact-item strong, .recent-match-score, .form-score, .split-val strong, .squad-player-info strong, .home-away-split-matrix h3, .player-profile-copy h1, .player-summary-card strong) {
+  color: var(--day-ink);
+}
+
+html[data-theme="light"] .arena-shell :is(.season-telemetry-grid .standing-stat > span, .data-coverage-item > span:first-child, .form-chart-header) {
+  color: #3e5445;
+}
+
+html[data-theme="light"] .arena-shell :is(.recent-match-opponent, .upcoming-match-opponent) strong {
+  color: var(--day-ink);
+}
+
+html[data-theme="light"] .arena-shell :is(.recent-match-opponent, .upcoming-match-opponent) .muted {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-shell :is(.team-hero-comp-pill, .team-hero-stat strong, .team-tab-badge, .team-nav-tab.active .team-tab-badge, .form-summary-card h3, .form-streak-badge .pill, .upcoming-match-link, .player-team-link),
+html[data-theme="light"] .arena-shell .team-profile-standing .standing-stat:last-child strong,
+html[data-theme="light"] .arena-shell .season-stat-group:first-child .season-stat-featured > strong {
+  color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-shell :is(.team-nav-tabs, .team-profile-grid .panel, .season-telemetry-grid .standing-stat, .form-summary-card, .goal-profile-compact-item, .data-coverage-item, .team-matches-panel .recent-matches-list, .recent-match-row, .upcoming-match-row, .form-result-node, .squad-player-card, .team-hero-badges, .player-match-row) {
+  border-color: var(--day-line);
+}
+
+html[data-theme="light"] .arena-shell :is(.team-profile-standing, .team-form-analytics-panel, .form-chart-wrapper, .home-away-split-matrix, .form-summary-card) {
+  background: transparent;
+}
+
+html[data-theme="light"] .arena-shell :is(.streak-dot.streak-win, .team-detail-shell .result-w, .res-win .form-result-pill) {
+  color: #176c46;
+  background: #e4f1e6;
+  border-color: #b6d4ba;
+}
+
+html[data-theme="light"] .arena-shell :is(.streak-dot.streak-draw, .team-detail-shell .result-d, .res-draw .form-result-pill) {
+  color: var(--day-muted);
+  background: #e7ece2;
+  border-color: #cbd4c3;
+}
+
+html[data-theme="light"] .arena-shell :is(.streak-dot.streak-loss, .team-detail-shell .result-l, .res-loss .form-result-pill) {
+  color: #a43b32;
+  background: #fae8e3;
+  border-color: #e2b8ae;
+}
+
+html[data-theme="light"] .arena-shell .recent-match-score {
+  background: var(--day-soft);
+}
+
+html[data-theme="light"] .arena-shell .team-form-analytics-panel .text-emerald {
+  color: #176c46;
+}
+
+html[data-theme="light"] .arena-shell .team-form-analytics-panel .text-rose {
+  color: #a43b32;
+}
+
+html[data-theme="light"] .arena-shell .form-momentum-svg > line {
+  stroke: var(--day-line);
+}
+
+html[data-theme="light"] .arena-shell .form-momentum-svg > path[fill="none"] {
+  stroke: #a97800;
+}
+
+html[data-theme="light"] .arena-shell .squad-player-avatar {
+  background: var(--day-soft);
+  border-color: var(--day-line);
+}
+
+html[data-theme="light"] .arena-shell .squad-jersey-badge {
+  color: var(--day-accent-ink);
+  background: #fff3c7;
+  border-color: #d3be6a;
+}
+
+html[data-theme="light"] .arena-shell .squad-pos-tag.pos-g { color: #89581d; }
+html[data-theme="light"] .arena-shell .squad-pos-tag.pos-d { color: #606c23; }
+html[data-theme="light"] .arena-shell .squad-pos-tag.pos-m { color: #176c46; }
+html[data-theme="light"] .arena-shell .squad-pos-tag.pos-f { color: #a43b32; }
+
+/* Results, expanded prediction lines and settlement details. */
+html[data-theme="light"] .arena-shell :is(.results-summary-card > span, .results-header p.results-helper-note, .league-group-count, .match-result-status) {
+  color: var(--day-muted);
+}
+
+html[data-theme="light"] .arena-shell .results-won > strong { color: #176c46; }
+html[data-theme="light"] .arena-shell .results-lost > strong { color: #a43b32; }
+html[data-theme="light"] .arena-shell .results-pending > strong { color: #845910; }
+html[data-theme="light"] .arena-shell .results-unsettleable > strong { color: var(--day-muted); }
+html[data-theme="light"] .arena-shell .results-rate > strong { color: var(--day-accent-ink); }
+
+html[data-theme="light"] .arena-shell :is(.results-clear-btn, .results-page-btn, .results-empty-btn, .match-detail-link) {
+  color: var(--day-accent-ink);
+  background: #fff4ce;
+  border-color: #d9c477;
+}
+
+html[data-theme="light"] .arena-shell :is(.results-clear-btn:hover, .results-page-btn:hover:not(:disabled), .match-detail-link:hover) {
+  color: #624800;
+  background: #ffecac;
+  border-color: #b59426;
+}
+
+html[data-theme="light"] .arena-shell :is(.league-group-header:hover, .match-result-main:hover, .match-result-main[aria-expanded="true"]) {
+  background: #edf1e8;
+}
+
+html[data-theme="light"] .arena-shell .match-result-tier-badge {
+  color: var(--day-muted);
+  background: var(--day-soft);
+  border-color: var(--day-line);
+}
+
+html[data-theme="light"] .arena-shell :is(.match-result-tier-badge.status-won, .settlement-won) {
+  color: #176c46;
+  background: #e4f1e6;
+  border-color: #b6d4ba;
+}
+
+html[data-theme="light"] .arena-shell :is(.match-result-tier-badge.status-lost, .settlement-lost) {
+  color: #a43b32;
+  background: #fae8e3;
+  border-color: #e2b8ae;
+}
+
+html[data-theme="light"] .arena-shell :is(.match-result-tier-badge.status-pending, .settlement-pending, .settlement-void, .settlement-missing_score, .settlement-not_settleable, .settlement-unsupported_market) {
+  color: #845910;
+  background: #fff2cc;
+  border-color: #ddc57e;
+}
+
+html[data-theme="light"] .arena-shell :is(.prediction-tier-title, .match-result-chevron) {
+  color: var(--day-accent-ink);
+}
+
+html[data-theme="light"] .arena-shell .team-card:focus-visible .team-card-action {
+  color: var(--day-accent-ink);
+}
+
+@media (hover: hover) {
+  html[data-theme="light"] .arena-shell :is(.team-nav-tab, .competition-tab-bar .match-center-tab-btn):hover:not(.active),
+  html[data-theme="light"] .arena-shell :is(.explorer-chip, .country-chip, .alphabet-letter-btn, .squad-tab-btn, .team-page-btn):hover:not(.active):not(:disabled) {
+    color: var(--day-ink);
+    background: var(--day-soft);
+    border-color: #aab99f;
+  }
+
+  html[data-theme="light"] .arena-shell :is(.featured-league-card, .explorer-league-row-card, .country-league-detail-card, .country-league-pill-btn, .team-card, .competition-bento-card, .explorer-match-row, .recent-match-row, .upcoming-match-row):hover {
+    border-color: #a58a31;
+  }
+
+  html[data-theme="light"] .arena-shell .team-card:hover .team-card-action {
+    color: var(--day-accent-ink);
+  }
+}

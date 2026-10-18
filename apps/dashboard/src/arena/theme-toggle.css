@@ -1,0 +1,57 @@
+.arena-theme-toggle {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #f1ede0;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.arena-theme-toggle:hover { background: #f1ede00d; color: #ffc400; }
+.arena-theme-toggle:focus-visible { outline: 2px solid #ffc400; outline-offset: 2px; }
+.arena-theme-toggle__icons { position: relative; display: block; width: 21px; height: 21px; }
+.arena-theme-toggle__icons svg { position: absolute; inset: 0; transition: opacity 180ms ease, transform 220ms ease; }
+.arena-theme-toggle__sun { opacity: 1; transform: rotate(0) scale(1); }
+.arena-theme-toggle__moon { opacity: 0; transform: rotate(-25deg) scale(.65); }
+.arena-theme-toggle[aria-pressed="true"] .arena-theme-toggle__sun { opacity: 0; transform: rotate(35deg) scale(.65); }
+.arena-theme-toggle[aria-pressed="true"] .arena-theme-toggle__moon { opacity: 1; transform: rotate(0) scale(1); }
+html[data-theme="light"] .arena-theme-toggle { color: var(--day-ink, #172b20); }
+html[data-theme="light"] .arena-theme-toggle:hover { background: #172b2009; color: #775b00; }
+html[data-theme="light"] .arena-theme-toggle:focus-visible { outline-color: #775b00; }
+.arena-auth__header-actions { display: flex; align-items: center; gap: 20px; }
+
+@media (max-width: 1000px) {
+  .arena-site-header .arena-header-actions { gap: 8px; }
+}
+@media (max-width: 800px) {
+  .arena-site-header .arena-header-actions { gap: 0; }
+  .arena-site-header:not(.arena-site-header--member) { padding-inline: 16px; gap: 8px; }
+  .arena-site-header:not(.arena-site-header--member) .arena-brand { gap: 7px; }
+  .arena-site-header:not(.arena-site-header--member) .arena-header-login { display: inline-flex; align-items: center; min-height: 44px; margin-right: 4px; white-space: nowrap; }
+  .arena-auth__header-actions { gap: 10px; }
+}
+@media (max-width: 700px) {
+  .arena-site-header:not(.arena-site-header--member) .arena-header-register { display: none; }
+}
+@media (max-width: 380px) {
+  .arena-site-header:not(.arena-site-header--member) .arena-brand span { font-size: 27px; }
+  .arena-site-header:not(.arena-site-header--member) .arena-brand { gap: 5px; }
+  .arena-shell .arena-header-search { display: none; }
+  .arena-shell .arena-mobile-context { font-size: 21px; }
+  .arena-auth__header-actions { gap: 3px; }
+  .arena-auth__back { justify-content: center; min-width: 44px; min-height: 44px; padding: 0; }
+  .arena-auth__back span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arena-theme-toggle__icons svg { transition: none; }
+}

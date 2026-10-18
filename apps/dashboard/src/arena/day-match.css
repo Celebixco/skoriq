@@ -1,0 +1,108 @@
+/* Fixture discovery and every match-centre tab use the same daylight ink. */
+html[data-theme="light"] .arena-shell :is(.analytics-header, .analytics-controls, .analytics-list-panel, .match-report-layout) {
+  --match-surface: var(--day-surface);
+  --match-inset: var(--day-soft);
+  --match-line: var(--day-line);
+  --match-muted: var(--day-muted);
+  --match-away: var(--day-away);
+}
+html[data-theme="light"] .arena-shell :is(.analytics-summary-stat strong, .analytics-team-side h3, .analytics-empty-title, .analytics-match-name) { color: var(--day-ink); }
+html[data-theme="light"] .arena-shell :is(.analytics-summary-stat:first-child strong, .analytics-search-icon, .analytics-row-cta) { color: var(--day-accent-ink); }
+html[data-theme="light"] .arena-shell :is(.analytics-search-bar input, .analytics-filters select, .analytics-page-btn) { color: var(--day-ink); background: var(--day-surface); border-color: var(--day-line); }
+html[data-theme="light"] .arena-shell .analytics-search-bar input:focus { border-color: #638167; }
+html[data-theme="light"] .arena-shell .analytics-search-bar input::placeholder { color: var(--day-muted); }
+html[data-theme="light"] .arena-shell :is(.analytics-search-clear, .analytics-clear-filters-btn, .analytics-chip, .analytics-clear-all-btn) { color: #3f5345; }
+html[data-theme="light"] .arena-shell .analytics-chip-count { color: var(--day-muted); background: #172b2008; }
+html[data-theme="light"] .arena-shell .analytics-chip-active,
+html[data-theme="light"] .arena-shell .analytics-chip-active:hover { color: var(--day-ink); border-color: var(--day-ink); background: none; }
+html[data-theme="light"] .arena-shell .analytics-chip-active .analytics-chip-count { color: var(--day-ink); background: #ffc40038; }
+html[data-theme="light"] .app-shell.arena-shell .analytics-quick-chips button.analytics-chip { background: transparent; color: #3f5345; }
+html[data-theme="light"] .app-shell.arena-shell .analytics-quick-chips button.analytics-chip.analytics-chip-active { background: transparent; color: var(--day-ink); border-color: var(--day-ink); }
+html[data-theme="light"] .app-shell.arena-shell .analytics-controls button.analytics-clear-filters-btn { background: var(--day-surface); color: var(--day-ink); }
+html[data-theme="light"] .arena-shell :is(.analytics-filters label, .analytics-controls .arena-filter-disclosure > summary, .analytics-results-count, .analytics-match-date, .analytics-coverage-cell span, .analytics-match-league, .analytics-empty-body, .analytics-results-link-panel, .arena-prediction-footnote p) { color: var(--day-muted); }
+html[data-theme="light"] .arena-shell .analytics-controls .arena-filter-disclosure[open] > summary { color: var(--day-accent-ink); }
+html[data-theme="light"] .arena-shell :is(.analytics-filter-pill, .analytics-filter-pill button, .analytics-results-link-panel button, .analytics-card-topline .badge-ready) { color: var(--day-accent-ink); border-color: #b58d2445; background-color: #ffc40012; }
+html[data-theme="light"] .arena-shell .analytics-match-row:hover { background: #172b2003; border-color: #8c9e80; }
+html[data-theme="light"] .arena-shell .analytics-versus-label { color: var(--day-muted); }
+
+/* A sunlit echo of the stadium anchors the match without obscuring the data. */
+html[data-theme="light"] .arena-shell .match-report-hero { background: var(--day-surface); border-color: var(--day-line); border-top-color: var(--day-accent); }
+html[data-theme="light"] .arena-shell .match-report-hero::before {
+  background: linear-gradient(0deg, #f6f5eff2, #f6f5efdc), url("/assets/arena-stadium.webp") center 57% / cover;
+}
+html[data-theme="light"] .arena-shell :is(.match-report-meta, .match-detail-back, .match-hero-team > div > span, .scoreboard-badge) { color: var(--day-muted); }
+html[data-theme="light"] .arena-shell :is(.match-hero-team h1, .match-hero-team h2, .scoreboard-score) { color: var(--day-ink); }
+html[data-theme="light"] .arena-shell .match-report-matchup .team-logo-lg { background: #fffef970; }
+html[data-theme="light"] .arena-shell .match-report-matchup .team-logo-fallback { color: var(--day-ink); }
+html[data-theme="light"] .arena-shell :is(.match-report-vs, .match-detail-back > span) { color: var(--day-accent-ink); }
+html[data-theme="light"] .arena-shell .scoreboard-badge { border-color: var(--day-line); }
+html[data-theme="light"] .arena-shell .match-report-layout .match-center-tab-btn { color: var(--day-muted); }
+html[data-theme="light"] .arena-shell .match-report-layout .match-center-tab-btn:hover { color: var(--day-ink); background: #172b2006; }
+html[data-theme="light"] .arena-shell .match-report-layout .match-center-tab-btn.active { color: var(--day-ink); background: var(--day-accent); border-color: var(--day-accent); }
+
+html[data-theme="light"] .arena-shell .match-report-layout :is(.panel-header h2, .section-header h2, .analysis-form-card h2, .analysis-summary-panel h2, .report-signal-card h3, .telemetry-table-card h3) { color: var(--day-ink); }
+html[data-theme="light"] .arena-shell .match-report-layout .eyebrow { color: var(--day-accent-ink); }
+html[data-theme="light"] .arena-shell .match-report-layout :is(.muted, .analysis-card-title, .analysis-kpi-card p, .analysis-form-card p, .analysis-form-meta span, .analysis-summary-panel p:last-child, .report-signal-card li p, .signal-more) { color: var(--day-muted); }
+html[data-theme="light"] .arena-shell .analysis-kpi-card > strong { color: var(--day-ink); }
+html[data-theme="light"] .arena-shell .analysis-kpi-success > strong { color: var(--day-positive); }
+html[data-theme="light"] .arena-shell :is(.analysis-icon, .analysis-kpi-warning > strong, .analysis-form-card > strong) { color: var(--day-accent-ink); }
+html[data-theme="light"] .arena-shell .h2h-watermark { color: #172b2008; }
+html[data-theme="light"] .arena-shell .report-signal-positive { border-top-color: var(--day-positive); }
+html[data-theme="light"] .arena-shell .report-signal-risk { border-top-color: var(--day-negative); }
+html[data-theme="light"] .arena-shell .report-signal-missing { border-top-color: #a17d36; }
+html[data-theme="light"] .arena-shell .report-signal-positive li > span { background: var(--day-positive); }
+html[data-theme="light"] .arena-shell .report-signal-risk li > span { background: var(--day-negative); }
+html[data-theme="light"] .arena-shell .report-signal-missing li > span { background: #a17d36; }
+
+html[data-theme="light"] .arena-shell .h2h-standings-table thead th { background: var(--day-soft); color: var(--day-muted); }
+html[data-theme="light"] .arena-shell .h2h-standings-table td,
+html[data-theme="light"] .arena-shell .h2h-standings-table .table-team-cell { color: var(--day-ink); }
+html[data-theme="light"] .arena-shell .h2h-standings-table .home-row { background: #ffc40009; }
+html[data-theme="light"] .arena-shell .h2h-standings-table .standing-row:hover { background: #172b2006; }
+html[data-theme="light"] .arena-shell .h2h-standings-table :is(.team-role-pill, .rank-badge) { color: var(--day-muted); border-color: var(--day-line); background: transparent; }
+html[data-theme="light"] .arena-shell .h2h-standings-table :is(.home-pill, .rank-top, .td-pts strong) { color: var(--day-accent-ink); }
+html[data-theme="light"] .arena-shell .h2h-standings-table .text-positive { color: var(--day-positive); }
+html[data-theme="light"] .arena-shell .h2h-standings-table .text-danger { color: var(--day-negative); }
+html[data-theme="light"] .arena-shell :is(.h2h-legend, .h2h-split-label, .h2h-count-badge, .match-pill-opponent .opponent-ha, .match-pill-date, .h2h-notice-content p) { color: var(--day-muted); }
+html[data-theme="light"] .arena-shell :is(.h2h-col-header h3, .match-pill-opponent .opponent-name, .match-pill-score) { color: var(--day-ink); }
+html[data-theme="light"] .arena-shell :is(.h2h-split-val.home, .match-pill-link-btn, .h2h-notice-content strong) { color: var(--day-accent-ink); }
+html[data-theme="light"] .arena-shell :is(.h2h-split-val.away, .goal-split-team.away .goal-split-val) { color: var(--day-away); }
+html[data-theme="light"] .arena-shell :is(.h2h-count-badge, .h2h-split-bar-track, .telemetry-dual-track) { background: #172b2009; }
+html[data-theme="light"] .arena-shell .h2h-split-row:hover,
+html[data-theme="light"] .arena-shell :is(.recent-match-pill-row, .recent-match-pill-row:hover, .match-pill-link-btn) { border-color: var(--day-line); }
+html[data-theme="light"] .arena-shell :is(.h2h-bar-segment.away-seg, .telemetry-track-away, .h2h-legend .away-dot) { background: var(--day-away); }
+html[data-theme="light"] .arena-shell .match-result-pill.res-w { color: var(--day-positive); background: #18724c0b; border-color: #18724c35; }
+html[data-theme="light"] .arena-shell .match-result-pill.res-d { color: var(--day-accent-ink); background: #ffc40010; border-color: #76560035; }
+html[data-theme="light"] .arena-shell .match-result-pill.res-l { color: var(--day-negative); background: #b039320b; border-color: #b0393235; }
+html[data-theme="light"] .arena-shell .match-result-pill.res-u { color: var(--day-muted); background: var(--day-soft); border-color: var(--day-line); }
+
+html[data-theme="light"] .arena-shell :is(.lineup-team-title h3, .lineup-team-column .form-summary-row strong, .lineup-player-name, .match-availability-panel .recent-match-opponent strong) { color: var(--day-ink); }
+html[data-theme="light"] .arena-shell :is(.lineup-team-column .form-summary-row span, .lineup-group-title, .lineup-pos-badge, .lineup-sub-chip, .lineup-sub-chip small) { color: var(--day-muted); }
+html[data-theme="light"] .arena-shell .lineup-shirt-number { color: var(--day-accent-ink); }
+html[data-theme="light"] .arena-shell .lineup-player-row { border-color: var(--day-line); }
+html[data-theme="light"] .arena-shell .lineup-player-row:hover { background: #172b2004; }
+html[data-theme="light"] .arena-shell .lineup-pos-badge.pos-gk { color: var(--day-accent-ink); background: #ffc40010; }
+html[data-theme="light"] .arena-shell .lineup-pos-badge.pos-fw { color: var(--day-positive); background: #18724c0b; }
+html[data-theme="light"] .arena-shell :is(.lineup-sub-chip.unavailable, .match-availability-panel .availability-status-pill) { color: var(--day-negative); border-color: #b0393235; background: #b0393208; }
+html[data-theme="light"] .arena-shell .match-report-layout .live-telemetry-badge { color: var(--day-positive); background: #18724c08; border-color: #18724c35; }
+html[data-theme="light"] .arena-shell .match-report-layout .live-telemetry-badge::before { background: var(--day-positive); }
+html[data-theme="light"] .arena-shell .match-report-layout :is(.telemetry-val-home, .telemetry-side-val.lead) { color: var(--day-accent-ink); }
+html[data-theme="light"] .arena-shell .match-report-layout .telemetry-val-away { color: var(--day-away); }
+html[data-theme="light"] .arena-shell .match-report-layout :is(.telemetry-bar-label, .telemetry-stat-label, .telemetry-side-val) { color: var(--day-muted); }
+html[data-theme="light"] .arena-shell .goal-profile-panel .metric-card p { color: var(--day-muted); }
+html[data-theme="light"] .arena-shell .match-report-layout .telemetry-side-val.lead { color: var(--day-accent-ink); }
+html[data-theme="light"] .arena-shell .match-report-layout .telemetry-stat-row { border-color: var(--day-line); }
+html[data-theme="light"] .arena-shell .match-report-layout .telemetry-stat-row:nth-child(even) { background: #172b2003; }
+html[data-theme="light"] .arena-shell .goal-profile-panel .metric-card strong { color: var(--day-ink); }
+html[data-theme="light"] .arena-shell :is(.goal-split-team-role, .goal-split-center-title, .goal-split-total) { color: var(--day-muted); }
+html[data-theme="light"] .arena-shell .goal-split-val { color: var(--day-accent-ink); }
+
+html[data-theme="light"] .arena-shell .member-prediction-summary { color: #3f5345; }
+html[data-theme="light"] .arena-shell .member-prediction-warnings span { color: var(--day-accent-ink); border-color: #b79854; }
+html[data-theme="light"] .arena-shell .prediction-preview-group-title h3 { color: var(--day-ink); }
+html[data-theme="light"] .arena-shell .prediction-preview-group-title .badge { color: var(--day-muted); border-color: var(--day-line); }
+html[data-theme="light"] .arena-shell .member-prediction-preview-card { border-color: var(--day-line); }
+html[data-theme="light"] .arena-shell .member-prediction-preview-card .prediction-preview-card-main strong { color: var(--day-accent-ink); }
+html[data-theme="light"] .arena-shell .member-prediction-preview-card :is(.prediction-preview-card-main span, .prediction-preview-meta span, p),
+html[data-theme="light"] .arena-shell .member-prediction-preview-group .prediction-preview-empty { color: var(--day-muted); }
+html[data-theme="light"] .arena-shell .match-report-layout .prediction-preview-warning { color: #765414; background: #e7c87512; border-color: #a47e2935; }
