@@ -717,6 +717,16 @@ Health endpoints:
 
 `GET /api/sync/status` is admin-only (anonymous requests receive `401`, members receive `403`). It counts team season statistics under both supported metadata keys, reports the latest run's final status and attempt count, and exposes recent run logs for internal review. It reports daemon automation as unverified until runtime evidence exists; a database count or a checked-in scraping script is not evidence of an active refresh schedule. There is no HTTP seed endpoint.
 
+## Production Automation
+
+- Pushes to `release/soft-launch` are verified and deployed by `.github/workflows/deploy.yml`. The workflow runs typecheck and Vitest, queues a Coolify deployment, waits for it to finish, then verifies `/api/health/ready`.
+- Required GitHub repository secrets: `COOLIFY_BASE_URL` (for example `https://coolify.example.com`), `COOLIFY_TOKEN`, `COOLIFY_APP_UUID`, and `PRODUCTION_URL` (for example `https://skoriq.example.com`, no trailing slash).
+- Disable Coolify's own GitHub auto-deploy for this application so a push cannot queue two deployments. The workflow is the single deployment entry point.
+- The API and dashboard compose services have Docker healthchecks. `ops-monitor` checks API readiness, recent failed sync jobs, and core telemetry/lineup coverage every five minutes.
+- Set `ALERT_WEBHOOK_URL` in Coolify to receive monitor alerts (Slack/Discord-compatible JSON with `text` and `content`). Without it, alerts are logged only.
+- `historical-backfill-v2`, `h2h-build-v2`, and the team identity repair run with bounded restart policies. `team-mapping-repair` now runs continuously with a 24-hour cadence so catalog changes are reconciled without a manual deploy.
+- The deployment workflow stops on a failed Coolify deployment or failed health check. It does not perform an automatic application rollback; roll back through Coolify if a health check fails after a deployment.
+
 ## Dependency Audit
 
 The current moderate audit findings are tied to development/build tooling around `drizzle-kit` and transitive `esbuild` packages. Do not run `npm audit fix --force`; track upstream Drizzle Kit updates deliberately. The near-term production mitigation is keeping dev dependencies out of the runtime image.

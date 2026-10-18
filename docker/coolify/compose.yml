@@ -37,6 +37,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     command: ["sh", "-c", "node scripts/db-migrate.js && node apps/api/dist/main.js"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     environment:
       NODE_ENV: production
       API_PORT: 3000
@@ -72,6 +78,12 @@ services:
       args:
         VITE_API_BASE_URL: /api
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     expose:
       - "80"
     ports:
@@ -221,7 +233,7 @@ services:
     build:
       context: ../..
       dockerfile: Dockerfile.sync
-    restart: "no"
+    restart: on-failure:3
     command: ["node", "scripts/historical-backfill-service.mjs"]
     environment:
       NODE_ENV: production
@@ -242,7 +254,7 @@ services:
     build:
       context: ../..
       dockerfile: Dockerfile
-    restart: "no"
+    restart: on-failure:3
     command: ["node", "scripts/h2h-build-service.mjs"]
     environment:
       NODE_ENV: development
@@ -266,15 +278,40 @@ services:
     build:
       context: ../..
       dockerfile: Dockerfile.sync
-    restart: "no"
-    command: ["node_modules/.bin/tsx", "scripts/repair-sofascore-team-mappings.ts", "--execute"]
+    restart: unless-stopped
+    command: ["node", "scripts/team-mapping-repair-service.mjs"]
     environment:
       NODE_ENV: production
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
+      TEAM_MAPPING_REPAIR_INTERVAL_MINUTES: ${TEAM_MAPPING_REPAIR_INTERVAL_MINUTES:-1440}
       TZ: Europe/Istanbul
     depends_on:
       postgres:
         condition: service_healthy
+
+  ops-monitor:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.sync
+    restart: unless-stopped
+    command: ["node", "scripts/ops-monitor.mjs"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
+      API_HEALTH_URL: http://api:3000/api/health/ready
+      OPS_INTERVAL_SECONDS: ${OPS_INTERVAL_SECONDS:-300}
+      OPS_STATE_DIR: /var/lib/skoriq-ops
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      MIN_TELEMETRY_MATCHES: ${MIN_TELEMETRY_MATCHES:-500}
+      MIN_LINEUP_MATCHES: ${MIN_LINEUP_MATCHES:-100}
+      TZ: Europe/Istanbul
+    volumes:
+      - ops_state:/var/lib/skoriq-ops
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
 
 volumes:
   postgres_data:
@@ -285,5 +322,6 @@ volumes:
   lineups_state:
   historical_backfill_state:
   h2h_build_state:
+  ops_state:
 
 
