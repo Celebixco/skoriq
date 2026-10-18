@@ -50,7 +50,7 @@ interface CapturedEvent {
   seasonName?: string;
   seasonKind: "current" | "historical";
   startTimestamp: number;
-  statusType: "finished" | "notstarted";
+  statusType: "finished" | "notstarted" | "cancelled" | "postponed";
   round: number | null;
   homeTeamId: string;
   awayTeamId: string;
@@ -384,6 +384,25 @@ async function importEvent(
   if (event.statusType === "notstarted") {
     return importFixture(event, options, database, existingRows, base, competition.id, season.id, homeTeam.id, awayTeam.id);
   }
+  if (event.statusType === "cancelled" || event.statusType === "postponed") {
+    if (existingRows.length === 0) {
+      return { ...base, action: "skipped", reason: "unknown_fixture" };
+    }
+    const matchId = String(existingRows[0]!.id);
+    if (!options.execute) {
+      return { ...base, action: "planned_update", matchId };
+    }
+    const updated = await database.query(updateMatchStatusSql, [
+      matchId,
+      event.statusType,
+      event.startTimestamp,
+      JSON.stringify(metadataPatch(event))
+    ]);
+    if (updated.rows.length !== 1) {
+      return { ...base, action: "skipped", reason: "concurrent_change", matchId };
+    }
+    return { ...base, action: event.statusType, matchId };
+  }
   const winnerTeamId = event.homeScore! > event.awayScore! ? homeTeam.id : event.awayScore! > event.homeScore! ? awayTeam.id : null;
   const finishedStatuses = FINISHED_STATUSES;
 
@@ -583,7 +602,11 @@ function validateCapture(capture: unknown): CapturedEvent[] {
       if (seen.has(sofascoreId)) continue;
       seen.add(sofascoreId);
       const statusType = rawEvent.status_type;
-      if (statusType !== "finished" && statusType !== "notstarted") throw new Error("Capture events must be finished or notstarted.");
+      if (!["finished", "notstarted", "cancelled", "postponed"].includes(String(statusType))) {
+        throw new Error("Capture events must be finished, notstarted, cancelled or postponed.");
+      }
+      const typedStatus = statusType as CapturedEvent["statusType"];
+      const finished = typedStatus === "finished";
       const startTimestamp = rawEvent.start_timestamp;
       if (typeof startTimestamp !== "number" || !Number.isSafeInteger(startTimestamp) || startTimestamp <= 0) {
         throw new Error("Capture events must include a valid start timestamp.");
@@ -595,12 +618,12 @@ function validateCapture(capture: unknown): CapturedEvent[] {
         seasonName,
         seasonKind,
         startTimestamp,
-        statusType,
+        statusType: typedStatus,
         round: optionalRound(rawEvent.round),
         homeTeamId: positiveIntegerString(rawEvent.home_team_id, "home team id"),
         awayTeamId: positiveIntegerString(rawEvent.away_team_id, "away team id"),
-        homeScore: statusType === "finished" ? goalCount(rawEvent.home_score) : optionalGoalCount(rawEvent.home_score),
-        awayScore: statusType === "finished" ? goalCount(rawEvent.away_score) : optionalGoalCount(rawEvent.away_score),
+        homeScore: finished ? goalCount(rawEvent.home_score) : optionalGoalCount(rawEvent.home_score),
+        awayScore: finished ? goalCount(rawEvent.away_score) : optionalGoalCount(rawEvent.away_score),
         homeScoreHalftime: optionalGoalCount(rawEvent.home_score_halftime),
         awayScoreHalftime: optionalGoalCount(rawEvent.away_score_halftime)
       });
@@ -727,6 +750,14 @@ const updateMatchSql = `UPDATE matches
       winner_team_id = COALESCE($2::uuid, winner_team_id),
       metadata_json = COALESCE(NULLIF(metadata_json, 'null'::jsonb), '{}'::jsonb) || $3::jsonb,
       scheduled_start_at = to_timestamp($4::bigint),
+      updated_at = now()
+  WHERE id = $1::uuid
+  RETURNING id`;
+
+const updateMatchStatusSql = `UPDATE matches
+  SET status = $2::match_status,
+      metadata_json = COALESCE(NULLIF(metadata_json, 'null'::jsonb), '{}'::jsonb) || $4::jsonb,
+      scheduled_start_at = to_timestamp($3::bigint),
       updated_at = now()
   WHERE id = $1::uuid
   RETURNING id`;

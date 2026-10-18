@@ -211,6 +211,19 @@ describe("SofaScore finished matches refresh", () => {
     expect(data.reads.some((query) => /ORDER BY abs\(extract\(epoch/.test(query))).toBe(true);
   });
 
+  it("marks a scheduled fixture cancelled when the provider reports cancellation", async () => {
+    const data = fixture({
+      matchRows: scheduledExisting,
+      captureDocument: capture([event({ status_type: "cancelled", home_score: undefined, away_score: undefined })])
+    });
+    const report = await runSofaScoreMatchesSync({ execute: true, capturePath: "capture.json", logRun: false }, data.dependencies);
+
+    expect(report.entries[0]).toMatchObject({ action: "cancelled", matchId: "match-1" });
+    const update = data.writes.find((write) => /UPDATE matches/.test(write.text));
+    expect(update?.text).toMatch(/status = \$2::match_status/);
+    expect(update?.params[1]).toBe("cancelled");
+  });
+
   it("keeps an already-finished match with identical scores unchanged", async () => {
     const finished = [{ ...scheduledExisting[0], status: "finished", winner_team_id: "home-team", home_score_current: 2, away_score_current: 1, home_score_halftime: 1, away_score_halftime: 0 }];
     const data = fixture({ matchRows: finished });

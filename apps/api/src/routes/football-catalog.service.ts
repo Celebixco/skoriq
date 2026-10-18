@@ -1597,6 +1597,7 @@ export class FootballCatalogService {
           and f.h2h_window_size = 5
         where (m.home_team_id = ${teamId} or m.away_team_id = ${teamId})
           and m.status in ('scheduled', 'not_started')
+          and m.scheduled_start_at > now()
         order by m.scheduled_start_at asc, m.id asc
         limit ${limit * 2}
       `
@@ -1899,7 +1900,7 @@ export class FootballCatalogService {
   private async findCompetitionMatches(filters: { competitionId: string; kind: "upcoming" | "recent"; limit: number }): Promise<MatchRow[]> {
     const statusFilter =
       filters.kind === "upcoming"
-        ? sql`and m.status in ('scheduled', 'not_started')`
+        ? sql`and m.status in ('scheduled', 'not_started') and m.scheduled_start_at > now()`
         : sql`and m.status in ('finished', 'after_extra_time', 'after_penalties')`;
     const orderBy =
       filters.kind === "upcoming" ? sql`m.scheduled_start_at asc, m.id asc` : sql`m.scheduled_start_at desc, m.id asc`;

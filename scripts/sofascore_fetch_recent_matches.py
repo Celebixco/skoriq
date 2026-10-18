@@ -20,7 +20,7 @@ REQUEST_TIMEOUT_SECONDS = 15
 REQUEST_DELAY_SECONDS = 0.7
 STALE_WINDOW = timedelta(days=60)
 OLDEST_EVENT = datetime(2020, 1, 1, tzinfo=timezone.utc)
-ALLOWED_STATUS_TYPES = {"finished", "ended"}
+ALLOWED_STATUS_TYPES = {"finished", "ended", "canceled", "cancelled", "postponed"}
 MAX_SEASON_PROBES = 3
 # The chrome124 TLS profile and the api.sofascore.com host are rejected by the
 # provider edge; the current chrome profile on www.sofascore.com passes from
@@ -126,9 +126,16 @@ def validate_event(event: Any, now: datetime, window: str = "last") -> dict[str,
     if window == "last":
         if status_type not in ALLOWED_STATUS_TYPES:
             raise CaptureFailure("not_finished")
+        if status_type in {"canceled", "cancelled"}:
+            captured_status = "cancelled"
+        elif status_type == "postponed":
+            captured_status = "postponed"
+        else:
+            captured_status = "finished"
     else:
         if status_type != "notstarted":
             raise CaptureFailure("not_scheduled")
+        captured_status = "notstarted"
     identifier = positive_id(event.get("id"))
     started = event.get("startTimestamp")
     if isinstance(started, bool) or not isinstance(started, int):
@@ -150,12 +157,12 @@ def validate_event(event: Any, now: datetime, window: str = "last") -> dict[str,
     captured: dict[str, Any] = {
         "sofascore_id": identifier,
         "start_timestamp": started,
-        "status_type": "finished" if window == "last" else "notstarted",
+        "status_type": captured_status,
         "round": round_number,
         "home_team_id": home_team_id,
         "away_team_id": away_team_id,
     }
-    if window == "last":
+    if window == "last" and captured_status == "finished":
         home_score_current = score_field(event.get("homeScore"), "current")
         away_score_current = score_field(event.get("awayScore"), "current")
         if home_score_current is None or away_score_current is None:
