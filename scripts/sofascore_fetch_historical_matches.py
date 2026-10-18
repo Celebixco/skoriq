@@ -12,6 +12,7 @@ from uuid import uuid4
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from sofascore_fetch_recent_matches import (  # noqa: E402
+    API_BASE,
     ImpersonationTransport,
     MAX_EVENT_PAGES,
     CaptureFailure,
@@ -27,7 +28,12 @@ from sofascore_fetch_recent_matches import (  # noqa: E402
 )
 
 MAX_SEASONS = 5
+MAX_ROUNDS = 60
 DEFAULT_CATALOG = Path(__file__).resolve().parent / "sofascore_catalog.json"
+
+
+def rounds_endpoint(tournament_id: int, season_id: int, round_number: int) -> str:
+    return f"{API_BASE}/unique-tournament/{tournament_id}/season/{season_id}/events/round/{round_number}"
 
 
 def season_count_argument(value: str) -> int:
@@ -44,12 +50,23 @@ def page_count_argument(value: str) -> int:
     return pages
 
 
+def round_count_argument(value: str) -> int:
+    try:
+        rounds = int(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError("Round count must be a non-negative integer.") from None
+    if not 0 <= rounds <= MAX_ROUNDS:
+        raise argparse.ArgumentTypeError(f"Round count must be between 0 and {MAX_ROUNDS}.")
+    return rounds
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", type=Path, default=DEFAULT_CATALOG)
     parser.add_argument("--output", type=Path, required=True, help="New JSON capture file; existing files are never overwritten.")
     parser.add_argument("--seasons", type=season_count_argument, default=2, help=f"Previous seasons per league (1-{MAX_SEASONS}).")
     parser.add_argument("--pages", type=page_count_argument, default=2, help=f"Event pages per season (1-{MAX_EVENT_PAGES}).")
+    parser.add_argument("--rounds", type=round_count_argument, default=0, help=f"Fetch full seasons by round instead of pages (1-{MAX_ROUNDS}).")
     parser.add_argument("--tournament-id", type=positive_argument)
     parser.add_argument("--limit", type=positive_argument)
     return parser.parse_args(argv)
@@ -115,7 +132,8 @@ def previous_seasons(payload: Any, current_season_id: int, limit: int) -> list[d
 
 
 def fetch_previous_seasons(transport: Any, league: Any, seasons: int, pages: int,
-                           now: datetime, sleep: Callable[[float], None], attempted: list[int]) -> tuple[list[dict[str, Any]], str | None]:
+                           now: datetime, sleep: Callable[[float], None], attempted: list[int],
+                           rounds: int = 0) -> tuple[list[dict[str, Any]], str | None]:
     payload, reason, _ = fetch_payload(transport, seasons_endpoint(league.tournament_id), sleep, attempted)
     if reason is not None:
         return [], reason
@@ -129,24 +147,46 @@ def fetch_previous_seasons(transport: Any, league: Any, seasons: int, pages: int
     for season in candidates:
         events: list[dict[str, Any]] = []
         seen: set[int] = set()
-        for page in range(pages):
-            payload, reason, status = fetch_payload(
-                transport, events_endpoint(league.tournament_id, season["season_id"], "last", page), sleep, attempted
-            )
-            if reason is not None:
-                return tournaments, reason if page == 0 else None
-            raw_events = payload.get("events") if isinstance(payload, dict) else None
-            if not isinstance(raw_events, list) or not raw_events:
-                break
-            for raw in raw_events:
-                try:
-                    event = validate_event(raw, now, "last")
-                except CaptureFailure:
-                    continue
-                if event["sofascore_id"] in seen:
-                    continue
-                seen.add(event["sofascore_id"])
-                events.append(event)
+        if rounds > 0:
+            for round_number in range(1, rounds + 1):
+                payload, reason, status = fetch_payload(
+                    transport, rounds_endpoint(league.tournament_id, season["season_id"], round_number), sleep, attempted
+                )
+                if status in (400, 404):
+                    break
+                if reason is not None:
+                    return tournaments, reason if not events else None
+                raw_events = payload.get("events") if isinstance(payload, dict) else None
+                if not isinstance(raw_events, list) or not raw_events:
+                    break
+                for raw in raw_events:
+                    try:
+                        event = validate_event(raw, now, "last")
+                    except CaptureFailure:
+                        continue
+                    if event["sofascore_id"] in seen:
+                        continue
+                    seen.add(event["sofascore_id"])
+                    events.append(event)
+        else:
+            for page in range(pages):
+                payload, reason, status = fetch_payload(
+                    transport, events_endpoint(league.tournament_id, season["season_id"], "last", page), sleep, attempted
+                )
+                if reason is not None:
+                    return tournaments, reason if page == 0 else None
+                raw_events = payload.get("events") if isinstance(payload, dict) else None
+                if not isinstance(raw_events, list) or not raw_events:
+                    break
+                for raw in raw_events:
+                    try:
+                        event = validate_event(raw, now, "last")
+                    except CaptureFailure:
+                        continue
+                    if event["sofascore_id"] in seen:
+                        continue
+                    seen.add(event["sofascore_id"])
+                    events.append(event)
         if events:
             tournaments.append({
                 "sofascore_tournament_id": league.tournament_id,
@@ -175,12 +215,14 @@ def default_output_path() -> Path:
 
 
 def run_fetch(catalog_path: Path, output_path: Path, *, transport: Any, seasons: int = 2, pages: int = 2,
-              limit: int | None = None, tournament_id: int | None = None,
+              rounds: int = 0, limit: int | None = None, tournament_id: int | None = None,
               now: Callable[[], datetime] = utc_now, sleep: Callable[[float], None] = lambda _: None) -> dict[str, Any]:
     if not 1 <= seasons <= MAX_SEASONS:
         raise ValueError(f"Season count must be between 1 and {MAX_SEASONS}.")
     if not 1 <= pages <= MAX_EVENT_PAGES:
         raise ValueError(f"Page count must be between 1 and {MAX_EVENT_PAGES}.")
+    if not 0 <= rounds <= MAX_ROUNDS:
+        raise ValueError(f"Round count must be between 0 and {MAX_ROUNDS}.")
     catalog_path, output_path = Path(catalog_path), Path(output_path)
     validate_output(catalog_path, output_path)
     leagues = select_leagues(read_catalog(catalog_path), limit=limit, tournament_id=tournament_id)
@@ -189,7 +231,7 @@ def run_fetch(catalog_path: Path, output_path: Path, *, transport: Any, seasons:
     tournaments: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
     for league in leagues:
-        fetched, reason = fetch_previous_seasons(transport, league, seasons, pages, snapshot_instant, sleep, attempted)
+        fetched, reason = fetch_previous_seasons(transport, league, seasons, pages, snapshot_instant, sleep, attempted, rounds=rounds)
         if reason is not None:
             failures.append({"tournamentId": league.tournament_id, "reason": reason})
         tournaments.extend(fetched)
@@ -225,7 +267,7 @@ def main(argv: list[str] | None = None) -> int:
             transport = ImpersonationTransport(session)
             summary = run_fetch(
                 options.catalog, output, transport=transport, seasons=options.seasons, pages=options.pages,
-                limit=options.limit, tournament_id=options.tournament_id
+                rounds=options.rounds, limit=options.limit, tournament_id=options.tournament_id
             )
     except ValueError as error:
         print(json.dumps({"error": str(error)}))
