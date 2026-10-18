@@ -27,7 +27,7 @@
 - [x] Implement the hero, prediction details, match filters and real member data states.
 - [x] Replace the sidebar with horizontal navigation and accessible mobile/account disclosures.
 - [x] Update the legacy analysis surfaces with the same palette, readable type and telemetry contrast.
-- [x] Complete data-safety tests, account interactions and desktop/mobile visual comparison (118 unit checks and 25 browser assertions).
+- [x] Complete data-safety tests, account interactions and desktop/mobile visual comparison (121 unit checks and 25 browser assertions, including visible recommendation tiers).
 - [ ] Build, publish to the existing release branch, deploy through Coolify and verify live routes/assets.
 
 ## Verification

@@ -29,6 +29,7 @@ export function ArenaPredictionCard({ match, prediction, onOpen }: { match: Aren
   const confidence = confidenceValue(prediction?.confidenceScore);
   const coverage = confidenceValue(match.combinedCoverageScore);
   const ready = match.featureStatus === "ready";
+  const tierLabel = prediction ? { primary: "Tahminim", try: "Denenir", alternative: "Alternatif" }[prediction.recommendationTier] : null;
 
   return <article className="arena-prediction-card" aria-label={`${match.homeTeam.name} - ${match.awayTeam.name} ${match.demo ? "örnek analiz" : "maç analizi"}`}>
     <header className="arena-prediction-top">
@@ -37,7 +38,7 @@ export function ArenaPredictionCard({ match, prediction, onOpen }: { match: Aren
     </header>
     <MatchTeams match={match} featured />
     <div className="arena-prediction-body">
-      <div className="arena-prediction-labels"><span className="arena-card-kicker">SkorIQ tahmini</span><span className={`arena-readiness${ready ? " is-ready" : ""}`}><i />{prediction ? "Analiz hazır" : ready ? "Rapor hazır" : "Hazırlanıyor"}</span></div>
+      <div className="arena-prediction-labels"><span className="arena-card-kicker">{tierLabel ? `SkorIQ · ${tierLabel}` : "SkorIQ tahmini"}</span><span className={`arena-readiness${ready ? " is-ready" : ""}`}><i />{prediction ? "Analiz hazır" : ready ? "Rapor hazır" : "Hazırlanıyor"}</span></div>
       <div className="arena-prediction-result"><h2>{prediction?.displayLabel ?? "Maçın hikâyesi hazırlanıyor"}</h2><div className="arena-confidence"><span>Güven skoru</span><strong>{confidence === null ? "—" : Math.round(confidence)}<small>/100</small></strong></div></div>
       <div className="arena-confidence-track" role="meter" aria-label="Güven skoru" aria-valuemin={0} aria-valuemax={100} aria-valuenow={confidence ?? undefined} aria-valuetext={confidence === null ? "Henüz belirlenmedi" : `${Math.round(confidence)} / 100`}><span style={{ width: `${confidence ?? 0}%` }} /></div>
       <ul className="arena-signals">

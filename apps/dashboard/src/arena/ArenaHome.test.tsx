@@ -27,6 +27,12 @@ function render(data: DashboardOverviewResponse | null, authenticated = true, er
 }
 
 describe("ArenaHome data integrity", () => {
+  it.each([["primary", "Tahminim"], ["try", "Denenir"], ["alternative", "Alternatif"]] as const)("preserves the visible recommendation tier: %s", (tier, label) => {
+    const data = response();
+    data.predictionPreview.items[0]!.recommendationTier = tier;
+    expect(render(data)).toContain(`SkorIQ · ${label}`);
+  });
+
   it("uses actual paired fixture and preview data with separate confidence and risk", () => {
     const html = render(response());
     expect(html).toContain("Ankara Kuzey");
