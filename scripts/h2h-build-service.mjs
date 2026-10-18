@@ -76,8 +76,11 @@ async function main() {
   if (!FORCE) {
     try {
       const completed = JSON.parse(await readFile(COMPLETED_PATH, "utf8"));
-      log("already_completed", { completedAt: completed.completedAt, built: completed.built });
-      return;
+      if (completed.built > 0 || completed.selected === 0) {
+        log("already_completed", { completedAt: completed.completedAt, built: completed.built });
+        return;
+      }
+      log("retrying_incomplete_completion", { completedAt: completed.completedAt, built: completed.built, selected: completed.selected });
     } catch {
       // No completed marker; build now.
     }
@@ -121,8 +124,11 @@ async function main() {
       failed: failures.length,
       stats
     };
-    await writeFile(COMPLETED_PATH, JSON.stringify(completed, null, 2), "utf8");
-    const status = built > 0 || matches.length === 0 ? "succeeded" : "failed";
+    const succeeded = built > 0 || matches.length === 0;
+    if (succeeded) {
+      await writeFile(COMPLETED_PATH, JSON.stringify(completed, null, 2), "utf8");
+    }
+    const status = succeeded ? "succeeded" : "failed";
     await syncLog("final", {
       status,
       summary: { selected: matches.length, built, failed: failures.length, stats, failures: failures.slice(0, 5) },
