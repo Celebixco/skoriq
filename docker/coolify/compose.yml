@@ -229,7 +229,7 @@ services:
       postgres:
         condition: service_healthy
 
-  historical-backfill-v3:
+  historical-backfill-v4:
     build:
       context: ../..
       dockerfile: Dockerfile.sync
@@ -242,7 +242,6 @@ services:
       HISTORICAL_SEASONS: ${HISTORICAL_SEASONS:-5}
       HISTORICAL_PAGES: ${HISTORICAL_PAGES:-15}
       HISTORICAL_ROUNDS: "40"
-      HISTORICAL_TOURNAMENT_ID: "52"
       HISTORICAL_FORCE: ${HISTORICAL_FORCE:-1}
       PYTHON_BIN: python3
       TZ: Europe/Istanbul
