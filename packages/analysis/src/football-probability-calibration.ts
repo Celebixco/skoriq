@@ -110,6 +110,97 @@ export function evaluateRollingCalibration(
   };
 }
 
+export interface ConfidenceSample {
+  confidence: number;
+  correct: boolean;
+}
+
+export interface IsotonicPoint {
+  confidence: number;
+  probability: number;
+  weight: number;
+}
+
+export interface RollingIsotonicReport {
+  windowSize: number;
+  evaluations: number;
+  latestPoints: number;
+  expectedCalibrationError: number;
+  coverage: Array<{ threshold: number; coverage: number; selected: number; accuracy: number }>;
+}
+
+/**
+ * Pool-adjacent-violators isotonic regression. It maps a model's stated
+ * confidence to the observed hit rate while preserving monotonicity. The
+ * mapping is only used for confidence filtering; class probabilities remain
+ * untouched.
+ */
+export function fitIsotonic(samples: readonly ConfidenceSample[]): IsotonicPoint[] {
+  const sorted = samples
+    .filter((sample) => Number.isFinite(sample.confidence) && sample.confidence > 0 && sample.confidence <= 1)
+    .map((sample) => ({ confidence: sample.confidence, probability: sample.correct ? 1 : 0, weight: 1 }))
+    .sort((left, right) => left.confidence - right.confidence);
+  if (sorted.length < 10) return [];
+  const blocks: IsotonicPoint[] = [];
+  for (const sample of sorted) {
+    blocks.push({ ...sample });
+    while (blocks.length >= 2) {
+      const previous = blocks[blocks.length - 2]!;
+      const current = blocks[blocks.length - 1]!;
+      if (previous.probability <= current.probability) break;
+      blocks.splice(blocks.length - 2, 2, {
+        confidence: (previous.confidence * previous.weight + current.confidence * current.weight) / (previous.weight + current.weight),
+        probability: (previous.probability * previous.weight + current.probability * current.weight) / (previous.weight + current.weight),
+        weight: previous.weight + current.weight
+      });
+    }
+  }
+  return blocks;
+}
+
+export function applyIsotonic(points: readonly IsotonicPoint[], confidence: number): number {
+  if (points.length === 0) return confidence;
+  if (confidence <= points[0]!.confidence) return points[0]!.probability;
+  const last = points[points.length - 1]!;
+  if (confidence >= last.confidence) return last.probability;
+  for (let index = 1; index < points.length; index++) {
+    const right = points[index]!;
+    if (confidence > right.confidence) continue;
+    const left = points[index - 1]!;
+    const width = right.confidence - left.confidence;
+    if (width <= 0) return right.probability;
+    const ratio = (confidence - left.confidence) / width;
+    return left.probability + (right.probability - left.probability) * ratio;
+  }
+  return last.probability;
+}
+
+export function evaluateRollingIsotonic(
+  samples: readonly FootballCalibrationSample[],
+  options: { windowSize?: number; refitEvery?: number } = {}
+): RollingIsotonicReport {
+  const clean = samples.filter(validSample);
+  const confidenceSamples = clean.map(toConfidenceSample);
+  const windowSize = Math.max(20, options.windowSize ?? 200);
+  const refitEvery = Math.max(1, options.refitEvery ?? 10);
+  let points: IsotonicPoint[] = [];
+  const calibrated: ConfidenceSample[] = [];
+  for (let index = windowSize; index < confidenceSamples.length; index++) {
+    if ((index - windowSize) % refitEvery === 0) {
+      points = fitIsotonic(confidenceSamples.slice(index - windowSize, index));
+    }
+    const sample = confidenceSamples[index]!;
+    calibrated.push({ confidence: applyIsotonic(points, sample.confidence), correct: sample.correct });
+  }
+  return {
+    windowSize,
+    evaluations: calibrated.length,
+    latestPoints: points.length,
+    expectedCalibrationError: confidenceEce(calibrated),
+    coverage: [0.5, 0.6, 0.7, 0.8].map((threshold) => confidenceCoverage(calibrated, threshold))
+  };
+}
+
 export function evaluateCalibration(
   samples: readonly FootballCalibrationSample[],
   temperature = 1
@@ -197,6 +288,45 @@ function logLoss(samples: readonly FootballCalibrationSample[], temperature: num
 function validSample(sample: FootballCalibrationSample): boolean {
   const values = [sample.probabilities.home, sample.probabilities.draw, sample.probabilities.away];
   return values.every((value) => Number.isFinite(value) && value > 0 && value <= 1);
+}
+
+function toConfidenceSample(sample: FootballCalibrationSample): ConfidenceSample {
+  const probabilities = [sample.probabilities.home, sample.probabilities.draw, sample.probabilities.away];
+  const predictedIndex = probabilities.indexOf(Math.max(...probabilities));
+  return {
+    confidence: probabilities[predictedIndex]!,
+    correct: predictedIndex === OUTCOME_INDEX[sample.outcome]
+  };
+}
+
+function confidenceEce(samples: readonly ConfidenceSample[]): number {
+  if (samples.length === 0) return 0;
+  const bins = new Map<string, { count: number; correct: number; confidenceSum: number }>();
+  for (const sample of samples) {
+    const key = bucketKey(sample.confidence);
+    const bin = bins.get(key) ?? { count: 0, correct: 0, confidenceSum: 0 };
+    bin.count += 1;
+    bin.correct += sample.correct ? 1 : 0;
+    bin.confidenceSum += sample.confidence;
+    bins.set(key, bin);
+  }
+  return round(
+    [...bins.values()].reduce((sum, bin) => sum + (bin.count / samples.length) * Math.abs(bin.correct / bin.count - bin.confidenceSum / bin.count), 0),
+    4
+  );
+}
+
+function confidenceCoverage(
+  samples: readonly ConfidenceSample[],
+  threshold: number
+): { threshold: number; coverage: number; selected: number; accuracy: number } {
+  const selected = samples.filter((sample) => sample.confidence >= threshold);
+  return {
+    threshold,
+    coverage: samples.length ? round(selected.length / samples.length, 4) : 0,
+    selected: selected.length,
+    accuracy: selected.length ? round(selected.filter((sample) => sample.correct).length / selected.length, 4) : 0
+  };
 }
 
 function bucketKey(confidence: number): string {

@@ -5,6 +5,7 @@ import {
   coverageAtConfidence,
   evaluateCalibration,
   evaluateRollingCalibration,
+  evaluateRollingIsotonic,
   fitTemperatureScaling,
   fitFootballPoissonModel,
   outcomeOf,
@@ -82,6 +83,12 @@ export interface BacktestReport {
     minTemperature: number;
     maxTemperature: number;
     logLoss: number;
+    expectedCalibrationError: number;
+    coverage: Array<{ threshold: number; coverage: number; selected: number; accuracy: number }>;
+  };
+  rollingIsotonic: {
+    windowSize: number;
+    evaluations: number;
     expectedCalibrationError: number;
     coverage: Array<{ threshold: number; coverage: number; selected: number; accuracy: number }>;
   };
@@ -259,6 +266,10 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
       windowSize: Math.max(40, Math.min(200, Math.floor(samples.length / 3))),
       refitEvery: 10
     });
+    const rollingIsotonic = evaluateRollingIsotonic(samples, {
+      windowSize: Math.max(40, Math.min(200, Math.floor(samples.length / 3))),
+      refitEvery: 10
+    });
     const drawPolicy = fitDrawPolicy(calibrationSet, evaluationSet);
     return {
       competitionId: options.competitionId ?? null,
@@ -307,6 +318,12 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
         logLoss: rollingCalibration.report.logLoss,
         expectedCalibrationError: rollingCalibration.report.expectedCalibrationError,
         coverage: rollingCalibration.coverage
+      },
+      rollingIsotonic: {
+        windowSize: rollingIsotonic.windowSize,
+        evaluations: rollingIsotonic.evaluations,
+        expectedCalibrationError: rollingIsotonic.expectedCalibrationError,
+        coverage: rollingIsotonic.coverage
       },
       drawPolicy,
       firstPredictionAt,

@@ -4,6 +4,7 @@ import {
   coverageAtConfidence,
   evaluateCalibration,
   evaluateRollingCalibration,
+  evaluateRollingIsotonic,
   fitTemperatureScaling,
   type FootballCalibrationSample
 } from "./football-probability-calibration.js";
@@ -17,6 +18,13 @@ function overconfidentSamples(): FootballCalibrationSample[] {
     });
   }
   return samples;
+}
+
+function mixedOverconfidentSamples(): FootballCalibrationSample[] {
+  return Array.from({ length: 100 }, (_, index) => ({
+    probabilities: { home: 0.9, draw: 0.05, away: 0.05 },
+    outcome: index % 5 < 3 ? ("home" as const) : ("away" as const)
+  }));
 }
 
 describe("football probability calibration", () => {
@@ -45,6 +53,13 @@ describe("football probability calibration", () => {
     expect(rolling.report.samples).toBe(60);
     expect(rolling.latestTemperature).toBeGreaterThan(1);
     expect(rolling.report.expectedCalibrationError).toBeLessThan(0.5);
+  });
+
+  it("calibrates confidence monotonically with isotonic regression", () => {
+    const samples = mixedOverconfidentSamples();
+    const rolling = evaluateRollingIsotonic(samples, { windowSize: 40, refitEvery: 5 });
+    expect(rolling.evaluations).toBe(60);
+    expect(rolling.expectedCalibrationError).toBeLessThan(0.2);
   });
 
   it("reports coverage and accuracy for a confidence filter", () => {
