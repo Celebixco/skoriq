@@ -229,10 +229,10 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
       if (!model || index % options.refitEvery === 0) {
         model = fitFootballPoissonModel(matches.slice(0, index), {
           iterations: options.iterations,
-          learningRate: 0.035,
-          regularization: 0.02,
-          timeDecayHalfLifeDays: 365,
-          dixonColesRho: -0.06,
+          learningRate: 0.05,
+          regularization: 0.001,
+          timeDecayHalfLifeDays: 180,
+          dixonColesRho: -0.12,
           maxGoals: 10
         });
       }
