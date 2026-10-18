@@ -2,7 +2,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["**/dist/**", "node_modules/**", "coverage/**", "drizzle/**", "**/*.tsbuildinfo"]
+    ignores: ["**/dist/**", "node_modules/**", "coverage/**", "drizzle/**", "**/*.tsbuildinfo", "**/*.min.js", "**/.hyperframes/**", "**/.thumbnails/**"]
   },
   ...tseslint.configs.recommended,
   {
