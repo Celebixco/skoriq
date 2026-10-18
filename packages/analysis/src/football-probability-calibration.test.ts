@@ -3,6 +3,7 @@ import {
   applyTemperature,
   coverageAtConfidence,
   evaluateCalibration,
+  evaluateRollingCalibration,
   fitTemperatureScaling,
   type FootballCalibrationSample
 } from "./football-probability-calibration.js";
@@ -35,6 +36,15 @@ describe("football probability calibration", () => {
     const scaled = applyTemperature({ home: 0.7, draw: 0.2, away: 0.1 }, 2.5);
     expect(scaled.home + scaled.draw + scaled.away).toBeCloseTo(1, 8);
     expect(scaled.home).toBeGreaterThan(scaled.away);
+  });
+
+  it("calibrates each walk-forward sample using only earlier predictions", () => {
+    const samples = overconfidentSamples();
+    const rolling = evaluateRollingCalibration(samples, { windowSize: 40, refitEvery: 5 });
+    expect(rolling.evaluations).toBe(60);
+    expect(rolling.report.samples).toBe(60);
+    expect(rolling.latestTemperature).toBeGreaterThan(1);
+    expect(rolling.report.expectedCalibrationError).toBeLessThan(0.5);
   });
 
   it("reports coverage and accuracy for a confidence filter", () => {

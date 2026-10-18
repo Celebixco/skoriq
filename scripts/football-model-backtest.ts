@@ -4,6 +4,7 @@ import pg from "pg";
 import {
   coverageAtConfidence,
   evaluateCalibration,
+  evaluateRollingCalibration,
   fitTemperatureScaling,
   fitFootballPoissonModel,
   outcomeOf,
@@ -71,6 +72,16 @@ export interface BacktestReport {
     calibratedBrierScore: number;
     rawEce: number;
     calibratedEce: number;
+    coverage: Array<{ threshold: number; coverage: number; selected: number; accuracy: number }>;
+  };
+  rollingCalibration: {
+    windowSize: number;
+    evaluations: number;
+    latestTemperature: number;
+    minTemperature: number;
+    maxTemperature: number;
+    logLoss: number;
+    expectedCalibrationError: number;
     coverage: Array<{ threshold: number; coverage: number; selected: number; accuracy: number }>;
   };
   firstPredictionAt: string | null;
@@ -236,6 +247,10 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
     const temperature = fitTemperatureScaling(calibrationSet);
     const rawCalibration = evaluateCalibration(evaluationSet, 1);
     const calibratedCalibration = evaluateCalibration(evaluationSet, temperature);
+    const rollingCalibration = evaluateRollingCalibration(samples, {
+      windowSize: Math.max(40, Math.min(200, Math.floor(samples.length / 3))),
+      refitEvery: 10
+    });
     return {
       competitionId: options.competitionId ?? null,
       trainingMatches: matches.length,
@@ -273,6 +288,16 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
         rawEce: rawCalibration.expectedCalibrationError,
         calibratedEce: calibratedCalibration.expectedCalibrationError,
         coverage: [0.5, 0.6, 0.7, 0.8].map((threshold) => coverageAtConfidence(evaluationSet, temperature, threshold))
+      },
+      rollingCalibration: {
+        windowSize: rollingCalibration.windowSize,
+        evaluations: rollingCalibration.evaluations,
+        latestTemperature: rollingCalibration.latestTemperature,
+        minTemperature: rollingCalibration.minTemperature,
+        maxTemperature: rollingCalibration.maxTemperature,
+        logLoss: rollingCalibration.report.logLoss,
+        expectedCalibrationError: rollingCalibration.report.expectedCalibrationError,
+        coverage: rollingCalibration.coverage
       },
       firstPredictionAt,
       lastPredictionAt

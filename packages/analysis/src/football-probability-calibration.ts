@@ -65,6 +65,51 @@ export function applyTemperature(
   };
 }
 
+export interface RollingCalibrationReport {
+  windowSize: number;
+  evaluations: number;
+  latestTemperature: number;
+  minTemperature: number;
+  maxTemperature: number;
+  report: FootballCalibrationReport;
+  coverage: Array<{ threshold: number; coverage: number; selected: number; accuracy: number }>;
+}
+
+/**
+ * Walk-forward temperature scaling. Each evaluation sample is calibrated using
+ * only earlier predictions, so the reported ECE is not fitted on its own test
+ * data. The window can move as the season changes.
+ */
+export function evaluateRollingCalibration(
+  samples: readonly FootballCalibrationSample[],
+  options: { windowSize?: number; refitEvery?: number } = {}
+): RollingCalibrationReport {
+  const clean = samples.filter(validSample);
+  const windowSize = Math.max(20, options.windowSize ?? 200);
+  const refitEvery = Math.max(1, options.refitEvery ?? 10);
+  const calibrated: FootballCalibrationSample[] = [];
+  const temperatures: number[] = [];
+  let temperature = 1;
+  for (let index = windowSize; index < clean.length; index++) {
+    if ((index - windowSize) % refitEvery === 0) {
+      temperature = fitTemperatureScaling(clean.slice(index - windowSize, index));
+      temperatures.push(temperature);
+    }
+    const sample = clean[index]!;
+    calibrated.push({ probabilities: applyTemperature(sample.probabilities, temperature), outcome: sample.outcome });
+  }
+  const report = evaluateCalibration(calibrated, 1);
+  return {
+    windowSize,
+    evaluations: calibrated.length,
+    latestTemperature: temperature,
+    minTemperature: temperatures.length ? Math.min(...temperatures) : 1,
+    maxTemperature: temperatures.length ? Math.max(...temperatures) : 1,
+    report,
+    coverage: [0.5, 0.6, 0.7, 0.8].map((threshold) => coverageAtConfidence(calibrated, 1, threshold))
+  };
+}
+
 export function evaluateCalibration(
   samples: readonly FootballCalibrationSample[],
   temperature = 1
