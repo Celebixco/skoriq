@@ -13,6 +13,14 @@ jobs:
   verify-and-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/skoriq_test
+      REDIS_URL: redis://127.0.0.1:6379
+      AUTH_JWT_SECRET: test-only-secret-with-at-least-32-characters
+      FRONTEND_ORIGIN: http://127.0.0.1:5173
+      DB_EXECUTION_TARGET: local
+      MOCK_PROVIDER_ENABLED: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
