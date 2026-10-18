@@ -538,6 +538,11 @@ The one-shot `historical-backfill` service fetches the previous two seasons for 
 
 Configuration: `HISTORICAL_SEASONS` (default 2, max 5) and `HISTORICAL_PAGES` (default 2, max 5). The service keeps the capture under `/var/lib/skoriq-historical` and exits after the import.
 
+### H2H feature materialization
+
+The daily prematch pipeline builds H2H per match, including prior-season and cross-competition meetings. A one-shot `h2h-build` service can materialize those features immediately for the next 14 days of upcoming matches after a historical backfill: it runs `analytics-football-h2h-build` for each scheduled match with window sizes 5 and 10, records `sofascore.h2h-build`, and stores the resulting feature/`with_history` counts in its completion marker. Set `H2H_FORCE=1` to rebuild deliberately; normal deployments skip via `/var/lib/skoriq-h2h/completed.json`.
+
+
 
 The sync scheduler floors every interval at 15 minutes. A configured `SYNC_FINISHED_INTERVAL_MINUTES=5` therefore runs every 15 minutes; set the value to 15 to make the effective cadence explicit.
 

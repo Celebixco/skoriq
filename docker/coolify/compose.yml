@@ -237,6 +237,30 @@ services:
       postgres:
         condition: service_healthy
 
+  h2h-build:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: "no"
+    command: ["node", "scripts/h2h-build-service.mjs"]
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
+      DB_EXECUTION_TARGET: local
+      ALLOW_PRODUCTION_LOCAL_DB: "true"
+      AUTH_ENABLED: "true"
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Set a random AUTH_JWT_SECRET of at least 32 characters}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set the deployed frontend origin}
+      H2H_STATE_DIR: /var/lib/skoriq-h2h
+      H2H_MATCH_LIMIT: ${H2H_MATCH_LIMIT:-100}
+      H2H_WINDOW_SIZES: ${H2H_WINDOW_SIZES:-5,10}
+      TZ: Europe/Istanbul
+    volumes:
+      - h2h_build_state:/var/lib/skoriq-h2h
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   dragonfly_data:
@@ -245,3 +269,4 @@ volumes:
   match_statistics_state:
   lineups_state:
   historical_backfill_state:
+  h2h_build_state:
