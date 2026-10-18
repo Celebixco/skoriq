@@ -344,6 +344,20 @@ services:
       postgres:
         condition: service_healthy
 
+  model-tune:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: "no"
+    command: ["node_modules/.bin/tsx", "scripts/football-model-tune.ts", "--competition-id=cf0e82b7-4528-4612-bc7e-979b89d5b386", "--limit=2500"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
+      TZ: Europe/Istanbul
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   dragonfly_data:

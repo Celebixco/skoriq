@@ -32,7 +32,8 @@ const jobs: Record<string, JobIdentity> = {
   "prematch": { jobKey: "analytics.prematch", jobName: "daily-prematch", entityType: "match" },
   "settlement": { jobKey: "analytics.settlement", jobName: "prediction-settlement", entityType: "match" },
   "model-backtest": { jobKey: "analytics.model-backtest", jobName: "football-model-backtest", entityType: "match" },
-  "model-shadow": { jobKey: "analytics.model-shadow", jobName: "football-model-shadow", entityType: "match" }
+  "model-shadow": { jobKey: "analytics.model-shadow", jobName: "football-model-shadow", entityType: "match" },
+  "model-tune": { jobKey: "analytics.model-tune", jobName: "football-model-tune", entityType: "match" }
 };
 const failedStatuses = new Set(["fetch_failed", "import_failed", "service_error"]);
 const phases = new Set<SyncRunPhase>(["begin", "step", "final"]);
