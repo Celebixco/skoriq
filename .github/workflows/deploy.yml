@@ -47,10 +47,21 @@ jobs:
           COOLIFY_APP_UUID: ${{ secrets.COOLIFY_APP_UUID }}
         run: |
           set -euo pipefail
-          response=$(curl -fsS -X POST "$COOLIFY_BASE_URL/api/v1/deploy" \
-            -H "Authorization: Bearer $COOLIFY_TOKEN" \
-            -H "Content-Type: application/json" \
-            --data "{\"uuid\":\"$COOLIFY_APP_UUID\",\"force\":false}")
+          response=""
+          for attempt in 1 2 3; do
+            if response=$(curl -fsS -X POST "$COOLIFY_BASE_URL/api/v1/deploy" \
+              -H "Authorization: Bearer $COOLIFY_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "{\"uuid\":\"$COOLIFY_APP_UUID\",\"force\":false}"); then
+              break
+            fi
+            echo "Coolify deploy request failed (attempt $attempt); retrying"
+            sleep 10
+          done
+          if [ -z "$response" ]; then
+            echo "Coolify deploy request failed"
+            exit 1
+          fi
           deployment_uuid=$(printf '%s' "$response" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const d=JSON.parse(s);process.stdout.write(d.deployments?.[0]?.deployment_uuid ?? '')})")
           if [ -z "$deployment_uuid" ]; then
             echo "Coolify did not return a deployment UUID"
@@ -67,9 +78,13 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 80); do
-            response=$(curl -fsS "$COOLIFY_BASE_URL/api/v1/deployments/$DEPLOYMENT_UUID" \
+            if ! response=$(curl -fsS "$COOLIFY_BASE_URL/api/v1/deployments/$DEPLOYMENT_UUID" \
               -H "Authorization: Bearer $COOLIFY_TOKEN" \
-              -H "Accept: application/json")
+              -H "Accept: application/json"); then
+              echo "coolify status request failed (attempt $attempt); retrying"
+              sleep 15
+              continue
+            fi
             status=$(printf '%s' "$response" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const d=JSON.parse(s);process.stdout.write(String(d.status ?? ''))})")
             echo "deployment status: $status (attempt $attempt)"
             case "$status" in
