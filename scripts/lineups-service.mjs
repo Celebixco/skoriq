@@ -85,28 +85,58 @@ function runSyncLog(phase, payload) {
   });
 }
 
-async function selectMissingLineups(limit = BATCH_LIMIT) {
+async function selectMissingLineups(finishedLimit = BATCH_LIMIT, upcomingLimit = 20) {
   if (!pool) return [];
   const result = await pool.query(
     `
-      SELECT m.id AS match_id,
-        m.metadata_json->>'sofascoreId' AS event_id,
-        hpm.provider_entity_id AS home_team_id,
-        apm.provider_entity_id AS away_team_id
-      FROM matches m
-      INNER JOIN sports s ON s.id = m.sport_id AND s.slug = 'football'
-      INNER JOIN provider_mappings hpm
-        ON hpm.provider = 'sofascore' AND hpm.entity_type = 'team' AND hpm.internal_entity_id = m.home_team_id
-      INNER JOIN provider_mappings apm
-        ON apm.provider = 'sofascore' AND apm.entity_type = 'team' AND apm.internal_entity_id = m.away_team_id
-      WHERE m.status IN ('finished', 'after_extra_time', 'after_penalties')
-        AND m.metadata_json->>'sofascoreId' IS NOT NULL
-        AND m.scheduled_start_at >= now() - ($1::int * interval '1 day')
-        AND NOT EXISTS (SELECT 1 FROM football_match_lineups l WHERE l.match_id = m.id)
-      ORDER BY m.scheduled_start_at DESC
-      LIMIT $2
+      WITH finished AS (
+        SELECT m.id AS match_id,
+          m.metadata_json->>'sofascoreId' AS event_id,
+          hpm.provider_entity_id AS home_team_id,
+          apm.provider_entity_id AS away_team_id,
+          m.status AS match_status
+        FROM matches m
+        INNER JOIN sports s ON s.id = m.sport_id AND s.slug = 'football'
+        INNER JOIN provider_mappings hpm
+          ON hpm.provider = 'sofascore' AND hpm.entity_type = 'team' AND hpm.internal_entity_id = m.home_team_id
+        INNER JOIN provider_mappings apm
+          ON apm.provider = 'sofascore' AND apm.entity_type = 'team' AND apm.internal_entity_id = m.away_team_id
+        WHERE m.status IN ('finished', 'after_extra_time', 'after_penalties')
+          AND m.metadata_json->>'sofascoreId' IS NOT NULL
+          AND m.scheduled_start_at >= now() - ($1::int * interval '1 day')
+          AND NOT EXISTS (
+            SELECT 1 FROM football_match_lineups l
+            WHERE l.match_id = m.id AND l.confirmed = true
+          )
+        ORDER BY m.scheduled_start_at DESC
+        LIMIT $2
+      ), upcoming AS (
+        SELECT m.id AS match_id,
+          m.metadata_json->>'sofascoreId' AS event_id,
+          hpm.provider_entity_id AS home_team_id,
+          apm.provider_entity_id AS away_team_id,
+          m.status AS match_status
+        FROM matches m
+        INNER JOIN sports s ON s.id = m.sport_id AND s.slug = 'football'
+        INNER JOIN provider_mappings hpm
+          ON hpm.provider = 'sofascore' AND hpm.entity_type = 'team' AND hpm.internal_entity_id = m.home_team_id
+        INNER JOIN provider_mappings apm
+          ON apm.provider = 'sofascore' AND apm.entity_type = 'team' AND apm.internal_entity_id = m.away_team_id
+        WHERE m.status IN ('scheduled', 'not_started')
+          AND m.metadata_json->>'sofascoreId' IS NOT NULL
+          AND m.scheduled_start_at BETWEEN now() AND now() + interval '24 hours'
+          AND NOT EXISTS (
+            SELECT 1 FROM football_match_lineups l
+            WHERE l.match_id = m.id AND l.confirmed = true
+          )
+        ORDER BY m.scheduled_start_at ASC
+        LIMIT $3
+      )
+      SELECT * FROM finished
+      UNION ALL
+      SELECT * FROM upcoming
     `,
-    [LOOKBACK_DAYS, limit]
+    [LOOKBACK_DAYS, finishedLimit, upcomingLimit]
   );
   return result.rows;
 }
@@ -136,12 +166,14 @@ function isPermanentFailure(reason) {
   return text.startsWith("http_404") || ["empty_lineups", "partial_response", "non_json"].includes(text);
 }
 
-function recordPermanentFailures(failures, fetchSummary, importReport) {
+function recordPermanentFailures(failures, fetchSummary, importReport, skipEventIds = new Set()) {
   const timestamp = new Date().toISOString();
   for (const failure of fetchSummary?.failures ?? []) {
+    if (skipEventIds.has(String(failure?.eventId))) continue;
     if (isPermanentFailure(failure?.reason)) failures[String(failure.eventId)] = timestamp;
   }
   for (const entry of importReport?.entries ?? []) {
+    if (skipEventIds.has(String(entry?.eventId))) continue;
     if (["unknown_match", "team_mismatch", "missing_sport"].includes(entry?.status)) {
       failures[String(entry.eventId)] = timestamp;
     }
@@ -166,11 +198,21 @@ async function pruneCaptures() {
 async function runOnce() {
   const startedAt = Date.now();
   const failures = await loadFailures();
-  const rows = await selectMissingLineups(BATCH_LIMIT * 10);
-  const candidates = rows.filter((row) => !failures[String(row.event_id)]);
-  const selected = candidates.slice(0, BATCH_LIMIT);
+  const upcomingLimit = Math.min(20, BATCH_LIMIT);
+  const finishedCandidates = Math.max(1, BATCH_LIMIT - upcomingLimit) * 5;
+  const rows = await selectMissingLineups(finishedCandidates, upcomingLimit);
+  const finishedRows = rows.filter((row) => ["finished", "after_extra_time", "after_penalties"].includes(String(row.match_status)));
+  const upcomingRows = rows.filter((row) => !["finished", "after_extra_time", "after_penalties"].includes(String(row.match_status)));
+  const finishedSelected = finishedRows
+    .filter((row) => !failures[String(row.event_id)])
+    .slice(0, Math.max(0, BATCH_LIMIT - upcomingLimit));
+  const upcomingSelected = upcomingRows
+    .filter((row) => !failures[String(row.event_id)])
+    .slice(0, upcomingLimit);
+  const selected = [...finishedSelected, ...upcomingSelected];
+  const upcomingEventIds = new Set(upcomingRows.map((row) => String(row.event_id)));
   if (selected.length === 0) {
-    const skippedFailed = rows.length - candidates.length;
+    const skippedFailed = rows.length - finishedSelected.length - upcomingSelected.length;
     log("no_missing_lineups", { lookbackDays: LOOKBACK_DAYS, skippedFailed });
     await runSyncLog("final", {
       status: "succeeded",
@@ -207,7 +249,7 @@ async function runOnce() {
   if (!captured) {
     const error = redact(fetch.stderr).slice(-500) || `fetch exit ${fetch.code}`;
     log("fetch_failed", { error: error.slice(0, 200) });
-    recordPermanentFailures(failures, fetchSummary, null);
+    recordPermanentFailures(failures, fetchSummary, null, upcomingEventIds);
     await saveFailures(failures);
     await runSyncLog("final", {
       status: "failed",
@@ -227,7 +269,7 @@ async function runOnce() {
   for (const entry of importReport?.entries ?? []) {
     if (entry?.status === "updated") delete failures[String(entry.eventId)];
   }
-  recordPermanentFailures(failures, fetchSummary, importReport);
+  recordPermanentFailures(failures, fetchSummary, importReport, upcomingEventIds);
   await saveFailures(failures);
   await runSyncLog("final", {
     status,

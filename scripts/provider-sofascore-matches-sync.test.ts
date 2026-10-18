@@ -92,6 +92,7 @@ function fixture(options: FixtureOptions = {}) {
         }
         if (/UPDATE sync_jobs/.test(text)) return { rows: [{ id: "job-1" }] };
         if (/UPDATE matches/.test(text)) return { rows: options.updateRows ?? [{ id: "match-1" }] };
+        if (/INSERT INTO seasons/.test(text)) return { rows: [{ id: "season-hist" }] };
         if (/INSERT INTO matches/.test(text)) return { rows: [{ id: "match-new" }] };
         return { rows: [] };
       }
@@ -108,6 +109,26 @@ describe("SofaScore finished matches refresh", () => {
     expect(() => parseSofaScoreMatchesArgs(["--capture", "capture.json", "--job", "nope"])).toThrow(/--job/);
     expect(() => parseSofaScoreMatchesArgs([])).toThrow(/capture/i);
     expect(() => parseSofaScoreMatchesArgs(["--capture", "x.json", "--bogus"])).toThrow(/unknown/i);
+  });
+
+  it("creates a historical season before inserting its matches", async () => {
+    const historical = {
+      source: "sofascore",
+      capturedAt: "2026-10-16T12:00:00.000Z",
+      tournaments: [{
+        sofascore_tournament_id: 52,
+        season_id: 900,
+        season_kind: "historical",
+        season_name: "Super Lig 25/26",
+        events: [event()]
+      }]
+    };
+    const data = fixture({ captureDocument: historical, seasonRows: [] });
+    const report = await runSofaScoreMatchesSync({ execute: true, capturePath: "capture.json", logRun: false }, data.dependencies);
+
+    expect(report.entries[0]?.action).toBe("inserted");
+    expect(data.writes.find((write) => /INSERT INTO seasons/.test(write.text))?.params).toEqual(["comp-1", "Super Lig 25/26"]);
+    expect(data.writes.find((write) => /INSERT INTO matches/.test(write.text))?.params[1]).toBe("season-hist");
   });
 
   it("plans fixture inserts for notstarted events and inserts them on execute", async () => {
