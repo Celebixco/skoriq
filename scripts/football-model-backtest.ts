@@ -32,6 +32,18 @@ interface BacktestMatch extends FootballModelMatch {
   id: string;
 }
 
+interface ProbabilityTriple {
+  home: number;
+  draw: number;
+  away: number;
+}
+
+interface ProbabilityPair {
+  poisson: ProbabilityTriple;
+  elo: ProbabilityTriple;
+  outcome: FootballOutcome;
+}
+
 interface BacktestAccumulator {
   predictions: number;
   correct: number;
@@ -46,6 +58,7 @@ interface BacktestAccumulator {
   drawPicks: number;
   awayPicks: number;
   calibrationSamples: FootballCalibrationSample[];
+  probabilityPairs: ProbabilityPair[];
   probabilityBuckets: Map<string, { count: number; correct: number; probabilitySum: number }>;
 }
 
@@ -98,6 +111,13 @@ export interface BacktestReport {
     evaluations: number;
     expectedCalibrationError: number;
     coverage: Array<{ threshold: number; coverage: number; selected: number; accuracy: number }>;
+  };
+  eloBlend: {
+    weight: number;
+    calibrationAccuracy: number;
+    evaluationAccuracy: number;
+    argmaxEvaluationAccuracy: number;
+    evaluationLogLoss: number;
   };
   drawPolicy: {
     margin: number;
@@ -192,9 +212,12 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
       drawPicks: 0,
       awayPicks: 0,
       calibrationSamples: [],
+      probabilityPairs: [],
       probabilityBuckets: new Map()
     };
     let model: ReturnType<typeof fitFootballPoissonModel> | null = null;
+    const elo = new EloRatings();
+    for (let index = 0; index < options.minTraining; index++) elo.update(matches[index]!);
     let skipped = 0;
     let firstPredictionAt: string | null = null;
     let lastPredictionAt: string | null = null;
@@ -202,6 +225,7 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
     for (let index = options.minTraining; index < matches.length; index++) {
       if (accumulator.predictions >= options.maxPredictions) break;
       const target = matches[index]!;
+      const eloProbabilities = elo.probabilities(target.homeTeamId, target.awayTeamId);
       if (!model || index % options.refitEvery === 0) {
         model = fitFootballPoissonModel(matches.slice(0, index), {
           iterations: options.iterations,
@@ -214,6 +238,7 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
       }
       if (!model.teams[target.homeTeamId] || !model.teams[target.awayTeamId]) {
         skipped += 1;
+        elo.update(target);
         continue;
       }
       let probabilities;
@@ -221,11 +246,17 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
         probabilities = predictFootballMarkets(model, target.homeTeamId, target.awayTeamId);
       } catch {
         skipped += 1;
+        elo.update(target);
         continue;
       }
       const actual = outcomeOf(target.homeGoals, target.awayGoals);
       accumulator.calibrationSamples.push({
         probabilities: { home: probabilities.homeWin, draw: probabilities.draw, away: probabilities.awayWin },
+        outcome: actual
+      });
+      accumulator.probabilityPairs.push({
+        poisson: { home: probabilities.homeWin, draw: probabilities.draw, away: probabilities.awayWin },
+        elo: eloProbabilities,
         outcome: actual
       });
       const predicted = probabilities.homeWin >= probabilities.draw && probabilities.homeWin >= probabilities.awayWin
@@ -259,6 +290,7 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
       accumulator.probabilityBuckets.set(bucket, existing);
       firstPredictionAt ??= target.date.toISOString();
       lastPredictionAt = target.date.toISOString();
+      elo.update(target);
     }
 
     if (accumulator.predictions === 0) throw new Error("No predictions were produced.");
@@ -282,6 +314,7 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
       refitEvery: 10
     });
     const drawPolicy = fitDrawPolicy(calibrationSet, evaluationSet);
+    const eloBlend = fitEloBlend(accumulator.probabilityPairs);
     return {
       competitionId: options.competitionId ?? null,
       trainingMatches: matches.length,
@@ -343,6 +376,7 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
         coverage: rollingPlatt.coverage
       },
       drawPolicy,
+      eloBlend,
       firstPredictionAt,
       lastPredictionAt
     };
@@ -358,6 +392,87 @@ interface BacktestRow {
   away_team_id: string;
   home_goals: number;
   away_goals: number;
+}
+
+class EloRatings {
+  private readonly ratings = new Map<string, number>();
+  private readonly homeAdvantage = 60;
+  private readonly kFactor = 20;
+
+  probabilities(homeTeamId: string, awayTeamId: string): ProbabilityTriple {
+    const homeRating = this.ratings.get(homeTeamId) ?? 1500;
+    const awayRating = this.ratings.get(awayTeamId) ?? 1500;
+    const expectedHome = 1 / (1 + 10 ** ((awayRating - homeRating - this.homeAdvantage) / 400));
+    const draw = clamp(0.28 - 0.12 * Math.abs(expectedHome - 0.5), 0.16, 0.3);
+    const home = Math.max(0.01, expectedHome - draw / 2);
+    const away = Math.max(0.01, 1 - home - draw);
+    const total = home + draw + away;
+    return { home: home / total, draw: draw / total, away: away / total };
+  }
+
+  update(match: FootballModelMatch): void {
+    const homeRating = this.ratings.get(match.homeTeamId) ?? 1500;
+    const awayRating = this.ratings.get(match.awayTeamId) ?? 1500;
+    const expectedHome = 1 / (1 + 10 ** ((awayRating - homeRating - this.homeAdvantage) / 400));
+    const actualHome = match.homeGoals > match.awayGoals ? 1 : match.homeGoals < match.awayGoals ? 0 : 0.5;
+    const marginMultiplier = 1 + Math.min(1, Math.abs(match.homeGoals - match.awayGoals) / 3);
+    const change = this.kFactor * marginMultiplier * (actualHome - expectedHome);
+    this.ratings.set(match.homeTeamId, homeRating + change);
+    this.ratings.set(match.awayTeamId, awayRating - change);
+  }
+}
+
+function fitEloBlend(pairs: readonly ProbabilityPair[]) {
+  const split = Math.floor(pairs.length / 2);
+  const calibration = pairs.slice(0, split);
+  const evaluation = pairs.slice(split);
+  const weights = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1];
+  let bestWeight = 0;
+  let bestCalibrationAccuracy = -1;
+  for (const weight of weights) {
+    const metrics = evaluateBlend(calibration, weight);
+    if (metrics.accuracy > bestCalibrationAccuracy + 1e-9) {
+      bestCalibrationAccuracy = metrics.accuracy;
+      bestWeight = weight;
+    }
+  }
+  const evaluationMetrics = evaluateBlend(evaluation, bestWeight);
+  const argmaxMetrics = evaluateBlend(evaluation, 0);
+  return {
+    weight: bestWeight,
+    calibrationAccuracy: round(bestCalibrationAccuracy, 4),
+    evaluationAccuracy: round(evaluationMetrics.accuracy, 4),
+    argmaxEvaluationAccuracy: round(argmaxMetrics.accuracy, 4),
+    evaluationLogLoss: round(evaluationMetrics.logLoss, 4)
+  };
+}
+
+function evaluateBlend(pairs: readonly ProbabilityPair[], weight: number): { accuracy: number; logLoss: number } {
+  if (pairs.length === 0) return { accuracy: 0, logLoss: 0 };
+  let correct = 0;
+  let logLoss = 0;
+  for (const pair of pairs) {
+    const probabilities = blendProbabilities(pair, weight);
+    const values = [probabilities.home, probabilities.draw, probabilities.away];
+    const predicted = values.indexOf(Math.max(...values));
+    const actual = pair.outcome === "home" ? 0 : pair.outcome === "draw" ? 1 : 2;
+    correct += predicted === actual ? 1 : 0;
+    logLoss += -Math.log(Math.max(1e-12, values[actual]!));
+  }
+  return { accuracy: correct / pairs.length, logLoss: logLoss / pairs.length };
+}
+
+function blendProbabilities(pair: ProbabilityPair, weight: number): ProbabilityTriple {
+  const eloWeight = clamp(weight, 0, 1);
+  return {
+    home: pair.poisson.home * (1 - eloWeight) + pair.elo.home * eloWeight,
+    draw: pair.poisson.draw * (1 - eloWeight) + pair.elo.draw * eloWeight,
+    away: pair.poisson.away * (1 - eloWeight) + pair.elo.away * eloWeight
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 function fitDrawPolicy(calibration: readonly FootballCalibrationSample[], evaluation: readonly FootballCalibrationSample[]) {
