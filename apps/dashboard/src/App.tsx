@@ -2956,7 +2956,7 @@ function TeamListPage({ navigate }: { navigate: (path: string) => void }) {
       <section className="teams-toolbar" aria-label="Takım arama ve filtreleri">
         <div className="teams-toolbar-controls">
           <div className="teams-search-wrap">
-            <span className="search-icon" aria-hidden="true">🔍</span>
+            <span className="search-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg></span>
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -3080,7 +3080,7 @@ function TeamListPage({ navigate }: { navigate: (path: string) => void }) {
       {!loading && !error && data && filteredTeams.length === 0 ? <StatePanel title="Takım bulunamadı" /> : null}
 
       {!loading && !error && data && filteredTeams.length > 0 ? (
-        <section className="panel">
+        <section className="panel team-directory-panel">
           <div className="panel-header">
             <h2>Futbol Takımları</h2>
             <span className="muted">
@@ -3211,34 +3211,24 @@ function TeamDirectoryCard({ team, navigate }: { team: FootballTeamListItem; nav
               {team.country ? <span>{team.country}</span> : null}
             </div>
           </div>
-          <div className="team-card-stats" aria-label={`${team.name} analiz metrikleri`}>
-            <span>
-              <strong>{team.matchesCount}</strong>
-              maç
-            </span>
-            <span>
-              <strong>{formatPercent(team.latestFormCoverage)}</strong>
-              form kapsamı
-            </span>
-          </div>
         </div>
+      </div>
+      <div className="team-card-stats" aria-label={`${team.name} analiz metrikleri`}>
+        <span>
+          <strong>{team.matchesCount}</strong>
+          Maç
+        </span>
+        <span>
+          <strong>{team.latestFormCoverage === null ? "—" : formatPercent(team.latestFormCoverage)}</strong>
+          Form verisi
+        </span>
       </div>
       <div className="team-card-footer">
-        <div className="team-card-coverage">
-          <span>Kapsam: {formatPercent(team.latestFormCoverage)}</span>
+        <div className="team-card-coverage" aria-hidden="true">
           <ProgressBar value={team.latestFormCoverage ?? 0} />
         </div>
-        <button
-          className="team-card-action"
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            openTeam();
-          }}
-        >
-          Takımı incele
-        </button>
       </div>
+      <span className="team-card-action" aria-hidden="true">↗</span>
     </article>
   );
 }
@@ -3498,7 +3488,7 @@ export function TeamSeasonTelemetrySection({ seasonStatistics }: { seasonStatist
     { label: yellow.label, value: formatSeasonMetric(yellow.value), sub: "Sarı Kart" },
     { label: "Kırmızı Kart (toplam)", value: value("redCards"), sub: "Kırmızı Kart" },
     { label: fouls.label, value: formatSeasonMetric(fouls.value), sub: "Faul" }
-  ];
+  ] as const;
 
   return (
     <section className="panel team-season-telemetry">
@@ -3508,11 +3498,25 @@ export function TeamSeasonTelemetrySection({ seasonStatistics }: { seasonStatist
         </div>
       </div>
       <div className="standing-stats season-telemetry-grid">
-        {stats.map((item) => (
-          <div className="standing-stat" key={item.label}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-            <small className="muted">{item.sub}</small>
+        {[
+          { title: "Gol & şut", featured: stats[0], items: [stats[1], stats[5], stats[6]] },
+          { title: "Oyun kontrolü", featured: stats[2], items: [stats[4], stats[3]] },
+          { title: "Disiplin", featured: null, items: [stats[7], stats[8], stats[9]] }
+        ].map((group) => (
+          <div className="season-stat-group" key={group.title}>
+            <h3>{group.title}</h3>
+            {group.featured ? <div className="standing-stat season-stat-featured">
+              <span>{group.featured.label}</span>
+              <strong>{group.featured.value}</strong>
+              <small className="muted">{group.featured.sub}</small>
+            </div> : null}
+            <div className="season-stat-lines">
+              {group.items.map((item) => <div className="standing-stat" key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <small className="muted">{item.sub}</small>
+              </div>)}
+            </div>
           </div>
         ))}
       </div>

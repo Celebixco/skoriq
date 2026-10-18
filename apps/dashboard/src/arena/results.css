@@ -9,7 +9,7 @@
 .arena-shell .results-unsettleable > strong { color: #b9c2b5; }
 .arena-shell .results-rate { background: transparent; }
 .arena-shell .results-rate > strong { color: #ffd747; }
-.arena-shell .results-controls { margin-block: 14px; gap: 8px; }
+.arena-shell .results-controls { margin-block: 14px; gap: 8px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .arena-shell .results-search-bar { border: 0; padding: 0; background: transparent; box-shadow: none; }
 .arena-shell .results-search-row { display: flex; gap: 12px; }
 .arena-shell .results-search-bar input { min-height: 50px; border-radius: 10px; border-color: var(--line); padding: 12px 45px; background: #101811; color: var(--text); font-size: 14px; }

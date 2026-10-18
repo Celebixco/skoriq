@@ -3,7 +3,7 @@
 .arena-route-progress i { display: block; width: 38%; height: 2px; background: #ffc400; animation: arena-route-arrive 550ms ease-in-out both; }
 @keyframes arena-route-arrive { from { opacity: 0; transform: translateX(-100%); } 30% { opacity: 1; } to { opacity: 0; transform: translateX(360%); } }
 .app-shell.arena-shell .arena-site-header--member { position: sticky; top: 0; isolation: isolate; }
-.arena-shell .arena-brand { min-height: 44px; }
+.arena-shell .arena-brand { min-width: 44px; min-height: 44px; }
 .arena-shell .arena-primary-nav > button { min-width: 44px; }
 .arena-shell .arena-page-wayfinding { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: -12px 0 14px; border-bottom: 1px solid #f1ede014; padding-bottom: 8px; }
 .arena-page-wayfinding ol { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin: 0; padding: 0; list-style: none; }
