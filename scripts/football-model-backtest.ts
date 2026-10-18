@@ -108,7 +108,7 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
          and s.home_score_fulltime between 0 and 20
          and s.away_score_fulltime between 0 and 20
          ${competitionFilter}
-       order by m.scheduled_start_at asc, m.id asc
+       order by m.scheduled_start_at desc, m.id desc
        limit $${params.push(options.limit)}`,
       params
     );
@@ -119,7 +119,7 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
       awayTeamId: row.away_team_id,
       homeGoals: Number(row.home_goals),
       awayGoals: Number(row.away_goals)
-    }));
+    })).reverse();
     if (matches.length <= options.minTraining) throw new Error("Not enough finished matches for the requested minimum training window.");
 
     const accumulator: BacktestAccumulator = {
