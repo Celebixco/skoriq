@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { AuthUser } from "../types";
 import { AppNavIcon, appDestinations, appRouteContext } from "./app-navigation";
+import { SkorIQMark } from "./SkorIQMark";
 
 type Navigate = (path: string) => void;
 type Props = { currentPath?: string; navigate: Navigate; user?: AuthUser; onLogout?: () => Promise<void>; busy?: boolean };
 
 export function ArenaBrand({ onClick }: { onClick: () => void }) {
-  return <button type="button" className="arena-brand" onClick={onClick} aria-label="SkorIQ ana sayfa"><svg width="38" height="38" viewBox="0 0 40 40" fill="none" aria-hidden="true"><rect width="40" height="40" rx="9" fill="#FFC400" /><path d="m9 28 8-10 6 5 8-13m-8 0h8v8" stroke="#11190E" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" /></svg><span>SkorIQ</span></button>;
+  return <button type="button" className="arena-brand" onClick={onClick} aria-label="SkorIQ ana sayfa"><SkorIQMark size={40} /><span>SkorIQ</span></button>;
 }
 
 export function ArenaNavigation({ currentPath = "/", navigate, user, onLogout, busy = false }: Props) {

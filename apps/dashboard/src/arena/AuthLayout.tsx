@@ -1,6 +1,7 @@
 import type { MouseEvent, ReactNode } from "react";
 import "./auth.css";
 import { ArenaAmbient } from "./ArenaAmbient";
+import { SkorIQMark } from "./SkorIQMark";
 
 export type AuthNavigate = (path: string) => void;
 
@@ -32,7 +33,7 @@ export function AuthLayout({ variant = "login", navigate, kicker, title, subtitl
       <ArenaAmbient />
       <header className="arena-auth__header">
         <AuthLink to="/" navigate={navigate} className="arena-auth__brand">
-          <svg aria-hidden="true" viewBox="0 0 40 40" width="40" height="40"><rect width="40" height="40" rx="8" fill="#FFC400" /><path d="m9 28 8-11 6 6 9-13m-8 1 8-1-1 8" fill="none" stroke="#0A0D0B" strokeWidth="4" strokeLinejoin="round" /></svg>
+          <SkorIQMark size={42} />
           <span>SkorIQ</span>
         </AuthLink>
         <AuthLink to="/" navigate={navigate} className="arena-auth__back"><AuthArrow back /><span>Ana sayfaya dön</span></AuthLink>

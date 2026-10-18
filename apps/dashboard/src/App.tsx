@@ -72,6 +72,7 @@ import { AppShell } from "./app/AppShell";
 import "./app/app.css";
 import { LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage } from "./arena/AuthPages";
 import { ArenaHome } from "./arena/ArenaHome";
+import { SkorIQMark } from "./arena/SkorIQMark";
 import "./arena/theme.css";
 import { FilterDisclosure, SectionTabs } from "./arena/SectionTabs";
 import { clearWorkspaceChoices, useWorkspaceState } from "./arena/useWorkspaceState";
@@ -6352,27 +6353,7 @@ type NavIconName =
   | "menu";
 
 function BrandMark({ size = 26 }: { size?: number }) {
-  return (
-    <svg className="brand-mark" width={size} height={size} viewBox="0 0 40 40" fill="none" aria-hidden="true">
-      <rect x="1" y="1" width="38" height="38" rx="10" fill="#FFC400" />
-      <path
-        d="M10.5 26.6 L16.8 19.4 L22.4 22"
-        stroke="#1D1913"
-        strokeWidth="3.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M22.4 22 L28.4 14"
-        stroke="#1D1913"
-        strokeWidth="3.4"
-        strokeLinecap="round"
-        strokeDasharray="3.2 2.6"
-      />
-      <circle cx="29.1" cy="13.2" r="3.3" fill="#1D1913" />
-      <circle cx="29.1" cy="13.2" r="6" stroke="#1D1913" strokeOpacity="0.3" strokeWidth="1.4" />
-    </svg>
-  );
+  return <SkorIQMark size={size} className="brand-mark" />;
 }
 
 function NavIcon({ name }: { name: NavIconName }) {
