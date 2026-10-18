@@ -41,6 +41,7 @@ interface FixtureOptions {
   seasonRows?: unknown[];
   teamRows?: (providerTeamId: string) => unknown[];
   matchRows?: unknown[];
+  scheduledMatchRows?: unknown[];
   updateRows?: unknown[];
   loggingFailure?: boolean;
 }
@@ -81,7 +82,11 @@ function fixture(options: FixtureOptions = {}) {
             ? [{ kind: "mapping", id: "home-team", internal_entity_type: "team", team_exists: true }]
             : [{ kind: "metadata", id: "away-team", team_exists: true }] };
         }
-        if (/FROM matches m/.test(text)) {
+        if (/ORDER BY abs\(extract\(epoch/.test(text)) {
+          reads.push(text);
+          return { rows: options.scheduledMatchRows ?? [] };
+        }
+        if (/FROM matches m/.test(text) && !/ORDER BY abs\(extract\(epoch/.test(text)) {
           reads.push(text);
           return { rows: options.matchRows ?? [] };
         }
@@ -191,6 +196,19 @@ describe("SofaScore finished matches refresh", () => {
     expect(JSON.parse(String(update?.params[2]))).toEqual({ sofascoreId: 6001, homeScore: 2, awayScore: 1, round: 7 });
     expect(scores?.params).toEqual(["match-1", "home-team", "away-team", "home-team", 2, 1, 1, 0]);
     expect(scores?.text).toMatch(/ON CONFLICT \(match_id\)/);
+  });
+
+  it("reconciles a rescheduled scheduled fixture when the event id or date changed", async () => {
+    const data = fixture({ matchRows: [], scheduledMatchRows: [scheduledExisting[0]] });
+    const report = await runSofaScoreMatchesSync({ execute: true, capturePath: "capture.json", logRun: false }, data.dependencies);
+
+    expect(report.entries[0]).toMatchObject({ action: "updated", matchId: "match-1" });
+    const update = data.writes.find((write) => /UPDATE matches/.test(write.text));
+    const scores = data.writes.find((write) => /INSERT INTO football_match_scores/.test(write.text));
+    expect(update?.text).toMatch(/scheduled_start_at = to_timestamp\(\$4::bigint\)/);
+    expect(update?.params[3]).toBe(RECENT_TS);
+    expect(scores?.params).toEqual(["match-1", "home-team", "away-team", "home-team", 2, 1, 1, 0]);
+    expect(data.reads.some((query) => /ORDER BY abs\(extract\(epoch/.test(query))).toBe(true);
   });
 
   it("keeps an already-finished match with identical scores unchanged", async () => {

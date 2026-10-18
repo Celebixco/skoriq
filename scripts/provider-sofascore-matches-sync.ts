@@ -348,7 +348,7 @@ async function importEvent(
   }
 
   context.startedQueries.count++;
-  const existingRows = (await database.query(findMatchSql, [
+  let existingRows = (await database.query(findMatchSql, [
     event.sofascoreId,
     competition.id,
     season.id,
@@ -356,6 +356,22 @@ async function importEvent(
     awayTeam.id,
     event.startTimestamp
   ])).rows.map(record);
+  if (existingRows.length === 0 && event.statusType === "finished") {
+    context.startedQueries.count++;
+    const scheduledRows = (await database.query(findScheduledFixtureSql, [
+      competition.id,
+      season.id,
+      homeTeam.id,
+      awayTeam.id,
+      event.startTimestamp
+    ])).rows.map(record);
+    if (scheduledRows.length > 1) {
+      return { ...base, action: "skipped", reason: "identity_conflict" };
+    }
+    if (scheduledRows.length === 1) {
+      existingRows = scheduledRows;
+    }
+  }
   if (existingRows.length > 1) {
     return { ...base, action: "skipped", reason: "identity_conflict" };
   }
@@ -377,7 +393,8 @@ async function importEvent(
     const updated = await database.query(updateMatchSql, [
       matchId,
       winnerTeamId,
-      JSON.stringify(metadataPatch(event))
+      JSON.stringify(metadataPatch(event)),
+      event.startTimestamp
     ]);
     if (updated.rows.length !== 1) {
       return { ...base, action: "skipped", reason: "concurrent_change", matchId };
@@ -675,6 +692,17 @@ const resolveTeamSql = `SELECT 'mapping' AS kind, pm.internal_entity_id::text AS
   FROM teams t JOIN sports s ON s.id = t.sport_id AND s.slug = 'football'
   WHERE t.metadata_json->>'sofascoreId' = $1`;
 
+const findScheduledFixtureSql = `SELECT m.id::text AS id, m.status, m.winner_team_id::text AS winner_team_id, m.metadata_json,
+  fs.home_score_current, fs.away_score_current, fs.home_score_halftime, fs.away_score_halftime
+  FROM matches m
+  LEFT JOIN football_match_scores fs ON fs.match_id = m.id
+  WHERE m.competition_id = $1::uuid AND m.season_id = $2::uuid
+    AND m.home_team_id = $3::uuid AND m.away_team_id = $4::uuid
+    AND m.status IN ('scheduled', 'not_started', 'postponed', 'cancelled')
+    AND abs(extract(epoch FROM (m.scheduled_start_at - to_timestamp($5::bigint)))) <= 1209600
+  ORDER BY abs(extract(epoch FROM (m.scheduled_start_at - to_timestamp($5::bigint)))) ASC
+  LIMIT 2`;
+
 const findMatchSql = `SELECT m.id::text AS id, m.status, m.winner_team_id::text AS winner_team_id, m.metadata_json,
     fs.home_score_current, fs.away_score_current, fs.home_score_halftime, fs.away_score_halftime
   FROM matches m
@@ -692,6 +720,7 @@ const updateMatchSql = `UPDATE matches
   SET status = 'finished',
       winner_team_id = COALESCE($2::uuid, winner_team_id),
       metadata_json = COALESCE(NULLIF(metadata_json, 'null'::jsonb), '{}'::jsonb) || $3::jsonb,
+      scheduled_start_at = to_timestamp($4::bigint),
       updated_at = now()
   WHERE id = $1::uuid
   RETURNING id`;
