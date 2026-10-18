@@ -14,7 +14,8 @@ const DATABASE_URL = process.env.DATABASE_URL;
 const STATE_DIR = process.env.HISTORICAL_STATE_DIR || "/var/lib/skoriq-historical";
 const COMPLETED_PATH = join(STATE_DIR, "completed.json");
 const SEASONS = Math.max(1, Math.min(5, Number(process.env.HISTORICAL_SEASONS || 2)));
-const PAGES = Math.max(1, Math.min(5, Number(process.env.HISTORICAL_PAGES || 2)));
+const PAGES = Math.max(1, Math.min(15, Number(process.env.HISTORICAL_PAGES || 2)));
+const TOURNAMENT_ID = process.env.HISTORICAL_TOURNAMENT_ID?.trim();
 const FORCE = process.env.HISTORICAL_FORCE === "1";
 const PYTHON_BIN = process.env.PYTHON_BIN || "python3";
 const TSX_BIN = join(process.cwd(), "node_modules", ".bin", "tsx");
@@ -91,12 +92,14 @@ async function main() {
   }
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const outputPath = join(STATE_DIR, `historical-${stamp}.json`);
-  log("fetch_started", { seasons: SEASONS, pages: PAGES });
-  await syncLog("begin", { status: "running", summary: { seasons: SEASONS, pages: PAGES } });
+  log("fetch_started", { seasons: SEASONS, pages: PAGES, tournamentId: TOURNAMENT_ID ?? null });
+  await syncLog("begin", { status: "running", summary: { seasons: SEASONS, pages: PAGES, tournamentId: TOURNAMENT_ID ?? null } });
 
-  const fetch = await run(PYTHON_BIN, [
+  const fetchArgs = [
     FETCH_SCRIPT, "--output", outputPath, "--seasons", String(SEASONS), "--pages", String(PAGES)
-  ]);
+  ];
+  if (TOURNAMENT_ID) fetchArgs.push("--tournament-id", TOURNAMENT_ID);
+  const fetch = await run(PYTHON_BIN, fetchArgs);
   const fetchSummary = parseLastJson(fetch.stdout);
   if (fetch.code !== 0 || !fetchSummary?.events) {
     const error = redact(fetch.stderr).slice(-700) || `fetch exit ${fetch.code}`;
