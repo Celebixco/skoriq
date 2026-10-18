@@ -7,4 +7,5 @@ export * from "./football-prediction-candidate-generator.js";
 export * from "./football-prediction-consistency-engine.js";
 export * from "./football-prediction-settlement-engine.js";
 export * from "./football-public-eligibility-evaluator.js";
+export * from "./football-probabilistic-model.js";
 export * from "./basketball-team-form-feature-builder.js";
