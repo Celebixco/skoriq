@@ -261,6 +261,20 @@ services:
       postgres:
         condition: service_healthy
 
+  team-mapping-repair:
+    build:
+      context: .
+      dockerfile: Dockerfile.sync
+    restart: "no"
+    command: ["node_modules/.bin/tsx", "scripts/repair-sofascore-team-mappings.ts", "--execute"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
+      TZ: Europe/Istanbul
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   dragonfly_data:
