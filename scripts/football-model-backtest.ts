@@ -10,7 +10,8 @@ import {
   outcomeOf,
   predictFootballMarkets,
   type FootballCalibrationSample,
-  type FootballModelMatch
+  type FootballModelMatch,
+  type FootballOutcome
 } from "@sports-data/analysis";
 import { writeSyncRunLog } from "./sync-run-log.js";
 
@@ -83,6 +84,13 @@ export interface BacktestReport {
     logLoss: number;
     expectedCalibrationError: number;
     coverage: Array<{ threshold: number; coverage: number; selected: number; accuracy: number }>;
+  };
+  drawPolicy: {
+    margin: number;
+    calibrationAccuracy: number;
+    evaluationAccuracy: number;
+    argmaxEvaluationAccuracy: number;
+    drawPicks: number;
   };
   firstPredictionAt: string | null;
   lastPredictionAt: string | null;
@@ -251,6 +259,7 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
       windowSize: Math.max(40, Math.min(200, Math.floor(samples.length / 3))),
       refitEvery: 10
     });
+    const drawPolicy = fitDrawPolicy(calibrationSet, evaluationSet);
     return {
       competitionId: options.competitionId ?? null,
       trainingMatches: matches.length,
@@ -299,6 +308,7 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
         expectedCalibrationError: rollingCalibration.report.expectedCalibrationError,
         coverage: rollingCalibration.coverage
       },
+      drawPolicy,
       firstPredictionAt,
       lastPredictionAt
     };
@@ -314,6 +324,44 @@ interface BacktestRow {
   away_team_id: string;
   home_goals: number;
   away_goals: number;
+}
+
+function fitDrawPolicy(calibration: readonly FootballCalibrationSample[], evaluation: readonly FootballCalibrationSample[]) {
+  const margins = Array.from({ length: 11 }, (_, index) => round(index / 100, 2));
+  let bestMargin = 0;
+  let bestCalibrationAccuracy = -1;
+  for (const margin of margins) {
+    const accuracy = accuracyAtMargin(calibration, margin);
+    if (accuracy > bestCalibrationAccuracy + 1e-9) {
+      bestCalibrationAccuracy = accuracy;
+      bestMargin = margin;
+    }
+  }
+  return {
+    margin: bestMargin,
+    calibrationAccuracy: round(bestCalibrationAccuracy, 4),
+    evaluationAccuracy: round(accuracyAtMargin(evaluation, bestMargin), 4),
+    argmaxEvaluationAccuracy: round(accuracyAtMargin(evaluation, 0), 4),
+    drawPicks: evaluation.filter((sample) => chooseOutcome(sample.probabilities, bestMargin) === "draw").length
+  };
+}
+
+function accuracyAtMargin(samples: readonly FootballCalibrationSample[], drawMargin: number): number {
+  if (samples.length === 0) return 0;
+  let correct = 0;
+  for (const sample of samples) {
+    if (chooseOutcome(sample.probabilities, drawMargin) === sample.outcome) correct += 1;
+  }
+  return correct / samples.length;
+}
+
+function chooseOutcome(
+  probabilities: { home: number; draw: number; away: number },
+  drawMargin: number
+): FootballOutcome {
+  const top = Math.max(probabilities.home, probabilities.away);
+  if (probabilities.draw + drawMargin >= top) return "draw";
+  return probabilities.home >= probabilities.away ? "home" : "away";
 }
 
 function probabilityBucket(probability: number): string {
