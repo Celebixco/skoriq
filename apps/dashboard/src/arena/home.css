@@ -72,6 +72,7 @@
 .arena-reasoning p { color: #b3bcb5; font-size: 11px; line-height: 1.6; }
 .arena-text-action { display: inline-flex; align-items: center; gap: 10px; padding: 7px 0; color: var(--arena-gold); background: transparent; border: 0; font-size: 12px !important; }
 .arena-reasoning .arena-text-action { margin-top: 7px; }
+.arena-prediction-actions:not(:empty) { display: flex; justify-content: flex-end; margin-top: 12px; }
 .arena-tactics { position: absolute; z-index: 1; left: 32%; bottom: 35px; width: 30%; max-width: 400px; color: #f7ce1c; opacity: .8; transform: rotate(-8deg); pointer-events: none; }
 .arena-fixtures { max-width: 1600px; margin: 0 auto; padding: 26px var(--arena-gutter) 0; }
 .arena-fixtures-toolbar { display: flex; align-items: center; gap: 25px; margin-bottom: 20px; }
@@ -99,6 +100,8 @@
 .arena-match-card > footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .arena-match-action, .arena-outline-action { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 37px; padding: 7px 16px; color: var(--arena-gold); border: 1px solid #c9ae04; border-radius: 8px; background: rgba(4, 10, 5, .4); font-size: 12px !important; font-weight: 600 !important; }
 .arena-match-action > svg { width: 17px; height: 17px; }
+.arena-match-coupon-row { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; }
+.arena-match-coupon-label { min-width: 0; font-size: 12px; font-weight: 600; line-height: 1.4; }
 .arena-fixtures-footer { display: flex; align-items: center; justify-content: space-between; gap: 15px; min-height: 52px; color: #969f98; font-size: 11px; }
 .arena-fixtures-footer > p { display: flex; align-items: center; gap: 10px; font-size: 11px; line-height: 1.4; }
 .arena-fixtures-footer > p > svg { flex-shrink: 0; }

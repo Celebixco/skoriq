@@ -1,0 +1,33 @@
+.arena-coupon-action { position: relative; z-index: 2; min-width: 0; }
+.arena-coupon-add { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 9px 12px; border: 1px solid #ffc40050; border-radius: 6px; background: #ffc40009; color: #ffd747; font: 600 11px/1.4 "Archivo", sans-serif; cursor: pointer; white-space: nowrap; touch-action: manipulation; }
+.arena-coupon-add:hover { background: #ffc40017; border-color: #ffc400; }
+.arena-coupon-add[aria-pressed="true"] { color: #162416; background: #ffc400; border-color: #ffc400; }
+.arena-coupon-add:disabled { opacity: .6; cursor: progress; }
+.arena-coupon-add:focus-visible, .arena-coupon-picker button:focus-visible { outline: 2px solid #ffd747; outline-offset: 3px; }
+.arena-coupon-add-error { max-width: 270px; margin: 6px 0 0; color: #f2b49b; font: 11px/1.6 "Archivo", sans-serif; white-space: normal; }
+.arena-coupon-picker { position: fixed; z-index: 90; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; padding: 14px; border: 1px solid #f1ede030; border-radius: 10px; background: #101a13; color: #f1ede0; box-shadow: 0 16px 48px #0008; font-family: "Archivo", sans-serif; }
+.arena-coupon-picker header { display: flex; align-items: start; gap: 8px; border-bottom: 1px solid #f1ede024; padding-bottom: 10px; }
+.arena-coupon-picker header > div { flex: 1; min-width: 0; }
+.arena-coupon-picker header small { display: block; margin-bottom: 5px; color: #c8b66f; font-size: 9px; letter-spacing: .12em; }
+.arena-coupon-picker header strong { display: block; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.arena-coupon-picker header > button { flex: 0 0 44px; width: 44px; height: 44px; border: 0; background: transparent; color: inherit; font-size: 25px; cursor: pointer; }
+.arena-coupon-choice { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 62px; width: 100%; padding: 11px 0; border: 0; border-bottom: 1px solid #f1ede016; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.arena-coupon-choice:hover { color: #ffd747; }
+.arena-coupon-choice strong { display: block; font-size: 13px; line-height: 1.5; }
+.arena-coupon-choice small { display: block; margin-top: 4px; color: #a9b6a5; font-size: 10px; line-height: 1.6; }
+.arena-coupon-choice > span:last-child { font-size: 22px; }
+.app-shell.arena-shell .analytics-match-row { position: relative; }
+.app-shell.arena-shell .analytics-match-open { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; cursor: pointer; }
+.app-shell.arena-shell .analytics-match-open:focus-visible { outline: 2px solid #ffc400; outline-offset: 3px; }
+.app-shell.arena-shell .analytics-match-row > :is(.analytics-card-topline, .analytics-match-main) { pointer-events: none; }
+.app-shell.arena-shell .analytics-match-row .arena-coupon-action { pointer-events: auto; }
+.arena-shell .member-prediction-preview-card > .arena-coupon-action { margin-top: 10px; }
+html[data-theme="light"] .arena-coupon-add { background: #ffc40009; border-color: #b5974c80; color: #765600; }
+html[data-theme="light"] .arena-coupon-add:hover { background: #fff2bd; border-color: #957323; }
+html[data-theme="light"] .arena-coupon-add[aria-pressed="true"] { color: #172b20; background: #ffc400; border-color: #c29a11; }
+html[data-theme="light"] .arena-coupon-add-error { color: #a23b2b; }
+html[data-theme="light"] .arena-coupon-picker { color: #172b20; background: #fffef9; border-color: #c5cebf; box-shadow: 0 16px 48px #172b2028; }
+html[data-theme="light"] .arena-coupon-picker header, html[data-theme="light"] .arena-coupon-choice { border-color: #d9dfd5; }
+html[data-theme="light"] .arena-coupon-picker header small, html[data-theme="light"] .arena-coupon-choice:hover { color: #765600; }
+html[data-theme="light"] .arena-coupon-choice small { color: #59685e; }
+html[data-theme="light"] .arena-coupon-add:focus-visible, html[data-theme="light"] .arena-coupon-picker button:focus-visible { outline-color: #315d3f; }

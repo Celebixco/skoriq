@@ -1,4 +1,5 @@
 import { CompetitionLogo, TeamLogo } from "../components";
+import { CouponAddButton } from "./CouponAddButton";
 import { confidenceValue, kickoffText, riskText, type ArenaMatch, type ArenaPrediction } from "./home-data";
 
 export function ArrowIcon({ className = "" }: { className?: string }) {
@@ -50,15 +51,17 @@ export function ArenaPredictionCard({ match, prediction, onOpen }: { match: Aren
         <summary>Neden bu tahmin?<ArrowIcon /></summary>
         <div><p>{match.demo ? "Bu kart ürünün nasıl çalıştığını gösteren örnek bir analizdir. Takımlar, güven skoru ve yorumlar güncel bir karşılaşma için öneri değildir." : prediction ? "Bu önizleme, maçın yayınlanabilir tahmin yorumunu ve güven skorunu gösterir. Form, gol profili ve karşılaşma geçmişinin ayrıntılarını maç raporunda inceleyebilirsin." : "Yayınlanabilir tahmin yorumu hazır olduğunda burada görünür. Mevcut verileri maç raporundan inceleyebilirsin."}</p><button className="arena-text-action" type="button" onClick={onOpen}>{match.demo ? "Kendi analizini keşfet" : "Maç raporunu aç"}<ArrowIcon /></button></div>
       </details>
+      {prediction && !match.demo ? <div className="arena-prediction-actions"><CouponAddButton match={match} preferredLabel={prediction.displayLabel} /></div> : null}
     </div>
   </article>;
 }
 
-export function ArenaMatchCard({ match, hasPrediction, onOpen }: { match: ArenaMatch; hasPrediction: boolean; onOpen: () => void }) {
+export function ArenaMatchCard({ match, hasPrediction, prediction, onOpen }: { match: ArenaMatch; hasPrediction: boolean; prediction?: ArenaPrediction; onOpen: () => void }) {
   return <article className="arena-match-card">
     <header><span className="arena-competition"><CompetitionLogo name={match.competition.name} size="sm" />{match.competition.name}</span><span className="arena-kickoff">{kickoffText(match)}</span></header>
     <MatchTeams match={match} />
     <footer><span className={`arena-readiness${hasPrediction ? " is-ready" : ""}`}><i />{hasPrediction ? "Analiz hazır" : "Yakında"}</span><button className="arena-match-action" type="button" aria-label={`${match.homeTeam.name} - ${match.awayTeam.name} maç analizini aç`} onClick={onOpen}>Analizi aç<ArrowIcon /></button></footer>
+    {hasPrediction && !match.demo ? <div className="arena-match-coupon-row">{prediction ? <span className="arena-match-coupon-label">{prediction.displayLabel}</span> : null}<CouponAddButton match={match} preferredLabel={prediction?.displayLabel} /></div> : null}
   </article>;
 }
 

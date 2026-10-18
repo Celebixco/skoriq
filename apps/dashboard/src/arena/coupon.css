@@ -1,0 +1,106 @@
+.arena-coupon-rail, .arena-coupon-dialog, .arena-coupon-launcher, .arena-coupon-mobile-feedback {
+  --coupon-bg: #0c140f; --coupon-ink: #f1ede0; --coupon-muted: #a8b4a9; --coupon-line: #f1ede024; --coupon-accent: #ffc400; --coupon-accent-ink: #111a0d; --coupon-danger: #f4b3a2;
+  box-sizing: border-box; font-family: "Archivo", sans-serif; font-variant-numeric: tabular-nums; color: var(--coupon-ink);
+}
+.arena-coupon-rail *, .arena-coupon-dialog * { box-sizing: border-box; }
+.arena-coupon-rail { display: none; }
+.arena-coupon-panel { display: flex; flex-direction: column; min-width: 0; max-height: inherit; background: var(--coupon-bg); }
+.arena-coupon-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 20px 20px 17px; border-top: 3px solid var(--coupon-accent); }
+.arena-coupon-header > svg { color: var(--coupon-muted); }
+.arena-coupon-eyebrow { color: var(--coupon-muted); font-size: 9px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
+.arena-coupon-header h2 { display: flex; align-items: center; gap: 10px; margin: 6px 0 0; font: 700 31px/.95 "Barlow Condensed", sans-serif; letter-spacing: -.02em; }
+.arena-coupon-header h2 > span { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 5px; border: 1px solid var(--coupon-line); border-radius: 5px; color: var(--coupon-accent); font: 500 11px/1 "JetBrains Mono", monospace; }
+.arena-coupon-summary { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 7px; margin: 0 20px; padding: 12px 0; border-block: 1px solid var(--coupon-line); }
+.arena-coupon-summary > strong { font-size: 11px; font-weight: 600; }
+.arena-coupon-summary > span { color: var(--coupon-muted); font-size: 9px; }
+.arena-coupon-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #60715d transparent; }
+.arena-coupon-picks { margin: 0; padding: 0 20px; list-style: none; }
+.arena-coupon-pick { min-width: 0; padding: 16px 0; border-bottom: 1px solid var(--coupon-line); }
+.arena-coupon-pick:last-child { border-bottom: 0; }
+.arena-coupon-pick__meta { display: flex; align-items: start; justify-content: space-between; gap: 12px; color: var(--coupon-muted); font-size: 9px; line-height: 1.5; }
+.arena-coupon-pick__meta > span { min-width: 0; overflow-wrap: anywhere; }
+.arena-coupon-pick__meta > time { flex-shrink: 0; font-size: 9px; }
+.arena-coupon-pick__fixture { display: flex; align-items: center; gap: 8px; margin: 5px -8px 5px 0; }
+.arena-coupon-match { display: flex; flex: 1; flex-direction: column; align-items: start; justify-content: center; gap: 2px; min-width: 0; min-height: 44px; padding: 5px 0; border: 0; background: transparent; color: var(--coupon-ink); text-align: left; font: 600 13px/1.4 "Archivo", sans-serif; cursor: pointer; }
+.arena-coupon-match span { max-width: 100%; overflow-wrap: anywhere; }
+.arena-coupon-match:hover { text-decoration: underline; text-underline-offset: 3px; }
+.arena-coupon-remove, .arena-coupon-close { display: inline-grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--coupon-muted); cursor: pointer; }
+.arena-coupon-remove:hover, .arena-coupon-close:hover { color: var(--coupon-ink); background: #a8b4a912; }
+.arena-coupon-pick__selection { display: block; overflow-wrap: anywhere; color: var(--coupon-accent); font: 700 23px/1.1 "Barlow Condensed", sans-serif; }
+.arena-coupon-pick__signals { display: flex; align-items: center; gap: 18px; margin: 11px 0 0; }
+.arena-coupon-pick__signals > div { display: flex; align-items: baseline; gap: 6px; }
+.arena-coupon-pick__signals dt { color: var(--coupon-muted); font-size: 10px; }
+.arena-coupon-pick__signals dd { margin: 0; font-size: 10px; font-weight: 600; }
+.arena-coupon-pick__signals > div:last-child dd { font: 500 10px/1.4 "JetBrains Mono", monospace; }
+.arena-coupon-empty { display: flex; flex-direction: column; align-items: start; padding: 30px 20px 34px; }
+.arena-coupon-empty__mark { display: grid; width: 40px; height: 40px; place-items: center; margin-bottom: 19px; border: 1px dashed #a8b4a955; color: var(--coupon-muted); }
+.arena-coupon-empty h3 { margin: 0 0 10px; font: 600 25px/1.1 "Barlow Condensed", sans-serif; }
+.arena-coupon-empty p { max-width: 28ch; margin: 0; color: var(--coupon-muted); font-size: 12px; line-height: 1.75; }
+.arena-coupon-empty p strong { color: var(--coupon-ink); font-weight: 600; }
+.arena-coupon-empty > span:last-child { margin-top: 18px; color: var(--coupon-muted); font-size: 10px; }
+.arena-coupon-footer { flex-shrink: 0; margin-top: auto; padding: 16px 20px 18px; border-top: 1px solid var(--coupon-line); }
+.arena-coupon-status, .arena-coupon-error { margin: 0 0 12px; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.arena-coupon-status { color: var(--coupon-ink); }
+.arena-coupon-error { color: var(--coupon-danger); }
+.arena-coupon-actions { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; }
+.arena-coupon-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 0; border: 0; border-radius: 5px; font-family: inherit; font-size: 11px; font-weight: 650; cursor: pointer; }
+.arena-coupon-actions .arena-coupon-copy { padding-inline: 10px; background: var(--coupon-accent); color: var(--coupon-accent-ink); }
+.arena-coupon-clear { background: transparent; color: var(--coupon-muted); }
+.arena-coupon-actions button:disabled, .arena-coupon-remove:disabled { cursor: default; opacity: .45; }
+.arena-coupon-actions .arena-coupon-copy:disabled { background: #a8b4a924; color: var(--coupon-muted); opacity: 1; }
+.arena-coupon-safety { margin: 13px 0 0; color: var(--coupon-muted); font-size: 9px; line-height: 1.6; }
+.arena-coupon-rail :focus-visible, .arena-coupon-dialog :focus-visible, .arena-coupon-launcher:focus-visible { outline: 2px solid var(--coupon-accent); outline-offset: 3px; }
+.arena-coupon-launcher { position: fixed; z-index: 44; right: 22px; bottom: 22px; display: flex; align-items: center; gap: 11px; min-height: 48px; padding: 10px 13px; border: 1px solid #ffc40080; border-radius: 9px; background: #101a13; box-shadow: 0 6px 24px #0006; font-size: 12px; font-weight: 650; cursor: pointer; transition: transform 160ms ease; }
+.arena-coupon-launcher:active { transform: scale(.97); }
+.arena-coupon-launcher > svg { color: var(--coupon-accent); }
+.arena-coupon-launcher > strong { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 5px; border-radius: 5px; background: var(--coupon-accent); color: var(--coupon-accent-ink); font: 600 11px/1 "JetBrains Mono", monospace; }
+.arena-coupon-dialog { position: fixed; inset: auto 0 0; width: min(520px, 100%); max-width: 100%; max-height: min(86dvh, 760px); margin: 0 0 0 auto; padding: 0; overflow: hidden; border: 1px solid var(--coupon-line); border-bottom: 0; border-radius: 16px 16px 0 0; background: var(--coupon-bg); box-shadow: 0 -18px 70px #0007; }
+.arena-coupon-dialog:not([open]) { display: none; }
+.arena-coupon-dialog[open] { display: flex; flex-direction: column; animation: arena-coupon-enter 180ms ease-out; }
+.arena-coupon-dialog::backdrop { background: #030905b8; backdrop-filter: blur(3px); }
+.arena-coupon-dialog .arena-coupon-panel { max-height: calc(min(86dvh, 760px) - 1px); }
+.arena-coupon-dialog .arena-coupon-header { padding-top: 19px; }
+.arena-coupon-dialog .arena-coupon-footer { padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+.arena-coupon-mobile-feedback { position: fixed; z-index: 44; right: 22px; bottom: 80px; max-width: min(320px, calc(100vw - 44px)); padding: 10px 13px; border: 1px solid var(--coupon-line); border-radius: 6px; background: var(--coupon-bg); font-size: 11px; line-height: 1.6; }
+.app-shell.arena-shell.arena-shell--coupon { padding-bottom: 88px; }
+@keyframes arena-coupon-enter { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+html[data-theme="light"] :is(.arena-coupon-rail, .arena-coupon-dialog, .arena-coupon-launcher, .arena-coupon-mobile-feedback) { --coupon-bg: #f8f7ef; --coupon-ink: #1b3023; --coupon-muted: #586a5b; --coupon-line: #213d2729; --coupon-accent: #ffc400; --coupon-danger: #a23e2d; }
+html[data-theme="light"] .arena-coupon-pick__selection, html[data-theme="light"] .arena-coupon-header h2 > span { color: #755500; }
+html[data-theme="light"] .arena-coupon-launcher { border-color: #b39b3f; background: #f8f7ef; box-shadow: 0 6px 24px #1b30231a; }
+html[data-theme="light"] .arena-coupon-launcher > svg { color: #755500; }
+html[data-theme="light"] :is(.arena-coupon-rail, .arena-coupon-dialog) :focus-visible, html[data-theme="light"] .arena-coupon-launcher:focus-visible { outline-color: #755500; }
+@media (max-width: 620px) {
+  .app-shell.arena-shell.arena-shell--coupon { padding-bottom: calc(148px + env(safe-area-inset-bottom, 0px)); }
+  .arena-coupon-launcher { right: 16px; bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+  .arena-coupon-mobile-feedback { right: 16px; bottom: calc(145px + env(safe-area-inset-bottom, 0px)); max-width: calc(100vw - 32px); }
+  .arena-coupon-dialog { width: 100%; }
+}
+@media (min-width: 1280px) {
+  .app-shell.arena-shell.arena-shell--coupon { display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: start; column-gap: 24px; padding-right: clamp(22px, 2.4vw, 48px); padding-bottom: 0; }
+  .app-shell.arena-shell.arena-shell--coupon > .arena-site-header { grid-column: 1 / -1; width: calc(100% + clamp(22px, 2.4vw, 48px)); }
+  .app-shell.arena-shell.arena-shell--coupon > .arena-app-dock { grid-column: 1 / -1; }
+  .app-shell.arena-shell.arena-shell--coupon > .app-main { grid-column: 1; min-width: 0; }
+  .app-shell.arena-shell.arena-shell--coupon .page-container { padding-left: clamp(24px, 3vw, 52px); padding-right: 0; }
+  .app-shell.arena-shell.arena-shell--coupon.arena-shell--home .page-container { padding: 0; }
+  .arena-coupon-rail { position: sticky; grid-column: 2; grid-row: 2; top: 96px; display: block; min-width: 0; max-height: calc(100dvh - 116px); margin-top: 24px; overflow: hidden; border: 1px solid var(--coupon-line); border-radius: 8px; }
+  .arena-coupon-launcher, .arena-coupon-mobile-feedback { display: none; }
+  .app-shell.arena-shell.arena-shell--coupon .arena-home { --arena-gutter: clamp(24px, 3vw, 52px); }
+  .app-shell.arena-shell.arena-shell--coupon .arena-hero-content { grid-template-columns: minmax(0, 1fr) minmax(295px, .85fr); min-height: 590px; gap: 24px; padding-right: 28px; }
+  .app-shell.arena-shell.arena-shell--coupon .arena-hero h1 { font-size: clamp(76px, 7vw, 122px); }
+  .app-shell.arena-shell.arena-shell--coupon .arena-hero-description { font-size: clamp(17px, 1.4vw, 24px); }
+  .app-shell.arena-shell.arena-shell--coupon .arena-primary-action { min-height: 56px; padding: 12px 18px; gap: 16px; font-size: 15px !important; }
+  .app-shell.arena-shell.arena-shell--coupon .arena-fixtures { padding-right: 0; }
+  .app-shell.arena-shell.arena-shell--coupon .arena-fixtures-toolbar { flex-wrap: wrap; gap: 16px; }
+  .app-shell.arena-shell.arena-shell--coupon .arena-fixtures-heading > h2 { font-size: 34px; }
+  .app-shell.arena-shell.arena-shell--coupon .arena-match-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1280px) and (max-width: 1500px) {
+  .app-shell.arena-shell.arena-shell--coupon .arena-hero-content { grid-template-columns: minmax(0, 1fr) minmax(285px, 1fr); padding-left: 28px; padding-right: 24px; }
+  .app-shell.arena-shell.arena-shell--coupon .arena-hero h1 { font-size: clamp(70px, 6.7vw, 96px); }
+  .app-shell.arena-shell.arena-shell--coupon .arena-prediction-card { padding: 18px; transform: rotate(-1deg); }
+  .app-shell.arena-shell.arena-shell--coupon .arena-prediction-result > h2 { font-size: 34px; }
+  .app-shell.arena-shell.arena-shell--coupon .arena-teams-featured .arena-team > strong { font-size: 23px; }
+  .app-shell.arena-shell.arena-shell--coupon .arena-prediction-labels { flex-wrap: wrap; }
+}
+@media (min-width: 1700px) { .app-shell.arena-shell.arena-shell--coupon .arena-match-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .arena-coupon-dialog[open] { animation: none; } .arena-coupon-launcher { transition: none; } .arena-coupon-launcher:active { transform: none; } }

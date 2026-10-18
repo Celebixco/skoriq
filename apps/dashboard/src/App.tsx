@@ -81,6 +81,8 @@ import "./arena/match-center.css";
 import "./arena/explorer.css";
 import "./arena/results.css";
 import "./arena/daylight.css";
+import { CouponAddButton } from "./arena/CouponAddButton";
+import type { CouponMatch } from "./arena/coupon-model";
 
 export { LandingPage };
 
@@ -985,17 +987,8 @@ function MatchList({ data, navigate }: { data: FootballAnalyticsMatchListRespons
             <article
               className="match-row analytics-match-row"
               key={item.match.matchId}
-              role="button"
-              tabIndex={0}
-              onClick={() => navigate(detailPath)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  navigate(detailPath);
-                }
-              }}
-              aria-label={`${item.match.homeTeam.name} vs ${item.match.awayTeam.name} analizini aç`}
             >
+              <button type="button" className="analytics-match-open" onClick={() => navigate(detailPath)} aria-label={`${item.match.homeTeam.name} vs ${item.match.awayTeam.name} analizini aç`} />
               <div className="analytics-card-topline">
                 <p className="analytics-match-meta">
                   <span className="analytics-match-date">{formatDateTime(item.match.kickoffAt)}</span>
@@ -1026,6 +1019,7 @@ function MatchList({ data, navigate }: { data: FootballAnalyticsMatchListRespons
                 <div className="analytics-match-badges">
                   {item.predictionEligible ? <span className="badge badge-good" title="SkorIQ bu maç için tahmin üretebiliyor.">Tahmine Uygun</span> : null}
                   {item.hasPredictionPreview ? <span className="badge badge-info" title="Tahmin yayında; analizi açıp okuyabilirsin.">Tahmin Hazır</span> : null}
+                  {item.hasPredictionPreview ? <CouponAddButton match={item.match} /> : null}
                   <span className="analytics-row-cta" aria-hidden="true">Analizi Aç →</span>
                 </div>
               </div>
@@ -1197,7 +1191,7 @@ export function MatchDetailReportView({
       {/* 1. OVERVIEW TAB */}
       {activeTab === "overview" && (
         <>
-          <MemberPredictionPreview matchId={matchId} />
+          <MemberPredictionPreview match={report.match} />
 
 
 
@@ -2463,8 +2457,8 @@ function AdminMatchReviewLinks({ matchId, navigate }: { matchId: string; navigat
   );
 }
 
-function MemberPredictionPreview({ matchId }: { matchId: string }) {
-  const { data, loading, error } = useLoad(() => fetchFootballMemberPredictionPreview(matchId), [matchId]);
+function MemberPredictionPreview({ match }: { match: CouponMatch }) {
+  const { data, loading, error } = useLoad(() => fetchFootballMemberPredictionPreview(match.matchId), [match.matchId]);
 
   if (loading) {
     return (
@@ -2482,10 +2476,10 @@ function MemberPredictionPreview({ matchId }: { matchId: string }) {
 
   if (!data) return null;
 
-  return <MemberPredictionPreviewSection data={data} />;
+  return <MemberPredictionPreviewSection data={data} match={match} />;
 }
 
-export function MemberPredictionPreviewSection({ data }: { data: FootballMemberPredictionPreviewResponse }) {
+export function MemberPredictionPreviewSection({ data, match }: { data: FootballMemberPredictionPreviewResponse; match?: CouponMatch }) {
   const hasCandidates = countMemberPreviewItems(data.groups) > 0;
   const tiers = ["primary", "try", "alternative"] as const;
 
@@ -2513,7 +2507,7 @@ export function MemberPredictionPreviewSection({ data }: { data: FootballMemberP
       {data.status === "available" ? (
         <div className="prediction-preview-grid member-prediction-preview-grid">
           {tiers.map((tier) => (
-            <MemberPredictionPreviewGroup key={tier} tier={tier} items={data.groups[tier] ?? []} />
+            <MemberPredictionPreviewGroup key={tier} tier={tier} items={data.groups[tier] ?? []} match={match} minimumLeadMinutes={data.analysisWindow.minimumLeadMinutes} />
           ))}
         </div>
       ) : null}
@@ -2548,10 +2542,14 @@ function memberPredictionPreviewStatusText(data: FootballMemberPredictionPreview
 
 function MemberPredictionPreviewGroup({
   tier,
-  items
+  items,
+  match,
+  minimumLeadMinutes
 }: {
   tier: "primary" | "try" | "alternative";
   items: FootballMemberPredictionPreviewResponse["groups"]["primary"];
+  match?: CouponMatch;
+  minimumLeadMinutes: number;
 }) {
   return (
     <section className={`prediction-preview-group member-prediction-preview-group prediction-preview-${tier}`}>
@@ -2562,14 +2560,14 @@ function MemberPredictionPreviewGroup({
       <div className="prediction-preview-cards">
         {items.length === 0 ? <p className="muted prediction-preview-empty">Bu grupta aday yok.</p> : null}
         {items.map((item) => (
-          <MemberPredictionPreviewCard key={item.predictionId} item={item} />
+          <MemberPredictionPreviewCard key={item.predictionId} item={item} match={match} minimumLeadMinutes={minimumLeadMinutes} />
         ))}
       </div>
     </section>
   );
 }
 
-function MemberPredictionPreviewCard({ item }: { item: FootballMemberPredictionPreviewResponse["groups"]["primary"][number] }) {
+function MemberPredictionPreviewCard({ item, match, minimumLeadMinutes }: { item: FootballMemberPredictionPreviewResponse["groups"]["primary"][number]; match?: CouponMatch; minimumLeadMinutes: number }) {
   return (
     <article className="prediction-preview-card member-prediction-preview-card">
       <div className="prediction-preview-card-main">
@@ -2583,6 +2581,7 @@ function MemberPredictionPreviewCard({ item }: { item: FootballMemberPredictionP
         <span>Risk seviyesi: {riskLevelLabel(item.riskLevel)}</span>
       </div>
       {item.reasoningSummary ? <p>{formatDraftReasoning(item.reasoningSummary)}</p> : null}
+      {match ? <CouponAddButton match={match} candidate={item} minimumLeadMinutes={minimumLeadMinutes} /> : null}
     </article>
   );
 }

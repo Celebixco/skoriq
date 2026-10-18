@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { DashboardOverviewResponse } from "../types";
 import { ArenaHome } from "./ArenaHome";
+import { CouponProvider } from "./CouponProvider";
 import { availablePredictions, confidenceValue } from "./home-data";
 
 function response(): DashboardOverviewResponse {
@@ -26,7 +27,32 @@ function render(data: DashboardOverviewResponse | null, authenticated = true, er
   return renderToStaticMarkup(<ArenaHome overview={{ data, loading, error }} authenticated={authenticated} navigate={vi.fn()} />);
 }
 
+function renderWithCoupon(data: DashboardOverviewResponse | null, authenticated = true) {
+  return renderToStaticMarkup(<CouponProvider userId="member-home-test"><ArenaHome overview={{ data, loading: false, error: null }} authenticated={authenticated} navigate={vi.fn()} /></CouponProvider>);
+}
+
 describe("ArenaHome data integrity", () => {
+  it("offers separate coupon controls on the featured and fixture prediction for members", () => {
+    const html = renderWithCoupon(response());
+    expect(html.match(/class="arena-coupon-add"/g)).toHaveLength(2);
+    expect(html).toContain('class="arena-match-coupon-label">MS 2,5 Üst</span>');
+    expect(html).toContain('aria-label="Ankara Kuzey - İzmir Güney maç analizini aç"');
+    expect(render(response())).not.toContain("Kupona ekle");
+  });
+
+  it("does not offer coupon actions for demo, stale, failed, unmatched or ineligible previews", () => {
+    const stale = response();
+    stale.predictionPreview.status = "stale";
+    const failed = response();
+    failed.dataStatus.predictionPreview = "error";
+    const unmatched = response();
+    unmatched.predictionPreview.items[0]!.matchId = "orphan-preview";
+    const ineligible = response();
+    ineligible.upcomingMatches[0]!.predictionEligible = false;
+    for (const data of [stale, failed, unmatched, ineligible]) expect(renderWithCoupon(data)).not.toContain("Kupona ekle");
+    expect(renderWithCoupon(null, false)).not.toContain("Kupona ekle");
+  });
+
   it.each([["primary", "Tahminim"], ["try", "Denenir"], ["alternative", "Alternatif"]] as const)("preserves the visible recommendation tier: %s", (tier, label) => {
     const data = response();
     data.predictionPreview.items[0]!.recommendationTier = tier;
