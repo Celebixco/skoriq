@@ -1,4 +1,4 @@
-services:
+﻿services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -237,7 +237,7 @@ services:
       postgres:
         condition: service_healthy
 
-  h2h-build:
+  h2h-build-v2:
     build:
       context: .
       dockerfile: Dockerfile
@@ -270,3 +270,4 @@ volumes:
   lineups_state:
   historical_backfill_state:
   h2h_build_state:
+
