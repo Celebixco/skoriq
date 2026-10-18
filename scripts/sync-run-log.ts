@@ -30,7 +30,8 @@ const jobs: Record<string, JobIdentity> = {
   "historical-backfill": { jobKey: "sofascore.historical-backfill", jobName: "historical-backfill", entityType: "match" },
   "h2h-build": { jobKey: "sofascore.h2h-build", jobName: "h2h-build", entityType: "match" },
   "prematch": { jobKey: "analytics.prematch", jobName: "daily-prematch", entityType: "match" },
-  "settlement": { jobKey: "analytics.settlement", jobName: "prediction-settlement", entityType: "match" }
+  "settlement": { jobKey: "analytics.settlement", jobName: "prediction-settlement", entityType: "match" },
+  "model-backtest": { jobKey: "analytics.model-backtest", jobName: "football-model-backtest", entityType: "match" }
 };
 const failedStatuses = new Set(["fetch_failed", "import_failed", "service_error"]);
 const phases = new Set<SyncRunPhase>(["begin", "step", "final"]);

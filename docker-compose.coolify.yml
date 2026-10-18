@@ -314,6 +314,20 @@ services:
       api:
         condition: service_started
 
+  model-backtest:
+    build:
+      context: .
+      dockerfile: Dockerfile.sync
+    restart: "no"
+    command: ["node_modules/.bin/tsx", "scripts/football-model-backtest.ts", "--limit=5000", "--min-training=500", "--refit-every=100", "--max-predictions=800", "--iterations=120"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
+      TZ: Europe/Istanbul
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   dragonfly_data:

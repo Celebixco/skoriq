@@ -7,6 +7,7 @@ import {
   predictFootballMarkets,
   type FootballModelMatch
 } from "@sports-data/analysis";
+import { writeSyncRunLog } from "./sync-run-log.js";
 
 interface BacktestOptions {
   databaseUrl: string;
@@ -16,6 +17,7 @@ interface BacktestOptions {
   refitEvery: number;
   maxPredictions: number;
   iterations: number;
+  logRun: boolean;
 }
 
 interface BacktestMatch extends FootballModelMatch {
@@ -60,6 +62,7 @@ export function parseBacktestArgs(argv: string[]): BacktestOptions {
     refitEvery: 100,
     maxPredictions: 1500,
     iterations: 180,
+    logRun: true,
     competitionId: undefined
   };
   for (let index = 0; index < argv.length; index++) {
@@ -76,6 +79,7 @@ export function parseBacktestArgs(argv: string[]): BacktestOptions {
     else if (arg === "--max-predictions") options.maxPredictions = positiveInteger(requireValue(argv, ++index, arg), arg);
     else if (arg.startsWith("--iterations=")) options.iterations = positiveInteger(arg.slice("--iterations=".length), arg);
     else if (arg === "--iterations") options.iterations = positiveInteger(requireValue(argv, ++index, arg), arg);
+    else if (arg === "--no-log") options.logRun = false;
     else throw new Error(`Unknown backtest argument "${arg}".`);
   }
   if (!options.databaseUrl) throw new Error("DATABASE_URL is required for the model backtest.");
@@ -258,10 +262,35 @@ function round(value: number, digits: number): number {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  runBacktest(parseBacktestArgs(process.argv.slice(2)))
-    .then((report) => console.log(JSON.stringify(report, null, 2)))
-    .catch((error: unknown) => {
-      console.error(error instanceof Error ? error.message : "Model backtest failed.");
+  void (async () => {
+    let options: BacktestOptions | undefined;
+    try {
+      options = parseBacktestArgs(process.argv.slice(2));
+      const report = await runBacktest(options);
+      if (options.logRun) {
+        await writeSyncRunLog({
+          job: "model-backtest",
+          status: "succeeded",
+          mode: "execute",
+          phase: "final",
+          summary: JSON.stringify(report)
+        }, options.databaseUrl);
+      }
+      console.log(JSON.stringify(report, null, 2));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Model backtest failed.";
+      if (options?.logRun) {
+        await writeSyncRunLog({
+          job: "model-backtest",
+          status: "failed",
+          mode: "execute",
+          phase: "final",
+          error: message.replace(/postgres(?:ql)?:\/\/[^\s]+/gi, "DATABASE_URL=<redacted>").slice(0, 500),
+          summary: JSON.stringify({ error: message.replace(/postgres(?:ql)?:\/\/[^\s]+/gi, "DATABASE_URL=<redacted>").slice(0, 500) })
+        }, options.databaseUrl).catch(() => undefined);
+      }
+      console.error(message);
       process.exitCode = 1;
-    });
+    }
+  })();
 }
