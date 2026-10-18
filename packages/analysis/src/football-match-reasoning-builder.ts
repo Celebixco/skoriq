@@ -169,9 +169,9 @@ export function buildFootballMatchReasoning(feature: FootballMatchReasoningPredi
 function extractSampleSizes(metadata: Record<string, unknown>) {
   const sampleSizes = isRecord(metadata.sampleSizes) ? metadata.sampleSizes : {};
   return {
-    homeForm: numberFromUnknown(sampleSizes.homeForm),
-    awayForm: numberFromUnknown(sampleSizes.awayForm),
-    h2h: numberFromUnknown(sampleSizes.h2h)
+    homeForm: numberFromUnknown(sampleSizes.homeForm) || numberFromUnknown(metadata.homeFormSampleSize),
+    awayForm: numberFromUnknown(sampleSizes.awayForm) || numberFromUnknown(metadata.awayFormSampleSize),
+    h2h: numberFromUnknown(sampleSizes.h2h) || numberFromUnknown(metadata.h2hSampleSize)
   };
 }
 

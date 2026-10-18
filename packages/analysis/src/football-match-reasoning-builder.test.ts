@@ -37,6 +37,23 @@ describe("football match reasoning builder", () => {
     expect(reasoning.risk_factors).not.toContain("Head-to-head history is missing or zero-sample, so confidence is capped.");
   });
 
+  it("reads top-level sample sizes produced by the analytics query", () => {
+    const reasoning = buildFootballMatchReasoning({
+      ...readyFeature,
+      h2hCoverageScore: 100,
+      metadataJson: {
+        h2hMissing: false,
+        homeFormSampleSize: 5,
+        awayFormSampleSize: 4,
+        h2hSampleSize: 3
+      }
+    });
+
+    expect(reasoning.metadata.sampleSizes).toEqual({ homeForm: 5, awayForm: 4, h2h: 3 });
+    expect(reasoning.metadata.h2hMissing).toBe(false);
+    expect(reasoning.confidence_ceiling).toBe(80);
+  });
+
   it("caps confidence and records H2H risk when ready row has missing H2H", () => {
     const reasoning = buildFootballMatchReasoning({
       ...readyFeature,
