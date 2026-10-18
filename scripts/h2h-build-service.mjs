@@ -108,7 +108,7 @@ async function main() {
     const failures = [];
     for (const match of matches) {
       const result = await run(TSX_BIN, [
-        BUILD_SCRIPT, "--match-id", match.id, "--window-sizes", WINDOW_SIZES, "--execute"
+        BUILD_SCRIPT, `--match-id=${match.id}`, `--window-sizes=${WINDOW_SIZES}`, "--execute"
       ]);
       if (result.code === 0) built += 1;
       else failures.push({ matchId: match.id, error: redact(result.stderr).slice(-300) });
