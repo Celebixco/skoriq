@@ -34,6 +34,9 @@ interface BacktestAccumulator {
   over25Correct: number;
   bttsPredictions: number;
   bttsCorrect: number;
+  homePicks: number;
+  drawPicks: number;
+  awayPicks: number;
   probabilityBuckets: Map<string, { count: number; correct: number; probabilitySum: number }>;
 }
 
@@ -49,6 +52,9 @@ export interface BacktestReport {
   over25Accuracy: number;
   bttsAccuracy: number;
   averageTopProbability: number;
+  homePickRate: number;
+  drawPickRate: number;
+  awayPickRate: number;
   probabilityBuckets: Array<{ bucket: string; count: number; accuracy: number; averageProbability: number }>;
   firstPredictionAt: string | null;
   lastPredictionAt: string | null;
@@ -132,6 +138,9 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
       over25Correct: 0,
       bttsPredictions: 0,
       bttsCorrect: 0,
+      homePicks: 0,
+      drawPicks: 0,
+      awayPicks: 0,
       probabilityBuckets: new Map()
     };
     let model: ReturnType<typeof fitFootballPoissonModel> | null = null;
@@ -173,6 +182,9 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
       accumulator.predictions += 1;
       accumulator.correct += predicted === actual ? 1 : 0;
       accumulator.homeBaselineCorrect += actual === "home" ? 1 : 0;
+      if (predicted === "home") accumulator.homePicks += 1;
+      else if (predicted === "draw") accumulator.drawPicks += 1;
+      else accumulator.awayPicks += 1;
       accumulator.logLoss += -Math.log(Math.max(1e-12, probabilityByOutcome[actual]));
       accumulator.brier += (probabilities.homeWin - (actual === "home" ? 1 : 0)) ** 2
         + (probabilities.draw - (actual === "draw" ? 1 : 0)) ** 2
@@ -210,6 +222,9 @@ export async function runBacktest(options: BacktestOptions): Promise<BacktestRep
         [...accumulator.probabilityBuckets.values()].reduce((sum, bucket) => sum + bucket.probabilitySum, 0) / accumulator.predictions,
         4
       ),
+      homePickRate: ratio(accumulator.homePicks, accumulator.predictions),
+      drawPickRate: ratio(accumulator.drawPicks, accumulator.predictions),
+      awayPickRate: ratio(accumulator.awayPicks, accumulator.predictions),
       probabilityBuckets: [...accumulator.probabilityBuckets.entries()]
         .sort(([left], [right]) => left.localeCompare(right))
         .map(([bucket, value]) => ({

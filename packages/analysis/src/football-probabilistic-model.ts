@@ -71,8 +71,8 @@ export interface FootballMarketProbabilities {
 }
 
 const DEFAULTS: Required<FootballPoissonModelOptions> = {
-  iterations: 500,
-  learningRate: 0.6,
+  iterations: 600,
+  learningRate: 0.08,
   regularization: 0.01,
   timeDecayHalfLifeDays: 365,
   dixonColesRho: -0.06,
@@ -109,6 +109,11 @@ export function fitFootballPoissonModel(matches: readonly FootballModelMatch[], 
   let leagueIntercept = Math.log(Math.max(0.1, (homeAverage + awayAverage) / 2));
   let homeAdvantage = clamp(Math.log(Math.max(0.1, homeAverage) / Math.max(0.1, awayAverage)), -0.6, 0.6);
 
+  for (const match of rows) {
+    counts[match.homeTeamId] = (counts[match.homeTeamId] ?? 0) + 1;
+    counts[match.awayTeamId] = (counts[match.awayTeamId] ?? 0) + 1;
+  }
+
   for (let iteration = 0; iteration < resolved.iterations; iteration++) {
     const attackGradient: Record<string, number> = {};
     const defenseGradient: Record<string, number> = {};
@@ -134,20 +139,16 @@ export function fitFootballPoissonModel(matches: readonly FootballModelMatch[], 
       defenseGradient[match.homeTeamId]! -= awayResidual;
     }
 
-    const scale = resolved.learningRate / Math.max(1, rows.length);
-    leagueIntercept += scale * interceptGradient;
-    homeAdvantage = clamp(homeAdvantage + scale * homeGradient, -0.8, 0.8);
+    const scale = resolved.learningRate;
+    leagueIntercept = clamp(leagueIntercept + scale * interceptGradient / Math.max(1, rows.length), Math.log(0.4), Math.log(2.4));
+    homeAdvantage = clamp(homeAdvantage + scale * homeGradient / Math.max(1, rows.length), -0.8, 0.8);
     for (const teamId of teams) {
-      attack[teamId] = clampParam(attack[teamId]! + scale * attackGradient[teamId]! - resolved.learningRate * resolved.regularization * attack[teamId]!);
-      defense[teamId] = clampParam(defense[teamId]! + scale * defenseGradient[teamId]! - resolved.learningRate * resolved.regularization * defense[teamId]!);
+      const teamMatches = Math.max(1, counts[teamId] ?? 1);
+      attack[teamId] = clampParam(attack[teamId]! + scale * attackGradient[teamId]! / teamMatches - scale * resolved.regularization * attack[teamId]!);
+      defense[teamId] = clampParam(defense[teamId]! + scale * defenseGradient[teamId]! / teamMatches - scale * resolved.regularization * defense[teamId]!);
     }
     centerParameters(attack, teams);
     centerParameters(defense, teams);
-  }
-
-  for (const match of rows) {
-    counts[match.homeTeamId] = (counts[match.homeTeamId] ?? 0) + 1;
-    counts[match.awayTeamId] = (counts[match.awayTeamId] ?? 0) + 1;
   }
 
   const teamStrengths: Record<string, FootballTeamStrength> = {};
