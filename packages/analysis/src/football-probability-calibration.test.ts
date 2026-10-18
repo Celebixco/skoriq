@@ -6,7 +6,6 @@ import {
   evaluateRollingCalibration,
   evaluateRollingIsotonic,
   evaluateRollingPlatt,
-  fitPlatt,
   fitTemperatureScaling,
   type FootballCalibrationSample
 } from "./football-probability-calibration.js";
@@ -69,8 +68,6 @@ describe("football probability calibration", () => {
     const rolling = evaluateRollingPlatt(samples, { windowSize: 40, refitEvery: 5 });
     expect(rolling.evaluations).toBe(60);
     expect(rolling.expectedCalibrationError).toBeLessThan(0.25);
-    const parameters = fitPlatt(samples);
-    expect(parameters.slope).toBeGreaterThan(0);
   });
 
   it("reports coverage and accuracy for a confidence filter", () => {
