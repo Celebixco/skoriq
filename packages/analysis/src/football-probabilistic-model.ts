@@ -27,6 +27,7 @@ export interface FootballPoissonModelOptions {
 export interface FootballTeamStrength {
   attack: number;
   defense: number;
+  homeBoost: number;
   matches: number;
 }
 
@@ -94,11 +95,15 @@ export function fitFootballPoissonModel(matches: readonly FootballModelMatch[], 
   }
   const attack: Record<string, number> = {};
   const defense: Record<string, number> = {};
+  const homeBoost: Record<string, number> = {};
   const counts: Record<string, number> = {};
+  const homeCounts: Record<string, number> = {};
   for (const teamId of teams) {
     attack[teamId] = 0;
     defense[teamId] = 0;
+    homeBoost[teamId] = 0;
     counts[teamId] = 0;
+    homeCounts[teamId] = 0;
   }
 
   const latest = Math.max(...rows.map((match) => match.date.getTime()));
@@ -112,22 +117,25 @@ export function fitFootballPoissonModel(matches: readonly FootballModelMatch[], 
   for (const match of rows) {
     counts[match.homeTeamId] = (counts[match.homeTeamId] ?? 0) + 1;
     counts[match.awayTeamId] = (counts[match.awayTeamId] ?? 0) + 1;
+    homeCounts[match.homeTeamId] = (homeCounts[match.homeTeamId] ?? 0) + 1;
   }
 
   for (let iteration = 0; iteration < resolved.iterations; iteration++) {
     const attackGradient: Record<string, number> = {};
     const defenseGradient: Record<string, number> = {};
+    const homeBoostGradient: Record<string, number> = {};
     let interceptGradient = 0;
     let homeGradient = 0;
     for (const teamId of teams) {
       attackGradient[teamId] = 0;
       defenseGradient[teamId] = 0;
+      homeBoostGradient[teamId] = 0;
     }
 
     for (let index = 0; index < rows.length; index++) {
       const match = rows[index]!;
       const weight = weights[index]!;
-      const homeLambda = expectedGoals(leagueIntercept, homeAdvantage, attack[match.homeTeamId]!, defense[match.awayTeamId]!);
+      const homeLambda = expectedGoals(leagueIntercept, homeAdvantage + homeBoost[match.homeTeamId]!, attack[match.homeTeamId]!, defense[match.awayTeamId]!);
       const awayLambda = expectedGoals(leagueIntercept, 0, attack[match.awayTeamId]!, defense[match.homeTeamId]!);
       const homeResidual = (match.homeGoals - homeLambda) * weight;
       const awayResidual = (match.awayGoals - awayLambda) * weight;
@@ -137,6 +145,7 @@ export function fitFootballPoissonModel(matches: readonly FootballModelMatch[], 
       attackGradient[match.awayTeamId]! += awayResidual;
       defenseGradient[match.awayTeamId]! -= homeResidual;
       defenseGradient[match.homeTeamId]! -= awayResidual;
+      homeBoostGradient[match.homeTeamId]! += homeResidual;
     }
 
     const scale = resolved.learningRate;
@@ -144,11 +153,14 @@ export function fitFootballPoissonModel(matches: readonly FootballModelMatch[], 
     homeAdvantage = clamp(homeAdvantage + scale * homeGradient / Math.max(1, rows.length), -0.8, 0.8);
     for (const teamId of teams) {
       const teamMatches = Math.max(1, counts[teamId] ?? 1);
+      const homeMatches = Math.max(1, homeCounts[teamId] ?? 1);
       attack[teamId] = clampParam(attack[teamId]! + scale * attackGradient[teamId]! / teamMatches - scale * resolved.regularization * attack[teamId]!);
       defense[teamId] = clampParam(defense[teamId]! + scale * defenseGradient[teamId]! / teamMatches - scale * resolved.regularization * defense[teamId]!);
+      homeBoost[teamId] = clampParam(homeBoost[teamId]! + scale * homeBoostGradient[teamId]! / homeMatches - scale * resolved.regularization * homeBoost[teamId]!);
     }
     centerParameters(attack, teams);
     centerParameters(defense, teams);
+    centerParameters(homeBoost, teams);
   }
 
   const teamStrengths: Record<string, FootballTeamStrength> = {};
@@ -156,6 +168,7 @@ export function fitFootballPoissonModel(matches: readonly FootballModelMatch[], 
     teamStrengths[teamId] = {
       attack: round(attack[teamId]!, 4),
       defense: round(defense[teamId]!, 4),
+      homeBoost: round(homeBoost[teamId]!, 4),
       matches: counts[teamId] ?? 0
     };
   }
@@ -176,7 +189,7 @@ export function predictFootballMarkets(model: FootballPoissonModel, homeTeamId: 
   const away = model.teams[awayTeamId];
   if (!home || !away) throw new Error("Both teams must exist in the fitted model.");
 
-  const homeLambda = expectedGoals(model.leagueIntercept, model.homeAdvantage, home.attack, away.defense);
+  const homeLambda = expectedGoals(model.leagueIntercept, model.homeAdvantage + home.homeBoost, home.attack, away.defense);
   const awayLambda = expectedGoals(model.leagueIntercept, 0, away.attack, home.defense);
   const matrix = scoreMatrix(homeLambda, awayLambda, model.options.maxGoals, model.rho);
 
