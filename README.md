@@ -530,7 +530,7 @@ Configuration: `MATCH_STATISTICS_INTERVAL_MINUTES` (default 30), `MATCH_STATISTI
 
 A second `lineups` service fills `football_match_lineups` and `football_match_lineup_players` for finished matches that have no lineup row yet. It fetches `/event/{id}/lineups` with the same `chrome` impersonation profile, stores formation, confirmation state, starting XI, substitutes, shirt numbers, positions, order, and match ratings, and creates player records (with a SofaScore player mapping) when a player is not known yet. Existing lineups are replaced idempotently per match and team; player records and mappings are reused. Permanently unavailable events are remembered for 7 days so they cannot block the queue. Runs appear as `sofascore.lineups` in the admin sync telemetry.
 
-Configuration: `LINEUPS_INTERVAL_MINUTES` (default 30), `LINEUPS_BATCH_LIMIT` (default 80), and `LINEUPS_LOOKBACK_DAYS` (default 120). The service only selects finished matches, so it never stores projected lineups for a match that has not started.
+Configuration: `LINEUPS_INTERVAL_MINUTES` (default 30), `LINEUPS_BATCH_LIMIT` (default 80), and `LINEUPS_LOOKBACK_DAYS` (default 120). It selects finished matches without a confirmed lineup and scheduled/not-started matches within the next 24 hours; projected lineups are stored with `confirmed=false` and refreshed until they become confirmed.
 
 The sync scheduler floors every interval at 15 minutes. A configured `SYNC_FINISHED_INTERVAL_MINUTES=5` therefore runs every 15 minutes; set the value to 15 to make the effective cadence explicit.
 
