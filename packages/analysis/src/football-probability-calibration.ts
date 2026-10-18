@@ -201,6 +201,71 @@ export function evaluateRollingIsotonic(
   };
 }
 
+export interface PlattParameters {
+  slope: number;
+  intercept: number;
+}
+
+export interface RollingPlattReport {
+  windowSize: number;
+  evaluations: number;
+  expectedCalibrationError: number;
+  coverage: Array<{ threshold: number; coverage: number; selected: number; accuracy: number }>;
+}
+
+export function fitPlatt(samples: readonly ConfidenceSample[]): PlattParameters {
+  const clean = samples.filter((sample) => Number.isFinite(sample.confidence) && sample.confidence > 0 && sample.confidence <= 1);
+  if (clean.length < 20) return { slope: 1, intercept: 0 };
+  let slope = 1;
+  let intercept = 0;
+  const learningRate = 0.15;
+  const regularization = 0.01;
+  for (let iteration = 0; iteration < 400; iteration++) {
+    let slopeGradient = 0;
+    let interceptGradient = 0;
+    for (const sample of clean) {
+      const x = logit(sample.confidence);
+      const prediction = sigmoid(slope * x + intercept);
+      const error = prediction - (sample.correct ? 1 : 0);
+      slopeGradient += error * x;
+      interceptGradient += error;
+    }
+    slope -= learningRate * (slopeGradient / clean.length + regularization * slope);
+    intercept -= learningRate * interceptGradient / clean.length;
+  }
+  return { slope: round(slope, 4), intercept: round(intercept, 4) };
+}
+
+export function applyPlatt(confidence: number, parameters: PlattParameters): number {
+  const x = logit(Math.min(0.9999, Math.max(0.0001, confidence)));
+  return round(sigmoid(parameters.slope * x + parameters.intercept), 6);
+}
+
+export function evaluateRollingPlatt(
+  samples: readonly FootballCalibrationSample[],
+  options: { windowSize?: number; refitEvery?: number } = {}
+): RollingPlattReport {
+  const clean = samples.filter(validSample);
+  const confidenceSamples = clean.map(toConfidenceSample);
+  const windowSize = Math.max(20, options.windowSize ?? 200);
+  const refitEvery = Math.max(1, options.refitEvery ?? 10);
+  let parameters: PlattParameters = { slope: 1, intercept: 0 };
+  const calibrated: ConfidenceSample[] = [];
+  for (let index = windowSize; index < confidenceSamples.length; index++) {
+    if ((index - windowSize) % refitEvery === 0) {
+      parameters = fitPlatt(confidenceSamples.slice(index - windowSize, index));
+    }
+    const sample = confidenceSamples[index]!;
+    calibrated.push({ confidence: applyPlatt(sample.confidence, parameters), correct: sample.correct });
+  }
+  return {
+    windowSize,
+    evaluations: calibrated.length,
+    expectedCalibrationError: confidenceEce(calibrated),
+    coverage: [0.5, 0.6, 0.7, 0.8].map((threshold) => confidenceCoverage(calibrated, threshold))
+  };
+}
+
 export function evaluateCalibration(
   samples: readonly FootballCalibrationSample[],
   temperature = 1
@@ -288,6 +353,15 @@ function logLoss(samples: readonly FootballCalibrationSample[], temperature: num
 function validSample(sample: FootballCalibrationSample): boolean {
   const values = [sample.probabilities.home, sample.probabilities.draw, sample.probabilities.away];
   return values.every((value) => Number.isFinite(value) && value > 0 && value <= 1);
+}
+
+function logit(probability: number): number {
+  const value = Math.min(0.9999, Math.max(0.0001, probability));
+  return Math.log(value / (1 - value));
+}
+
+function sigmoid(value: number): number {
+  return 1 / (1 + Math.exp(-value));
 }
 
 function toConfidenceSample(sample: FootballCalibrationSample): ConfidenceSample {
