@@ -137,6 +137,11 @@ async function main() {
   });
   pool.on("error", () => {});
   log("monitor_started", { intervalSeconds: INTERVAL_MS / 1000, healthUrl: HEALTH_URL, webhookConfigured: Boolean(ALERT_WEBHOOK_URL) });
+  const graceSeconds = Math.max(0, Number(process.env.OPS_STARTUP_GRACE_SECONDS || 60));
+  if (graceSeconds > 0) {
+    log("startup_grace", { seconds: graceSeconds });
+    await new Promise((resolve) => setTimeout(resolve, graceSeconds * 1000));
+  }
   while (!stopping) {
     await runChecks();
     if (stopping) break;

@@ -300,6 +300,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment secrets}@postgres:5432/${POSTGRES_DB:-sports_data}
       API_HEALTH_URL: http://api:3000/api/health/ready
       OPS_INTERVAL_SECONDS: ${OPS_INTERVAL_SECONDS:-300}
+      OPS_STARTUP_GRACE_SECONDS: ${OPS_STARTUP_GRACE_SECONDS:-90}
       OPS_STATE_DIR: /var/lib/skoriq-ops
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
       MIN_TELEMETRY_MATCHES: ${MIN_TELEMETRY_MATCHES:-500}
