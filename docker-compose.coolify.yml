@@ -317,7 +317,7 @@ services:
   model-backtest:
     build:
       context: .
-      dockerfile: Dockerfile.sync
+      dockerfile: Dockerfile
     restart: "no"
     command: ["node_modules/.bin/tsx", "scripts/football-model-backtest.ts", "--limit=5000", "--min-training=500", "--refit-every=100", "--max-predictions=800", "--iterations=120"]
     environment:

@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { allQueueNames } from "@sports-data/queue";
 import { loadConfig } from "@sports-data/config";
 import pg from "pg";
@@ -28,12 +28,24 @@ interface SyncRunRow {
 export class SyncStatusController {
   @UseGuards(AuthGuard, AdminGuard)
   @Get("status")
-  async getSyncStatus() {
+  async getSyncStatus(@Query("jobKey") jobKey?: string) {
     const config = loadConfig();
     const pool = new pg.Pool({
       connectionString: config.DATABASE_URL,
       max: 2
     });
+    const runsSql = `
+          SELECT j.job_key, j.job_name, j.status, j.attempt_count, j.last_error, j.started_at, j.finished_at, j.duration_ms,
+            (SELECT jsonb_build_object('message', l.message, 'metadata', l.metadata_json, 'createdAt', l.created_at)
+              FROM sync_job_logs l WHERE l.sync_job_id = j.id ORDER BY l.created_at DESC LIMIT 1) AS latest_log,
+            (SELECT jsonb_agg(jsonb_build_object('message', l.message, 'metadata', l.metadata_json, 'createdAt', l.created_at) ORDER BY l.created_at DESC)
+              FROM (SELECT message, metadata_json, created_at FROM sync_job_logs WHERE sync_job_id = j.id ORDER BY created_at DESC LIMIT 200) l) AS recent_logs
+          FROM sync_jobs j
+          WHERE j.queue_name = 'sync-service'
+          ${jobKey ? "AND j.job_key = $1" : ""}
+          ORDER BY j.updated_at DESC
+          LIMIT 10
+        `;
 
     try {
       const [compRes, teamRes, matchRes, statRes, playerRes, runsRes] = await Promise.all([
@@ -52,17 +64,7 @@ export class SyncStatusController {
         pool.query("SELECT COUNT(*) AS total, COUNT(CASE WHEN status = 'finished' THEN 1 END) AS finished, COUNT(CASE WHEN status = 'scheduled' THEN 1 END) AS scheduled FROM matches"),
         pool.query("SELECT COUNT(DISTINCT match_id) AS matches_with_stats, COUNT(*) AS total_records FROM football_match_team_statistics"),
         pool.query("SELECT COUNT(*) AS total FROM players").catch(() => ({ rows: [{ total: 0 }] })),
-        pool.query(`
-          SELECT j.job_key, j.job_name, j.status, j.attempt_count, j.last_error, j.started_at, j.finished_at, j.duration_ms,
-            (SELECT jsonb_build_object('message', l.message, 'metadata', l.metadata_json, 'createdAt', l.created_at)
-              FROM sync_job_logs l WHERE l.sync_job_id = j.id ORDER BY l.created_at DESC LIMIT 1) AS latest_log,
-            (SELECT jsonb_agg(jsonb_build_object('message', l.message, 'metadata', l.metadata_json, 'createdAt', l.created_at) ORDER BY l.created_at DESC)
-              FROM (SELECT message, metadata_json, created_at FROM sync_job_logs WHERE sync_job_id = j.id ORDER BY created_at DESC LIMIT 200) l) AS recent_logs
-          FROM sync_jobs j
-          WHERE j.queue_name = 'sync-service'
-          ORDER BY j.updated_at DESC
-          LIMIT 10
-        `)
+        pool.query(runsSql, jobKey ? [jobKey] : [])
       ]);
 
       const syncRuns = (runsRes.rows as SyncRunRow[]).map((row) => ({

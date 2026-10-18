@@ -266,6 +266,21 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     let options: BacktestOptions | undefined;
     try {
       options = parseBacktestArgs(process.argv.slice(2));
+      if (options.logRun) {
+        await writeSyncRunLog({
+          job: "model-backtest",
+          status: "running",
+          mode: "execute",
+          phase: "begin",
+          summary: JSON.stringify({
+            limit: options.limit,
+            minTraining: options.minTraining,
+            maxPredictions: options.maxPredictions,
+            refitEvery: options.refitEvery,
+            iterations: options.iterations
+          })
+        }, options.databaseUrl);
+      }
       const report = await runBacktest(options);
       if (options.logRun) {
         await writeSyncRunLog({
