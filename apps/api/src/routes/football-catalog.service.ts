@@ -835,8 +835,8 @@ export class FootballCatalogService {
       standing: standing ? mapTeamProfileStandingRow(standing) : null,
       formSummary,
       goalProfile: mapTeamProfileGoalProfile(formSummary.overall),
-      recentMatches: deduplicatedRecentRows.map((row) => mapTeamProfileRecentMatchRow(row, teamId)),
-      upcomingMatches: deduplicatedUpcomingRows.map((row) => mapTeamProfileUpcomingMatchRow(row, teamId)),
+      recentMatches: deduplicatedRecentRows.slice(0, 10).map((row) => mapTeamProfileRecentMatchRow(row, teamId)),
+      upcomingMatches: deduplicatedUpcomingRows.slice(0, 5).map((row) => mapTeamProfileUpcomingMatchRow(row, teamId)),
       playerAvailability,
       dataCoverage: mapTeamProfileCoverageRow({
         row: coverage,
@@ -1555,6 +1555,10 @@ export class FootballCatalogService {
         left join football_match_scores s on s.match_id = m.id
         where (m.home_team_id = ${teamId} or m.away_team_id = ${teamId})
           and m.status in ('finished', 'after_extra_time', 'after_penalties')
+          and exists (
+            select 1 from seasons current_season
+            where current_season.id = m.season_id and current_season.is_current = true
+          )
         order by m.scheduled_start_at desc, m.id asc
         limit ${limit * 2}
       `
