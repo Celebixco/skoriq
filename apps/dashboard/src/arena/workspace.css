@@ -1,0 +1,169 @@
+/* The signed-in workspace shares the arena's materials and type hierarchy. */
+.arena-session-loading { display: grid; place-content: center; min-height: 100dvh; padding: 30px; background: #070b08; color: #f1ede0; }
+.arena-session-loading .state-panel { padding: 32px; background: #101811; border: 1px solid #f1ede026; border-radius: 14px; color: inherit; }
+.arena-session-loading .state-panel h2 { color: inherit; font-family: "Barlow Condensed", sans-serif; font-size: 30px; }
+.app-shell.arena-shell {
+  --bg: #070b08;
+  --bg-soft: #0c130e;
+  --surface: #101811;
+  --surface-strong: #141e16;
+  --surface-muted: #0c140e;
+  --line: #f1ede026;
+  --line-subtle: #f1ede014;
+  --line-strong: #f1ede047;
+  --text: #f1ede0;
+  --muted: #a8b2a6;
+  --muted-strong: #c5cbbf;
+  --yellow: #ffc400;
+  --yellow-ink: #ffd747;
+  --blue: #ffc400;
+  --cyan: #ffc400;
+  --green: #56d9b2;
+  --win: #56d9b2;
+  --amber: #edbf61;
+  --red: #f29a8b;
+  --neutral: #9ba898;
+  --silver: #c5cbbf;
+  --bronze: #b5aa8e;
+  --shadow: 0 12px 28px #0002;
+  --shadow-subtle: 0 1px 0 #ffffff04;
+  color: var(--text);
+  accent-color: var(--yellow);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.arena-shell :where(*, *::before, *::after) { box-sizing: border-box; }
+.arena-shell :where(section, article, header, nav, div) { min-width: 0; }
+.arena-shell :where(button, input, select, textarea) { font: inherit; }
+.arena-shell :where(button, a, input, select, summary) { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.arena-shell :where(button, select, summary) { cursor: pointer; }
+.arena-shell :where(button:disabled, input:disabled, select:disabled) { cursor: not-allowed; opacity: .45; }
+.arena-shell :where(:focus-visible) { outline: 2px solid #ffd747; outline-offset: 4px; }
+.arena-shell :where(h1, h2, h3, h4, p) { overflow-wrap: anywhere; }
+.arena-shell :where(h1, h2, h3, h4) { color: var(--text); }
+.arena-shell :where(h1, h2, h3) { font-family: "Barlow Condensed", sans-serif; letter-spacing: -.015em; }
+.arena-shell :where(h2) { font-size: clamp(26px, 2.5vw, 34px); line-height: 1.1; }
+.arena-shell :where(h3) { font-size: 24px; line-height: 1.2; }
+.arena-shell :where(.muted, .empty-message) { color: var(--muted); }
+.arena-shell :where(.eyebrow) { color: var(--yellow-ink); letter-spacing: .16em; font-size: 10px; font-weight: 700; }
+.arena-shell :where(.hero) {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 30px 32px;
+  margin-bottom: 24px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(90deg, #101a12 45%, #101a12d9), url('/assets/arena-stadium.webp') center 54% / cover;
+}
+.arena-shell .hero h1 { margin: 4px 0 8px; font-size: clamp(40px, 4.5vw, 64px); line-height: .98; font-weight: 800; }
+.arena-shell .hero p { max-width: 68ch; color: var(--muted-strong); font-size: 14px; }
+.arena-shell .hero .eyebrow { color: var(--yellow-ink); font-size: 10px; }
+.arena-shell :where(.hero-actions, .button-row) { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.arena-shell :where(.panel, .metric-card, .draft-card, .state-panel, .forbidden-panel) {
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.arena-shell :where(.panel) { padding: 24px; margin-block: 20px; }
+.arena-shell :where(.panel h2) { margin-top: 0; }
+.arena-shell :where(.panel-header, .section-header) { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.arena-shell :where(.panel-header h2, .section-header h2) { margin: 0; }
+.arena-shell :where(.panel-header p, .panel-header > span) { color: var(--muted); font-size: 12px; }
+.arena-shell :where(.metric-grid) { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr)); gap: 12px; margin: 20px 0; }
+.arena-shell :where(.metric-card) { min-height: 128px; padding: 20px; }
+.arena-shell :where(.metric-card p) { color: var(--muted); margin: 0 0 12px; font-size: 12px; }
+.arena-shell :where(.metric-card strong) { display: block; color: var(--text); font-family: "Barlow Condensed", sans-serif; font-size: 38px; line-height: 1; }
+.arena-shell :where(.metric-card > span) { color: var(--muted); font-size: 12px; }
+.arena-shell :where(.notice, .match-report-notice) { padding: 16px 20px; border: 1px solid #ffc40040; border-left: 3px solid var(--yellow); border-radius: 10px; background: #ffc40008; color: #e5dcc0; font-size: 13px; }
+.arena-shell :where(.notice) { display: grid; gap: 5px; margin-block: 20px; }
+.arena-shell :where(.notice strong) { color: #f5e5ab; }
+.arena-shell :where(.badge) { max-width: 100%; padding: 5px 9px; border-radius: 5px; font-size: 10px; line-height: 1.4; font-weight: 700; letter-spacing: .015em; }
+.arena-shell :where(.badge-ready, .badge-good, .badge-passed, .status-ready) { background: #56d9b217; border-color: #56d9b23b; color: #75e7c5; }
+.arena-shell :where(.badge-partial, .badge-warn, .badge-warning, .status-partial) { background: #edbf6114; border-color: #edbf6140; color: #edcb83; }
+.arena-shell :where(.badge-blocked, .badge-insufficient_data, .badge-settled_failed) { background: #f29a8b14; border-color: #f29a8b40; color: #f29a8b; }
+.arena-shell :where(.badge-muted, .badge-neutral, .badge-unknown) { background: #f1ede00a; color: #b9c2b5; border-color: var(--line); }
+.arena-shell :where(.progress) { height: 5px; border: 0; border-radius: 10px; background: #f1ede015; overflow: hidden; }
+.arena-shell :where(.progress > span) { background: var(--yellow); }
+.arena-shell :where(input, select, textarea) { color: var(--text); background: #080f0a; border: 1px solid var(--line); border-radius: 8px; min-height: 46px; padding: 11px 12px; max-width: 100%; }
+.arena-shell :where(input::placeholder, textarea::placeholder) { color: #8d9b8b; }
+.arena-shell :where(input:focus, select:focus, textarea:focus) { border-color: var(--yellow); }
+.arena-shell :where(select option) { background: #101811; color: var(--text); }
+.arena-shell :where(.filters, .filter-bar) { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: 14px; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); margin-block: 20px; }
+.arena-shell :where(.filters label, .filter-bar label) { display: grid; gap: 7px; color: var(--muted); font-size: 12px; }
+.arena-shell :where(.button-row > button, .hero-actions > button, .back-button, .state-panel button, .forbidden-panel button, .panel-header > button) { min-height: 44px; padding: 10px 15px; border: 1px solid var(--line-strong); border-radius: 8px; background: #f1ede008; color: var(--text); font-size: 12px; font-weight: 600; }
+.arena-shell :where(.button-row > button:first-child, .hero-actions > button:first-child) { color: var(--yellow-ink); border-color: #ffc40050; }
+.arena-shell :where(.button-row > button:hover, .hero-actions > button:hover, .back-button:hover) { border-color: var(--yellow); background: #ffc4000b; }
+.arena-shell :where(.back-button) { display: inline-flex; align-items: center; margin-bottom: 18px; }
+.arena-shell .page-container > .back-button, .arena-shell .team-detail-shell > .explorer-breadcrumbs { display: none; }
+.arena-shell :where(.state-panel, .forbidden-panel) { min-height: 240px; display: grid; place-content: center; justify-items: center; gap: 8px; padding: 36px 24px; text-align: center; margin-block: 24px; }
+.arena-shell :where(.state-panel h2, .forbidden-panel h1) { max-width: 26ch; font-size: 36px; }
+.arena-shell :where(.state-panel p, .forbidden-panel p) { max-width: 60ch; color: var(--muted); }
+.arena-shell :where(.draft-grid, .draft-tier-grid) { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr)); gap: 16px; }
+.arena-shell :where(.draft-card) { padding: 22px; background: #0c150e; }
+.arena-shell :where(.draft-card-header) { display: flex; align-items: start; justify-content: space-between; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid var(--line-subtle); }
+.arena-shell :where(.draft-card h3) { color: var(--text); margin: 4px 0 6px; font-size: 26px; }
+.arena-shell :where(.draft-card p) { font-size: 13px; color: var(--muted); }
+.arena-shell :where(.draft-main) { padding-block: 20px 15px; display: grid; gap: 5px; }
+.arena-shell :where(.draft-main strong) { font-family: "Barlow Condensed", sans-serif; color: var(--yellow-ink); font-size: 30px; line-height: 1.1; }
+.arena-shell :where(.draft-main > span) { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.arena-shell :where(.draft-meta) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
+.arena-shell :where(.warning-list) { display: grid; gap: 5px; padding: 14px; border: 1px solid #edbf6130; border-radius: 8px; background: #edbf6108; color: #edcb83; font-size: 12px; }
+.arena-shell :where(.panel pre) { max-width: 100%; max-height: 450px; overflow: auto; padding: 18px; border-radius: 8px; background: #070c08; color: #c9d4c4; font: 12px/1.8 var(--font-mono); white-space: pre; }
+.arena-shell :where(.table-wrap, .table-scroll) { overflow-x: auto; max-width: 100%; }
+.arena-shell :where(table) { color: var(--text); font-variant-numeric: tabular-nums; }
+.arena-shell :where(th) { background: #142017; color: var(--muted-strong); font-size: 11px; }
+.arena-shell :where(td, th) { border-color: var(--line-subtle); }
+.arena-shell :where(tbody tr:hover) { background: #ffc40005; }
+.arena-shell .arena-filter-disclosure { border: 1px solid var(--line); border-radius: 10px; background: #101811; margin: 0; overflow: hidden; }
+.arena-shell .arena-filter-disclosure > summary { display: flex; list-style: none; justify-content: space-between; align-items: center; gap: 15px; min-height: 48px; padding: 12px 16px; color: var(--muted-strong); font-size: 12px; font-weight: 600; }
+.arena-shell .arena-filter-disclosure > summary::-webkit-details-marker { display: none; }
+.arena-shell .arena-filter-disclosure > summary::after { content: "+"; font-size: 21px; line-height: 1; color: var(--yellow); }
+.arena-shell .arena-filter-disclosure[open] > summary { border-bottom: 1px solid var(--line-subtle); }
+.arena-shell .arena-filter-disclosure[open] > summary::after { content: "−"; }
+.arena-shell .arena-filter-disclosure > .filters { border: 0; margin: 0; }
+.arena-shell .arena-filter-disclosure .arena-filter-active { color: var(--yellow-ink); margin-left: auto; font-weight: 500; }
+.arena-shell .arena-tab-panel { outline-offset: 6px; min-width: 0; }
+.arena-shell .arena-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.arena-shell .arena-section-icon { width: 17px; height: 17px; flex: 0 0 17px; }
+@media (max-width: 760px) {
+  .arena-shell { font-size: 13px; }
+  .arena-shell :where(.hero) { padding: 23px; border-radius: 12px; flex-direction: column; align-items: stretch; gap: 16px; }
+  .arena-shell .hero h1 { font-size: 44px; }
+  .arena-shell .hero p { font-size: 13px; }
+  .arena-shell :where(.panel) { padding: 20px; margin-block: 16px; border-radius: 12px; }
+  .arena-shell :where(.panel-header, .section-header) { align-items: start; margin-bottom: 16px; }
+  .arena-shell :where(.metric-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .arena-shell :where(.metric-card) { padding: 17px; min-height: 110px; }
+  .arena-shell :where(.metric-card strong) { font-size: 33px; }
+  .arena-shell :where(.notice, .match-report-notice) { font-size: 12px; padding: 14px 16px; }
+  .arena-shell :where(.draft-grid, .draft-tier-grid) { grid-template-columns: minmax(0, 1fr); }
+  .arena-shell :where(.draft-card) { padding: 18px; }
+  .arena-shell :where(.draft-card-header) { flex-wrap: wrap; }
+  .arena-shell :where(.filters, .filter-bar) { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px; gap: 12px; }
+  .arena-shell :where(input, select, textarea) { font-size: 16px; min-height: 48px; }
+  .arena-shell :where(.button-row) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .arena-shell :where(.button-row button) { width: 100%; }
+  .arena-shell :where(.back-button) { margin-bottom: 14px; }
+}
+@media (max-width: 620px) {
+  .arena-shell .arena-page-wayfinding { display: none; }
+  .arena-shell .team-detail-shell > .explorer-breadcrumbs { display: none; }
+  .arena-shell .page-container > .back-button { display: none; }
+  .arena-shell .page-container { padding-top: 18px; }
+  .arena-shell--home .page-container { padding-top: 0; }
+}
+@media (max-width: 360px) {
+  .arena-shell :where(.filters, .filter-bar) { grid-template-columns: minmax(0, 1fr); }
+  .arena-shell :where(.panel, .draft-card) { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arena-shell *, .arena-shell *::before, .arena-shell *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

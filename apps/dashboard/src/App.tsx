@@ -72,6 +72,12 @@ import "./app/app.css";
 import { LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage } from "./arena/AuthPages";
 import { ArenaHome } from "./arena/ArenaHome";
 import "./arena/theme.css";
+import { FilterDisclosure, SectionTabs } from "./arena/SectionTabs";
+import { clearWorkspaceChoices, useWorkspaceState } from "./arena/useWorkspaceState";
+import "./arena/workspace.css";
+import "./arena/match-center.css";
+import "./arena/explorer.css";
+import "./arena/results.css";
 
 export { LandingPage };
 
@@ -465,13 +471,14 @@ export function App() {
 
   const handleLogout = async () => {
     await logoutRequest();
+    clearWorkspaceChoices();
     setCurrentUser(null);
     navigate("/login");
   };
 
   if (authLoading) {
     return (
-      <main className="login-shell">
+      <main className="arena-session-loading">
         <StatePanel title="Üyelik kontrol ediliyor..." />
       </main>
     );
@@ -506,13 +513,13 @@ export function App() {
         <>
       {shouldRenderOverviewPage(route.kind) ? <OverviewPage navigate={navigate} user={currentUser} /> : null}
       {route.kind === "match-list" ? <MatchListPage navigate={navigate} /> : null}
-      {route.kind === "match-detail" ? <MatchDetailPage matchId={route.id} navigate={navigate} user={currentUser} /> : null}
+      {route.kind === "match-detail" ? <MatchDetailPage key={route.id} matchId={route.id} navigate={navigate} user={currentUser} /> : null}
       {route.kind === "team-list" ? <TeamListPage navigate={navigate} /> : null}
-      {route.kind === "team-detail" ? <TeamDetailPage teamId={route.id} navigate={navigate} /> : null}
+      {route.kind === "team-detail" ? <TeamDetailPage key={route.id} teamId={route.id} navigate={navigate} /> : null}
       {route.kind === "competition-list" ? <CompetitionListPage navigate={navigate} /> : null}
-      {route.kind === "competition-detail" ? <CompetitionDetailPage competitionId={route.id} navigate={navigate} /> : null}
+      {route.kind === "competition-detail" ? <CompetitionDetailPage key={route.id} competitionId={route.id} navigate={navigate} /> : null}
       {route.kind === "country-list" ? <CountryListPage navigate={navigate} /> : null}
-      {route.kind === "country-detail" ? <CountryDetailPage countryId={route.id} navigate={navigate} /> : null}
+      {route.kind === "country-detail" ? <CountryDetailPage key={route.id} countryId={route.id} navigate={navigate} /> : null}
       {route.kind === "draft-list" ? <DraftPredictionListPage navigate={navigate} /> : null}
       {route.kind === "draft-detail" ? <DraftPredictionDetailPage predictionId={route.id} navigate={navigate} /> : null}
       {route.kind === "match-drafts" ? <MatchPredictionDraftsPage matchId={route.id} navigate={navigate} /> : null}
@@ -575,12 +582,12 @@ function ForbiddenPage({ navigate }: { navigate: (path: string) => void }) {
 }
 
 export function MatchListPage({ navigate }: { navigate: (path: string) => void }) {
-  const [filters, setFilters] = useState<FootballAnalyticsMatchFilters>({
+  const [filters, setFilters] = useWorkspaceState<FootballAnalyticsMatchFilters>("matches.filters", {
     ...initialFilters,
     offset: 0
   });
-  const [frontendFilters, setFrontendFilters] = useState<FrontendFilters>(emptyFrontendFilters);
-  const [quickChip, setQuickChip] = useState<QuickChipId | null>(null);
+  const [frontendFilters, setFrontendFilters] = useWorkspaceState<FrontendFilters>("matches.search", emptyFrontendFilters);
+  const [quickChip, setQuickChip] = useWorkspaceState<QuickChipId | null>("matches.quick", null);
 
   const debouncedSearch = useDebounce(frontendFilters.searchQuery, 300);
 
@@ -757,8 +764,8 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
     filters.predictionEligible !== "" ||
     filters.kuponEligible !== "" ||
     filters.analysisWindowStatus ||
-    filters.hasH2h !== "" ||
-    filters.hasPrediction !== "" ||
+    (filters.hasH2h !== undefined && filters.hasH2h !== "") ||
+    (filters.hasPrediction !== undefined && filters.hasPrediction !== "") ||
     frontendFilters.searchQuery.trim() ||
     frontendFilters.competitionName ||
     frontendFilters.countryName ||
@@ -820,10 +827,7 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
           counts={quickChipCounts}
         />
 
-        <p className="analytics-helper-note">
-          İpucu: “Analizi Hazır” bir maça dokun; SkorIQ’nun o maçta neler bulduğunu görebilirsin.
-        </p>
-
+        <FilterDisclosure active={hasActiveFilters}>
         <FilterBar
           filters={filters}
           setFilters={setFilters}
@@ -832,6 +836,7 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
           competitions={availableCompetitions}
           countries={availableCountries}
         />
+        </FilterDisclosure>
 
         <ActiveFilterPills
           filters={filters}
@@ -840,13 +845,6 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
           onClearFilter={handleClearFilter}
           onClearAll={handleClearAll}
         />
-
-        <div className="analytics-results-link-panel">
-          <span>Oynanmış maçları ve tahminlerin sonuçlarını merak ediyorsan buraya bak.</span>
-          <button type="button" onClick={() => navigate("/football/prediction-results")}>
-            Sonuçlara Bak →
-          </button>
-        </div>
 
         {!loading && data ? (
           <ResultSummaryBar
@@ -877,6 +875,10 @@ export function MatchListPage({ navigate }: { navigate: (path: string) => void }
       {!loading && !error && filteredItems.length > 0 ? (
         <MatchList data={{ items: filteredItems, pagination: data!.pagination }} navigate={navigate} />
       ) : null}
+      <div className="analytics-results-link-panel">
+        <span>Oynanmış maçları ve tahminlerin sonuçlarını merak ediyorsan buraya bak.</span>
+        <button type="button" onClick={() => navigate("/football/prediction-results")}>Sonuçlara Bak →</button>
+      </div>
     </>
   );
 }
@@ -1140,7 +1142,7 @@ export function MatchDetailReportView({
   homeProfile?: FootballTeamProfileResponse | null;
   awayProfile?: FootballTeamProfileResponse | null;
 }) {
-  const isFinished = report.match.status === "finished" || report.match.status === "ended";
+  const isFinished = ["finished", "ended", "after_extra_time", "after_penalties"].includes(report.match.status);
   const [activeTab, setActiveTab] = useState<MatchCenterTab>(
     isFinished && statistics?.hasStatistics ? "stats" : "overview"
   );
@@ -1152,6 +1154,7 @@ export function MatchDetailReportView({
   return (
     <div className="match-report-layout">
       <header className="match-report-hero">
+        <h1 className="arena-sr-only">{report.match.homeTeam.name} — {report.match.awayTeam.name} maç analizi</h1>
         <div className="match-report-meta">
           <span>{competitionName}</span>
           <span aria-hidden="true">•</span>
@@ -1168,7 +1171,7 @@ export function MatchDetailReportView({
             {statistics?.match?.homeScore !== null && statistics?.match?.awayScore !== null && typeof statistics?.match?.homeScore !== "undefined" ? (
               <div className="match-scoreboard-display">
                 <span className="scoreboard-score tabular-num">{statistics.match.homeScore} - {statistics.match.awayScore}</span>
-                <span className="scoreboard-badge">MS</span>
+                <span className="scoreboard-badge">{isFinished ? "MS" : matchStatus}</span>
               </div>
             ) : (
               "VS"
@@ -1187,70 +1190,22 @@ export function MatchDetailReportView({
       </section>
 
       {/* Match Center Segmented Sub-Navigation */}
-      <nav className="match-center-tab-bar" role="tablist" aria-label="Maç analiz sekmeleri">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "overview"}
-          className={`match-center-tab-btn ${activeTab === "overview" ? "active" : ""}`}
-          onClick={() => setActiveTab("overview")}
-        >
-          <span className="tab-icon">⚡</span> Genel Bakış
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "form"}
-          className={`match-center-tab-btn ${activeTab === "form" ? "active" : ""}`}
-          onClick={() => setActiveTab("form")}
-        >
-          <span className="tab-icon">📈</span> Form & H2H
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "lineups"}
-          className={`match-center-tab-btn ${activeTab === "lineups" ? "active" : ""}`}
-          onClick={() => setActiveTab("lineups")}
-        >
-          <span className="tab-icon">👥</span> Kadro & Taktik
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "stats"}
-          className={`match-center-tab-btn ${activeTab === "stats" ? "active" : ""}`}
-          onClick={() => setActiveTab("stats")}
-        >
-          <span className="tab-icon">📊</span> Telemetri & İstatistik
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "signals"}
-          className={`match-center-tab-btn ${activeTab === "signals" ? "active" : ""}`}
-          onClick={() => setActiveTab("signals")}
-        >
-          <span className="tab-icon">🧠</span> AI Sinyaller
-        </button>
-      </nav>
+      <SectionTabs idPrefix="match-details" label="Maç analiz sekmeleri" value={activeTab} onChange={setActiveTab} items={[
+        { id: "overview", label: "Genel Bakış", icon: "overview" },
+        { id: "form", label: "Form & H2H", icon: "form" },
+        { id: "lineups", label: "Kadro", icon: "team" },
+        { id: "stats", label: "İstatistik", icon: "chart" },
+        { id: "signals", label: "Sinyaller", icon: "signal" }
+      ]} />
+      <div className="arena-tab-panel" id="match-details-panel" role="tabpanel" aria-labelledby={`match-details-${activeTab}-tab`} tabIndex={0}>
 
       {/* 1. OVERVIEW TAB */}
       {activeTab === "overview" && (
         <>
-          {isFinished && statistics?.hasStatistics ? (
-            <MatchTelemetrySection statistics={statistics} showEmptyNotice={false} />
-          ) : null}
+          <MemberPredictionPreview matchId={matchId} />
 
-          <MatchCenterH2HFormComparison
-            homeTeam={report.match.homeTeam}
-            awayTeam={report.match.awayTeam}
-            homeProfile={homeProfile}
-            awayProfile={awayProfile}
-            h2h={report.h2h}
-            navigate={navigate}
-            compact
-          />
+
+
 
           <div className="analysis-kpi-grid">
             <AnalysisKpiCard title="Analiz Durumu" value={statusLabel(report.featureStatus)} body={analysisStatusHelper(report.featureStatus)} tone={report.featureStatus === "ready" ? "success" : report.featureStatus === "partial" ? "warning" : "muted"} icon="shield" />
@@ -1273,10 +1228,19 @@ export function MatchDetailReportView({
             </section>
           ) : null}
 
-          <MemberPredictionPreview matchId={matchId} />
 
-          <MatchLineupsSection lineups={lineups} />
-          <MatchAvailabilitySection items={availability} />
+
+
+
+          <MatchCenterH2HFormComparison
+            homeTeam={report.match.homeTeam}
+            awayTeam={report.match.awayTeam}
+            homeProfile={homeProfile}
+            awayProfile={awayProfile}
+            h2h={report.h2h}
+            navigate={navigate}
+            compact
+          />
 
           <div className="signal-grid analysis-signal-grid">
             <ReportSignalCard title="Pozitif Sinyaller" items={report.positiveSignals.map((item) => formatSignalText(item, report))} tone="positive" />
@@ -1333,14 +1297,13 @@ export function MatchDetailReportView({
             <section className="panel match-telemetry-empty-panel">
               <div className="section-header">
                 <div>
-                  <p className="eyebrow">Canlı Maç Telemetrisi</p>
-                  <h2>Karşılaşma Başlama Vuruşu Bekleniyor</h2>
+                  <p className="eyebrow">Maç istatistikleri</p>
+                  <h2>Maç istatistikleri henüz hazır değil</h2>
                 </div>
-                <span className="badge badge-muted">Başlama Vuruşu Öncesi</span>
+                <span className="badge badge-muted">Veri bekleniyor</span>
               </div>
               <p className="muted">
-                Tekil maç canlı SofaScore xG, pas haritası ve şut telemetrisi maç başladığında ve tamamlandığında canlı olarak yayınlanacaktır.
-                Aşağıda iki takımın 2026/27 sezonu SofaScore doğrulanmış sezon istatistikleri karşılaştırması yer almaktadır.
+                Bu karşılaşma için istatistik verisi henüz bulunmuyor. Mevcut sezon verilerini aşağıdaki karşılaştırmadan inceleyebilirsin.
               </p>
             </section>
           )}
@@ -1385,6 +1348,8 @@ export function MatchDetailReportView({
           ) : null}
         </>
       )}
+
+      </div>
 
       {user.role === "admin" ? (
         <>
@@ -1875,7 +1840,7 @@ function MatchHeroTeam({ role, name, logoUrl }: { role: string; name: string; lo
       <TeamLogo name={name} logoUrl={logoUrl} size="lg" />
       <div>
         <span>{role}</span>
-        <h1>{name}</h1>
+        <h2>{name}</h2>
       </div>
     </div>
   );
@@ -2152,7 +2117,7 @@ export function MatchTelemetrySection({ statistics, showEmptyNotice = false }: {
             <span className="badge badge-muted">Beklemede</span>
           </div>
           <p className="muted">
-            Bu maç için detaylı SofaScore xG, şut dağılımı, pas ve savunma telemetrisi maç başladığında ve tamamlandığında canlı olarak yayınlanacaktır.
+            Bu karşılaşma için detaylı istatistik verisi henüz bulunmuyor. Veriler hazır olduğunda bu alandan inceleyebilirsin.
           </p>
         </section>
       );
@@ -2524,8 +2489,6 @@ export function MemberPredictionPreviewSection({ data }: { data: FootballMemberP
       <div className="panel-header prediction-preview-header">
         <div>
           <h2>SkorIQ Tahmin Yorumu</h2>
-          <p className="muted">Bu bölüm mevcut veri kapsamına göre üretilen ön tahminleri gösterir. Nihai sonuç garantisi değildir.</p>
-          <p className="muted">Tahminler minimum güvenli süre korunarak maç başlayana kadar gösterilebilir.</p>
         </div>
       </div>
       {data.status !== "available" ? (
@@ -2550,6 +2513,10 @@ export function MemberPredictionPreviewSection({ data }: { data: FootballMemberP
         </div>
       ) : null}
       {data.status === "available" && !hasCandidates ? <p className="muted member-prediction-empty">Bu maç için yayınlanabilir tahmin önizlemesi henüz yok.</p> : null}
+      <div className="arena-prediction-footnote">
+        <p className="muted">Bu bölüm mevcut veri kapsamına göre üretilen ön tahminleri gösterir. Nihai sonuç garantisi değildir.</p>
+        <p className="muted">Tahminler minimum güvenli süre korunarak maç başlayana kadar gösterilebilir.</p>
+      </div>
     </section>
   );
 }
@@ -3048,7 +3015,7 @@ function TeamListPage({ navigate }: { navigate: (path: string) => void }) {
 
         {/* Country Quick Filter Chips */}
         {countries.length > 0 ? (
-          <div className="team-country-chips" role="tablist" aria-label="Ülke filtreleri">
+          <div className="team-country-chips" role="group" aria-label="Ülke filtreleri">
             <button
               type="button"
               className={`country-chip ${selectedCountry === "all" ? "active" : ""}`}
@@ -3320,46 +3287,14 @@ function TeamDetailPage({ teamId, navigate }: { teamId: string; navigate: (path:
 
           <TeamProfileHero profile={profile} standing={profile.standing} navigate={navigate} />
 
-          <nav className="team-nav-tabs" aria-label="Takım Sekmeleri">
-            <button
-              type="button"
-              className={`team-nav-tab ${activeTab === "overview" ? "active" : ""}`}
-              onClick={() => setActiveTab("overview")}
-            >
-              <span>Genel Bakış</span>
-            </button>
-            <button
-              type="button"
-              className={`team-nav-tab ${activeTab === "form" ? "active" : ""}`}
-              onClick={() => setActiveTab("form")}
-            >
-              <span>Form & Gol Analizi</span>
-            </button>
-            <button
-              type="button"
-              className={`team-nav-tab ${activeTab === "matches" ? "active" : ""}`}
-              onClick={() => setActiveTab("matches")}
-            >
-              <span>Fikstür & Sonuçlar</span>
-              {(profile.upcomingMatches?.length ?? 0) + (profile.recentMatches?.length ?? 0) > 0 ? (
-                <span className="team-tab-badge">
-                  {(profile.upcomingMatches?.length ?? 0) + (profile.recentMatches?.length ?? 0)}
-                </span>
-              ) : null}
-            </button>
-            <button
-              type="button"
-              className={`team-nav-tab ${activeTab === "squad" ? "active" : ""}`}
-              onClick={() => setActiveTab("squad")}
-            >
-              <span>Kadro & Sakatlık</span>
-              {players?.items?.length ? (
-                <span className="team-tab-badge">{players.items.length}</span>
-              ) : null}
-            </button>
-          </nav>
+          <SectionTabs idPrefix="team-profile" label="Takım Sekmeleri" value={activeTab} onChange={setActiveTab} className="team-nav-tabs" buttonClassName="team-nav-tab" items={[
+            { id: "overview", label: "Genel Bakış", icon: "overview" },
+            { id: "form", label: "Form & Goller", icon: "form" },
+            { id: "matches", label: "Maçlar", icon: "calendar", count: (profile.upcomingMatches?.length ?? 0) + (profile.recentMatches?.length ?? 0) },
+            { id: "squad", label: "Kadro", icon: "team", count: players?.items?.length }
+          ]} />
 
-          <div className="team-tab-viewport">
+          <div className="team-tab-viewport arena-tab-panel" id="team-profile-panel" role="tabpanel" aria-labelledby={`team-profile-${activeTab}-tab`} tabIndex={0}>
             {activeTab === "overview" ? (
               <div className="team-profile-grid">
                 <TeamProfileStanding standing={profile.standing} />
@@ -3817,6 +3752,12 @@ export function TeamFormTrendChart({
               className={`form-result-node ${resClass} ${navigate ? "form-result-clickable" : ""}`}
               key={m.matchId}
               onClick={() => navigate?.(`/football/analytics/${m.matchId}`)}
+              onKeyDown={(event) => {
+                if (navigate && (event.key === "Enter" || event.key === " ")) {
+                  event.preventDefault();
+                  navigate(`/football/analytics/${m.matchId}`);
+                }
+              }}
               role={navigate ? "button" : undefined}
               tabIndex={navigate ? 0 : undefined}
             >
@@ -4251,7 +4192,7 @@ function CompetitionListPage({ navigate }: { navigate: (path: string) => void })
 
           {/* Country Filter Chips */}
           {countries.length > 0 ? (
-            <div className="competition-country-chips" role="tablist" aria-label="Ülke filtreleri">
+            <div className="competition-country-chips" role="group" aria-label="Ülke filtreleri">
               <button
                 type="button"
                 className={`country-chip ${countryFilter === "all" ? "active" : ""}`}
@@ -4415,44 +4356,13 @@ export function CompetitionDetailPage({ competitionId, navigate }: { competition
           </section>
 
           {/* Sub-Navigation Tabs */}
-          <div className="match-center-tab-bar competition-tab-bar" role="tablist" aria-label="Lig detay sekmeleri">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "standings"}
-              className={`match-center-tab-btn ${activeTab === "standings" ? "active" : ""}`}
-              onClick={() => setActiveTab("standings")}
-            >
-              <span className="tab-icon">🏆</span> Puan Durumu ({profile.standings.length})
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "teams"}
-              className={`match-center-tab-btn ${activeTab === "teams" ? "active" : ""}`}
-              onClick={() => setActiveTab("teams")}
-            >
-              <span className="tab-icon">👥</span> Takımlar ({profile.teams.length})
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "upcoming"}
-              className={`match-center-tab-btn ${activeTab === "upcoming" ? "active" : ""}`}
-              onClick={() => setActiveTab("upcoming")}
-            >
-              <span className="tab-icon">📅</span> Yaklaşan Maçlar ({profile.upcomingMatches.length})
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "recent"}
-              className={`match-center-tab-btn ${activeTab === "recent" ? "active" : ""}`}
-              onClick={() => setActiveTab("recent")}
-            >
-              <span className="tab-icon">⏱️</span> Son Maçlar ({profile.recentMatches.length})
-            </button>
-          </div>
+          <SectionTabs idPrefix="competition-details" label="Lig detay sekmeleri" value={activeTab} onChange={setActiveTab} className="match-center-tab-bar competition-tab-bar" items={[
+            { id: "standings", label: "Puan Durumu", icon: "table", count: profile.standings.length },
+            { id: "teams", label: "Takımlar", icon: "team", count: profile.teams.length },
+            { id: "upcoming", label: "Fikstür", icon: "calendar", count: profile.upcomingMatches.length },
+            { id: "recent", label: "Sonuçlar", icon: "chart", count: profile.recentMatches.length }
+          ]} />
+          <div className="arena-tab-panel" id="competition-details-panel" role="tabpanel" aria-labelledby={`competition-details-${activeTab}-tab`} tabIndex={0}>
 
           {/* Tab Content: Standings */}
           {activeTab === "standings" ? (
@@ -4460,11 +4370,7 @@ export function CompetitionDetailPage({ competitionId, navigate }: { competition
               <section className="explorer-panel standings-panel">
                 <div className="explorer-panel-header">
                   <h2>Puan Durumu</h2>
-                  <div className="standings-legend">
-                    <span className="legend-item"><span className="legend-dot ucl" /> Şampiyonlar Ligi (1-4)</span>
-                    <span className="legend-item"><span className="legend-dot uel" /> Avrupa Ligi (5)</span>
-                    <span className="legend-item"><span className="legend-dot rel" /> Düşme Hattı</span>
-                  </div>
+                  <span className="arena-table-hint">Diğer istatistikler için yana kaydır →</span>
                 </div>
                 <div className="standings-table-wrap">
                   <table className="standings-table">
@@ -4472,6 +4378,7 @@ export function CompetitionDetailPage({ competitionId, navigate }: { competition
                       <tr>
                         <th>Sıra</th>
                         <th>Takım</th>
+                        <th>Puan</th>
                         <th>O</th>
                         <th>G</th>
                         <th>B</th>
@@ -4479,16 +4386,11 @@ export function CompetitionDetailPage({ competitionId, navigate }: { competition
                         <th>A</th>
                         <th>Y</th>
                         <th>Av</th>
-                        <th>P</th>
                       </tr>
                     </thead>
                     <tbody>
                       {profile.standings.map((row) => {
-                        const totalRows = profile.standings.length;
-                        const isUcl = row.position <= 4;
-                        const isUel = row.position === 5;
-                        const isRelegation = totalRows > 10 && row.position > totalRows - 4;
-                        const rowZoneClass = isUcl ? "zone-ucl" : isUel ? "zone-uel" : isRelegation ? "zone-relegation" : "";
+                        const rowZoneClass = row.position === 1 ? "zone-leader" : "";
                         return (
                           <tr key={row.teamId} className={rowZoneClass}>
                             <td className="standings-pos-cell">
@@ -4500,6 +4402,7 @@ export function CompetitionDetailPage({ competitionId, navigate }: { competition
                                 <span>{row.teamName}</span>
                               </button>
                             </td>
+                            <td className="tabular-cell points-cell"><strong>{row.points}</strong></td>
                             <td className="tabular-cell">{row.played}</td>
                             <td className="tabular-cell">{row.wins}</td>
                             <td className="tabular-cell">{row.draws}</td>
@@ -4509,7 +4412,6 @@ export function CompetitionDetailPage({ competitionId, navigate }: { competition
                             <td className={`tabular-cell ${row.goalDifference > 0 ? "gd-positive" : row.goalDifference < 0 ? "gd-negative" : ""}`}>
                               {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
                             </td>
-                            <td className="tabular-cell points-cell"><strong>{row.points}</strong></td>
                           </tr>
                         );
                       })}
@@ -4605,9 +4507,7 @@ export function CompetitionDetailPage({ competitionId, navigate }: { competition
                           {match.homeTeam.name}
                         </span>
                         <span className="explorer-match-score">
-                          {match.status === "finished" || match.status === "after_extra_time" || match.status === "after_penalties"
-                            ? `${match.homeTeam.name} - ${match.awayTeam.name}`
-                            : match.status}
+                          {matchStatusLabel(match.status)}
                         </span>
                         <span className="explorer-match-team">
                           <TeamLogo name={match.awayTeam.name} logoUrl={match.awayTeam.logoUrl} size="sm" />
@@ -4616,7 +4516,7 @@ export function CompetitionDetailPage({ competitionId, navigate }: { competition
                       </div>
                       <span className="explorer-match-kickoff">{formatDate(match.kickoffAt)}</span>
                       <button type="button" className="explorer-match-cta" onClick={() => navigate(`/football/analytics/${match.matchId}`)}>
-                        Telemetri
+                        Maç detayı
                       </button>
                     </div>
                   ))}
@@ -4628,6 +4528,7 @@ export function CompetitionDetailPage({ competitionId, navigate }: { competition
               </section>
             )
           ) : null}
+          </div>
         </div>
       ) : null}
     </>
@@ -4658,7 +4559,7 @@ function DraftPredictionListPage({ navigate }: { navigate: (path: string) => voi
         <strong>Bu ekran salt okunurdur.</strong>
         <span>Taslak adaylar üyelere yayınlanmamıştır; public başarılı tahmin veya tahmin kombini değildir.</span>
       </section>
-      <DraftFilterBar filters={filters} setFilters={setFilters} />
+      <FilterDisclosure active={Boolean(filters.consistencyStatus || filters.recommendationTier || filters.matchId)}><DraftFilterBar filters={filters} setFilters={setFilters} /></FilterDisclosure>
       {loading ? <StatePanel title="Draft tahminler yükleniyor..." /> : null}
       {error ? <StatePanel title="Draft tahminler yüklenemedi" body={error} /> : null}
       {!loading && !error && data?.items.length === 0 ? <StatePanel title="Draft tahmin bulunamadı" /> : null}
@@ -5115,17 +5016,14 @@ export function PredictionResultsPage({ navigate }: { navigate: (path: string) =
           </button>
         </div>
 
-        <ResultsFilterBar
-          filters={filters}
-          setFilters={setFilters}
-          countries={summary?.byCountry ?? []}
-          leagues={summary?.byLeague ?? []}
-        />
+        <FilterDisclosure active={hasActiveFilters}>
+          <ResultsFilterBar filters={filters} setFilters={setFilters} countries={summary?.byCountry ?? []} leagues={summary?.byLeague ?? []} />
+        </FilterDisclosure>
 
         {!loading && data ? (
           <div className="results-pagination-bar">
             <p className="results-count">
-              {offset + 1}–{Math.min(offset + data.items.length, totalFromApi)} / {totalFromApi.toLocaleString("tr-TR")} sonuç
+              {totalFromApi === 0 ? 0 : offset + 1}–{Math.min(offset + data.items.length, totalFromApi)} / {totalFromApi.toLocaleString("tr-TR")} sonuç
             </p>
             <div className="results-pagination">
               <button type="button" className="results-page-btn" onClick={handlePrevPage} disabled={!hasPrevPage} aria-label="Önceki sayfa">
@@ -5608,7 +5506,7 @@ function SettlementListPage({ navigate }: { navigate: (path: string) => void }) 
         </div>
       </header>
       <SettlementGuardNotice />
-      <SettlementFilterBar filters={filters} setFilters={setFilters} />
+      <FilterDisclosure active={Boolean(filters.settlementStatus || filters.recommendationTier || filters.matchId)}><SettlementFilterBar filters={filters} setFilters={setFilters} /></FilterDisclosure>
       {loading ? <StatePanel title="Tahmin sonuçları yükleniyor..." /> : null}
       {error ? <StatePanel title="Tahmin sonuçları yüklenemedi" body={error} /> : null}
       {!loading && !error && data?.items.length === 0 ? <StatePanel title="Settlement sonucu bulunamadı" /> : null}
@@ -5900,7 +5798,7 @@ function PublicEligibilityListPage({ navigate }: { navigate: (path: string) => v
         </div>
       </header>
       <PublicEligibilityGuardNotice />
-      <PublicEligibilityFilterBar filters={filters} setFilters={setFilters} />
+      <FilterDisclosure active={Boolean(filters.settlementStatus || filters.consistencyStatus || filters.recommendationTier || filters.matchId)}><PublicEligibilityFilterBar filters={filters} setFilters={setFilters} /></FilterDisclosure>
       {loading ? <StatePanel title="Public uygunluk değerlendirmesi yükleniyor..." /> : null}
       {error ? <StatePanel title="Public uygunluk verisi yüklenemedi" body={error} /> : null}
       {!loading && !error && data ? <PublicEligibilityPanels data={data} navigate={navigate} /> : null}
@@ -6627,10 +6525,10 @@ export function CountryListPage({ navigate }: { navigate: (path: string) => void
   const totals = useMemo(() => {
     if (!countries && competitions.length === 0) return null;
     return {
-      countries: countries?.length ?? 11,
-      competitions: competitions.length || (countries ? countries.reduce((s, c) => s + c.competitionCount, 0) : 16),
-      teams: competitions.reduce((s, c) => s + c.teamsCount, 0) || (countries ? countries.reduce((s, c) => s + c.teamCount, 0) : 344),
-      matches: competitions.reduce((s, c) => s + c.matchesCount, 0) || (countries ? countries.reduce((s, c) => s + c.matchCount, 0) : 2000),
+      countries: countries?.length ?? new Set(competitions.map((item) => item.country).filter(Boolean)).size,
+      competitions: countries ? countries.reduce((s, c) => s + c.competitionCount, 0) : competitions.length,
+      teams: countries ? countries.reduce((s, c) => s + c.teamCount, 0) : competitions.reduce((s, c) => s + c.teamsCount, 0),
+      matches: countries ? countries.reduce((s, c) => s + c.matchCount, 0) : competitions.reduce((s, c) => s + c.matchesCount, 0),
       upcoming: countries ? countries.reduce((s, c) => s + c.upcomingMatchCount, 0) : 0
     };
   }, [countries, competitions]);
@@ -6697,7 +6595,7 @@ export function CountryListPage({ navigate }: { navigate: (path: string) => void
       <header className="explorer-hero-header">
         <span className="explorer-hero-eyebrow">SkorIQ Football</span>
         <h1 className="explorer-hero-title">Futbol Keşfi</h1>
-        <p className="explorer-hero-desc">Turnuvalar, lig kapsamı ve resmi kulüp telemetrisi.</p>
+        <p className="explorer-hero-desc">Ligleri keşfet, takımları ve maç analizlerini incele.</p>
       </header>
 
       {/* Skeleton Loading (strictly satisfies test suite) */}
@@ -6782,11 +6680,10 @@ export function CountryListPage({ navigate }: { navigate: (path: string) => void
           {/* Section 2: Segmented Tabs & Instant League Search */}
           <div className="explorer-controls-shell">
             <div className="explorer-tabs-row">
-              <div className="explorer-segmented-tabs" role="tablist">
+              <div className="explorer-segmented-tabs" role="group" aria-label="Keşif görünümü">
                 <button
                   type="button"
-                  role="tab"
-                  aria-selected={activeTab === "all"}
+                  aria-pressed={activeTab === "all"}
                   className={`explorer-tab-btn ${activeTab === "all" ? "active" : ""}`}
                   onClick={() => setActiveTab("all")}
                 >
@@ -6794,8 +6691,7 @@ export function CountryListPage({ navigate }: { navigate: (path: string) => void
                 </button>
                 <button
                   type="button"
-                  role="tab"
-                  aria-selected={activeTab === "countries"}
+                  aria-pressed={activeTab === "countries"}
                   className={`explorer-tab-btn ${activeTab === "countries" ? "active" : ""}`}
                   onClick={() => setActiveTab("countries")}
                 >
@@ -6811,7 +6707,8 @@ export function CountryListPage({ navigate }: { navigate: (path: string) => void
                 <input
                   type="search"
                   className="explorer-search-input"
-                  placeholder="Lig veya ülke ara (örn. Premier League, Süper Lig, Almanya)..."
+                  placeholder="Lig veya ülke ara"
+                  aria-label="Lig veya ülke ara"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -6825,7 +6722,7 @@ export function CountryListPage({ navigate }: { navigate: (path: string) => void
 
             {/* Quick Country Filters */}
             {countryChips.length > 0 ? (
-              <div className="explorer-country-chips" role="tablist" aria-label="Ülke filtreleri">
+              <div className="explorer-country-chips" role="group" aria-label="Ülke filtreleri">
                 <button
                   type="button"
                   className={`explorer-chip ${countryFilter === "all" ? "active" : ""}`}

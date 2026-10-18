@@ -1,0 +1,586 @@
+/* Maç Gecesi · football discovery, league rooms and club dossiers. */
+.arena-shell :is(.explorer-shell, .competitions-shell, .country-detail-shell, .competition-detail-shell, .team-detail-shell) {
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.arena-shell :is(.explorer-hero-header, .country-detail-hero, .teams-header, .competitions-hero, .competition-detail-hero, .team-profile-hero) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 0 0 28px;
+  padding: clamp(24px, 3.3vw, 46px);
+  border: 1px solid rgba(241, 237, 224, .16);
+  border-radius: 18px;
+  background: linear-gradient(100deg, #111d13 8%, #111d13ed 52%, #111d13b3), url('/assets/arena-stadium.webp') center 59% / cover;
+  box-shadow: inset 0 1px 0 rgba(241, 237, 224, .04);
+  text-align: left;
+}
+
+.arena-shell :is(.explorer-hero-header, .country-detail-hero, .teams-header, .competitions-hero, .competition-detail-hero, .team-profile-hero)::after {
+  position: absolute;
+  content: '';
+  z-index: -1;
+  inset: auto 24px 0;
+  height: 3px;
+  background: linear-gradient(90deg, #ffc400, #ffc40000 72%);
+}
+
+.arena-shell :is(.explorer-hero-title, .country-detail-title, .explorer-hero h1, .team-hero-name) {
+  margin: 0 0 8px;
+  color: #f1ede0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(42px, 4.8vw, 70px);
+  font-weight: 700;
+  line-height: .98;
+  letter-spacing: -.025em;
+  overflow-wrap: anywhere;
+}
+
+.arena-shell :is(.explorer-hero-eyebrow, .country-detail-eyebrow) {
+  margin-bottom: 13px;
+  color: #ffc400;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: .14em;
+}
+
+.arena-shell :is(.explorer-hero-desc, .country-detail-desc) {
+  margin: 12px 0 0;
+  color: #adb8aa;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.arena-shell :is(.explorer-global-stats, .teams-summary-grid, .explorer-summary-cards) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0;
+  min-width: 0;
+  margin: 0 0 30px;
+  padding: 20px 0;
+  border: 1px solid rgba(241, 237, 224, .14);
+  border-radius: 14px;
+  background: #101810;
+}
+
+.arena-shell :is(.explorer-stat-item, .teams-summary-stat, .summary-card) {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.arena-shell :is(.explorer-stat-item, .teams-summary-stat, .summary-card) + :is(.explorer-stat-item, .teams-summary-stat, .summary-card) { border-left: 1px solid rgba(241, 237, 224, .12); }
+.arena-shell .explorer-stat-divider { display: none; }
+.arena-shell :is(.explorer-stat-value, .teams-summary-stat strong, .summary-card-value) {
+  color: #f1ede0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(22px, 2.2vw, 32px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -.06em;
+  font-variant-numeric: tabular-nums;
+}
+.arena-shell :is(.explorer-stat-label, .teams-summary-stat span, .summary-card-label) { color: #a2ae9f; font-size: 10px; font-weight: 600; line-height: 1.5; letter-spacing: .07em; text-transform: uppercase; }
+.arena-shell .teams-header { align-items: stretch; gap: 36px; }
+.arena-shell .teams-header > div:first-child { flex: 1; min-width: 0; }
+.arena-shell .teams-header .teams-summary-grid { flex: 1; align-self: center; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; padding: 0; border: 0; background: transparent; gap: 20px; }
+.arena-shell .teams-header .teams-summary-stat { padding: 0 0 0 17px; border-left: 1px solid #f1ede026; }
+
+/* Search and chips are touch-sized; long filter strips scroll inside the page. */
+.arena-shell :is(.explorer-controls-shell, .teams-toolbar, .competition-filter-bar) {
+  min-width: 0;
+  margin: 0 0 18px;
+  padding: 18px;
+  border: 1px solid rgba(241, 237, 224, .14);
+  border-radius: 14px;
+  background: #101810;
+  box-shadow: none;
+}
+.arena-shell :is(.teams-toolbar-controls, .explorer-tabs-row, .competition-filter-bar) { gap: 12px; }
+.arena-shell :is(.explorer-search-box, .teams-search-wrap, .competition-search-wrap) { min-width: 0; max-width: none; flex: 1 1 250px; }
+.arena-shell :is(.explorer-search-input, .teams-search-wrap input, .competition-search-input, .team-filter-select, .competition-sort-select) {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  padding-block: 10px;
+  border: 1px solid rgba(241, 237, 224, .19);
+  border-radius: 8px;
+  background: #080f0a;
+  color: #f1ede0;
+  font-family: 'Archivo', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: none;
+}
+.arena-shell :is(.explorer-search-input, .teams-search-wrap input, .competition-search-input)::placeholder { color: #8e9d8d; opacity: 1; }
+.arena-shell :is(.team-filter-select, .competition-sort-select) { width: auto; max-width: 100%; padding-inline: 12px 28px; }
+.arena-shell :is(.team-filter-select, .competition-sort-select) option { background: #101810; color: #f1ede0; }
+.arena-shell :is(.explorer-search-input, .teams-search-wrap input, .competition-search-input, .team-filter-select, .competition-sort-select):focus { border-color: #ffc400; outline: 2px solid #ffc4002b; outline-offset: 2px; }
+.arena-shell :is(.explorer-search-box svg, .teams-search-wrap .search-icon, .competition-search-wrap .search-icon) { color: #adb8aa; }
+.arena-shell :is(.explorer-search-clear, .teams-search-clear, .competition-search-wrap .search-clear-btn) { right: 3px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; color: #c1cabc; background: transparent; }
+.arena-shell :is(.explorer-search-input, .teams-search-wrap input, .competition-search-input) { padding-inline: 42px 48px; }
+.arena-shell .competition-sort-wrap { gap: 12px; color: #adb8aa; font-size: 12px; }
+.arena-shell .explorer-segmented-tabs { max-width: 100%; padding: 4px; border: 1px solid #f1ede021; border-radius: 9px; background: #080f0a; }
+.arena-shell :is(.explorer-tab-btn, .explorer-chip, .team-filter-chip, .country-chip, .alphabet-letter-btn, .team-page-btn, .squad-tab-btn) { flex-shrink: 0; min-height: 44px; padding: 10px 14px; border: 1px solid #f1ede021; border-radius: 7px; color: #b5c0b0; background: #111b13; font-size: 12px; font-weight: 600; white-space: nowrap; box-shadow: none; }
+.arena-shell .explorer-tab-btn { border-color: transparent; background: transparent; }
+.arena-shell :is(.explorer-tab-btn, .explorer-chip, .team-filter-chip, .country-chip, .alphabet-letter-btn, .team-page-btn, .squad-tab-btn).active { border-color: #ffc400; background: #ffc400; color: #171b0d; box-shadow: none; }
+.arena-shell :is(.explorer-chip, .team-filter-chip, .country-chip) { border-radius: 99px; }
+.arena-shell :is(.explorer-country-chips, .team-country-chips, .competition-country-chips, .team-filter-chips) { min-width: 0; gap: 7px; padding-bottom: 5px; }
+.arena-shell .alphabet-ribbon { min-width: 0; gap: 3px; padding: 8px; border: 1px solid #f1ede01a; border-radius: 8px; background: #080f0a; }
+.arena-shell .alphabet-ribbon-label { color: #a2ae9f; }
+.arena-shell .alphabet-letter-btn { min-width: 36px; padding-inline: 8px; border-color: transparent; background: transparent; }
+.arena-shell .alphabet-letter-btn:disabled { color: #f1ede043; opacity: .65; }
+
+/* League cards: real crests become patches, each room has one clear action. */
+.arena-shell .featured-leagues-section { margin-bottom: 32px; }
+.arena-shell .section-title-strip { justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; padding-bottom: 12px; border-color: #f1ede021; }
+.arena-shell .section-title-label { color: #f1ede0; font-size: 12px; letter-spacing: .09em; }
+.arena-shell .section-title-tag { border-color: #ffc40033; background: #ffc4000c; color: #c9be85; font-size: 10px; }
+.arena-shell .featured-leagues-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 12px; }
+.arena-shell :is(.featured-league-card, .explorer-league-row-card, .country-league-detail-card, .country-league-pill-btn) { min-width: 0; padding: 19px; gap: 16px; border: 1px solid #f1ede023; border-radius: 12px; background: #101810; box-shadow: none; transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease; }
+.arena-shell .featured-league-card { min-height: 118px; background: linear-gradient(115deg, #1a2819, #101810); }
+.arena-shell :is(.featured-card-crest, .league-row-crest-wrap, .cld-crest-wrap, .pill-btn-crest, .explorer-hero-logo, .team-card-logo) { flex-shrink: 0; display: grid; place-items: center; width: 58px; height: 64px; padding: 10px; border: 1px solid #f1ede0; border-radius: 10px; background: #e8e6d9; filter: none; }
+.arena-shell :is(.featured-card-crest, .league-row-crest-wrap, .cld-crest-wrap, .pill-btn-crest, .explorer-hero-logo, .team-card-logo) :is(.competition-logo, .team-logo, .competition-logo-fallback, .team-logo-fallback) { max-width: 100%; max-height: 100%; border: 0; background: transparent; color: #1d2b1b; filter: none; }
+.arena-shell :is(.featured-card-country, .league-row-country-tag) { color: #a6b1a0; font-size: 10px; }
+.arena-shell .featured-card-name { color: #f1ede0; font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 600; line-height: 1.1; white-space: normal; overflow-wrap: anywhere; }
+.arena-shell :is(.featured-card-meta, .league-stat, .pill-comp-meta, .cld-telemetry-row, .country-stream-meta) { color: #a6b1a0; font-size: 11px; line-height: 1.6; }
+.arena-shell :is(.featured-card-meta, .league-stat, .cld-telemetry-row) strong { color: #f1ede0; font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.arena-shell :is(.featured-card-arrow, .league-row-action, .pill-btn-arrow, .cld-cta) { color: #ffc400; }
+.arena-shell .explorer-leagues-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; border: 0; }
+.arena-shell .explorer-league-row-card { min-height: 124px; gap: 16px; }
+.arena-shell .league-row-title-strip { align-items: start; flex-direction: column; gap: 5px; }
+.arena-shell :is(.league-row-title, .cld-name) { color: #f1ede0; font-size: 16px; font-weight: 600; line-height: 1.35; letter-spacing: -.02em; white-space: normal; overflow-wrap: anywhere; }
+.arena-shell .league-row-metrics { gap: 5px 8px; margin-top: 4px; }
+.arena-shell :is(.league-ready-pill, .league-cov-pill, .cld-cov-badge, .coverage-pill) { border-color: #ffc4002e; color: #e5c765; background: #ffc4000c; font-size: 10px; line-height: 1.6; }
+.arena-shell .league-ready-pill { border-color: #91bb872e; color: #a8d79a; background: #91bb870c; }
+.arena-shell .league-row-action { align-self: flex-start; margin-top: 1px; font-size: 11px; }
+.arena-shell .league-row-action > span { display: none; }
+.arena-shell .country-stream-grid { gap: 24px; }
+.arena-shell .country-stream-block { padding: 24px; border: 1px solid #f1ede023; border-radius: 14px; background: #101810; }
+.arena-shell .country-stream-header { gap: 16px; margin-bottom: 18px; padding-bottom: 18px; border-color: #f1ede021; }
+.arena-shell .country-stream-identity { min-width: 0; }
+.arena-shell .country-stream-name { color: #f1ede0; font-family: 'Barlow Condensed', sans-serif; font-size: 30px; font-weight: 600; }
+.arena-shell .country-stream-initials { background: #25301f; color: #e1ca76; border: 1px solid #f1ede021; }
+.arena-shell .country-stream-view-all { flex-shrink: 0; min-height: 44px; padding: 10px 12px; border-color: #ffc40033; border-radius: 7px; color: #ffc400; background: #ffc40008; font-size: 11px; }
+.arena-shell .country-leagues-shelf { grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 10px; }
+.arena-shell .country-league-pill-btn { gap: 12px; padding: 12px; background: #080f0a; }
+.arena-shell .pill-btn-crest { width: 40px; height: 44px; padding: 6px; border-radius: 7px; }
+.arena-shell .pill-comp-name { color: #f1ede0; font-size: 13px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+.arena-shell .country-leagues-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.arena-shell .country-league-detail-card { min-height: 130px; }
+.arena-shell .cld-title-row { flex-wrap: wrap; gap: 7px; }
+.arena-shell .cld-cta { font-size: 11px; }
+.arena-shell .competition-bento-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 16px; }
+.arena-shell .competition-bento-card { min-width: 0; overflow: hidden; gap: 0; padding: 0; border: 1px solid #f1ede026; border-radius: 14px; background: #101810; box-shadow: none; transition: transform 180ms ease, border-color 180ms ease; }
+.arena-shell .comp-card-header { gap: 10px; padding: 18px 20px 0; }
+.arena-shell .comp-country-pill { background: transparent; color: #a6b1a0; padding: 0; font-size: 10px; letter-spacing: .08em; }
+.arena-shell .comp-card-body { min-height: 120px; gap: 18px; padding: 22px 20px; }
+.arena-shell .comp-card-body .competition-logo { box-sizing: content-box; padding: 8px; border: 1px solid #e8e6d9; border-radius: 9px; background: #e8e6d9; color: #1d2b1b; }
+.arena-shell .comp-card-title { margin: 0; color: #f1ede0; font-family: 'Barlow Condensed', sans-serif; font-size: 31px; font-weight: 600; line-height: 1.05; overflow-wrap: anywhere; }
+.arena-shell .comp-card-telemetry { margin: 0 20px; padding: 18px 0; border-block: 1px solid #f1ede01a; background: transparent; }
+.arena-shell .comp-telemetry-val { color: #f1ede0; font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 500; }
+.arena-shell .comp-telemetry-lbl { color: #a6b1a0; font-size: 10px; }
+.arena-shell .comp-card-footer { padding: 15px 20px; border: 0; background: #ffffff03; }
+.arena-shell .comp-view-link { color: #ffc400; font-size: 12px; }
+
+/* League room: scroll is confined to the standings, with club names anchored. */
+.arena-shell .explorer-hero-main { min-width: 0; gap: 28px; }
+.arena-shell .explorer-hero-main > div:last-child { min-width: 0; }
+.arena-shell .explorer-hero-logo { width: 88px; height: 100px; padding: 14px; border-radius: 12px; }
+.arena-shell .explorer-hero-logo img { filter: none; }
+.arena-shell .explorer-hero-meta { flex-wrap: wrap; gap: 8px; }
+.arena-shell :is(.competition-detail-shell, .country-detail-shell) .status-badge { padding: 5px 8px; border: 1px solid #f1ede026; font-size: 10px; font-weight: 600; }
+.arena-shell :is(.competition-detail-shell, .country-detail-shell) .status-ready { background: #91bb8714; border-color: #91bb873b; color: #a8d79a; }
+.arena-shell :is(.competition-detail-shell, .country-detail-shell) .status-partial { background: #ffc40010; border-color: #ffc40033; color: #e5c765; }
+.arena-shell :is(.competition-detail-shell, .country-detail-shell) .status-insufficient { background: #ffffff06; color: #a6b1a0; }
+.arena-shell .competition-tab-bar { flex-wrap: nowrap; gap: 4px; max-width: 100%; margin: 0 0 20px; padding: 4px; border: 1px solid #f1ede021; border-radius: 10px; background: #101810; }
+.arena-shell .competition-tab-bar .match-center-tab-btn { min-height: 48px; padding: 12px 16px; border: 0; border-radius: 7px; color: #a6b1a0; background: transparent; font-size: 12px; }
+.arena-shell .competition-tab-bar .match-center-tab-btn.active { background: #ffc400; color: #171b0d; }
+.arena-shell .competition-tab-bar .tab-icon { font-size: 13px; }
+.arena-shell .explorer-panel { min-width: 0; padding: 24px; border: 1px solid #f1ede023; border-radius: 14px; background: #101810; box-shadow: none; }
+.arena-shell .explorer-panel-header { gap: 16px; padding-bottom: 20px; margin-bottom: 4px; border-color: #f1ede01a; }
+.arena-shell .explorer-panel-header h2 { margin: 0; color: #f1ede0; font-family: 'Barlow Condensed', sans-serif; font-size: 30px; font-weight: 600; letter-spacing: -.01em; }
+.arena-shell .explorer-panel-header .muted { color: #a6b1a0; font-size: 11px; }
+.arena-shell .standings-legend { gap: 8px 14px; color: #a6b1a0; font-size: 10px; }
+.arena-shell .standings-table-wrap { max-width: 100%; overflow: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; scrollbar-color: #526344 #101810; }
+.arena-shell .standings-table { min-width: 670px; width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.arena-shell .standings-table :is(th, td) { height: 53px; padding: 8px 12px; border-bottom: 1px solid #f1ede014; color: #b9c3b1; background: #101810; text-align: center; }
+.arena-shell .standings-table th { color: #95a28d; font-family: 'Archivo', sans-serif; font-size: 10px; font-weight: 600; }
+.arena-shell .standings-table :is(th, td):first-child { position: sticky; left: 0; z-index: 1; width: 40px; min-width: 40px; padding-inline: 8px; }
+.arena-shell .standings-table :is(th, td):nth-child(2) { position: sticky; left: 40px; z-index: 1; width: 180px; min-width: 180px; max-width: 180px; text-align: left; }
+.arena-shell .standings-table th { position: sticky; top: 0; z-index: 2; background: #0c140d; }
+.arena-shell .standings-table th:nth-child(-n+2) { z-index: 3; }
+.arena-shell .standings-team { min-height: 44px; max-width: 100%; gap: 9px; padding: 0; border: 0; color: #f1ede0; background: transparent; text-align: left; font-size: 12px; font-weight: 500; }
+.arena-shell .standings-team > span { white-space: normal; line-height: 1.35; }
+.arena-shell .standings-table .points-cell { color: #ffc400; background: #ffc40007; font-size: 14px; }
+.arena-shell .standings-table .gd-positive { color: #a8d79a; }
+.arena-shell .standings-table .gd-negative { color: #ee9a88; }
+.arena-shell .standings-table .pos-indicator { color: #abb7a2; font-size: 11px; }
+.arena-shell .standings-table tr.zone-ucl td:first-child { box-shadow: inset 3px 0 #ffc400; }
+.arena-shell .standings-table tr.zone-leader td:first-child { box-shadow: inset 3px 0 #ffc400; }
+.arena-shell .arena-table-hint { display: none; }
+@media (max-width: 760px) { .arena-shell .arena-table-hint { display: inline; font-size: 10px; font-weight: 500; color: #a8b2a6; } }
+.arena-shell .standings-table tr.zone-uel td:first-child { box-shadow: inset 3px 0 #c9945d; }
+.arena-shell .standings-table tr.zone-relegation td:first-child { box-shadow: inset 3px 0 #e68c78; }
+.arena-shell .explorer-team-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 10px; }
+.arena-shell .explorer-team-card { min-width: 0; min-height: 84px; gap: 12px; padding: 16px; border: 1px solid #f1ede01a; border-radius: 9px; background: #080f0a; box-shadow: none; }
+.arena-shell .explorer-team-name { color: #f1ede0; font-size: 14px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.arena-shell .explorer-match-list { gap: 0; }
+.arena-shell .explorer-match-row { min-width: 0; gap: 20px; padding: 18px 0; border-color: #f1ede01a; border-radius: 0; background: transparent; }
+.arena-shell .explorer-match-teams { min-width: 0; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; }
+.arena-shell .explorer-match-team { min-width: 0; color: #f1ede0; font-size: 13px; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }
+.arena-shell .explorer-match-team:last-child { justify-content: flex-end; text-align: right; }
+.arena-shell :is(.explorer-match-vs, .explorer-match-score) { align-self: center; color: #a2ae9f; font-family: 'JetBrains Mono', monospace; font-size: 10px; text-align: center; }
+.arena-shell .explorer-match-kickoff { flex-shrink: 0; color: #a6b1a0; font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+.arena-shell .explorer-match-cta { min-height: 44px; padding: 10px 14px; border: 1px solid #ffc40033; border-radius: 7px; color: #ffc400; background: #ffc4000a; font-size: 11px; }
+.arena-shell .empty-message { margin: 20px 0; color: #a6b1a0; line-height: 1.7; }
+
+/* Club directory and profile: compact broadcast identity, calm data below. */
+.arena-shell .team-directory-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr)); gap: 14px; margin-top: 20px; }
+.arena-shell .team-card { min-width: 0; gap: 20px; padding: 22px; border: 1px solid #f1ede026; border-radius: 14px; background: #101810; box-shadow: none; transition: transform 180ms ease, border-color 180ms ease; }
+.arena-shell .team-card-main { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 16px; }
+.arena-shell .team-card-body { gap: 18px; }
+.arena-shell .team-card-body h3 { color: #f1ede0; font-family: 'Barlow Condensed', sans-serif; font-size: 29px; font-weight: 600; line-height: 1.05; }
+.arena-shell .team-card-meta { margin-top: 7px; gap: 4px 7px; color: #a6b1a0; font-size: 10px; line-height: 1.6; }
+.arena-shell .team-card-meta span + span::before { color: #f1ede03b; }
+.arena-shell .team-card-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.arena-shell .team-card-stats span { gap: 5px; padding: 0; border: 0; border-radius: 0; background: transparent; color: #a6b1a0; font-size: 10px; font-weight: 500; }
+.arena-shell .team-card-stats strong { color: #f1ede0; font-family: 'JetBrains Mono', monospace; font-size: 19px; font-weight: 500; }
+.arena-shell .team-card-footer { align-items: center; gap: 14px; padding-top: 17px; border-top: 1px solid #f1ede01a; }
+.arena-shell .team-card-coverage { min-width: 0; }
+.arena-shell .team-card-coverage > span { color: #a6b1a0; font-size: 10px; font-weight: 500; }
+.arena-shell .team-card-action { flex-shrink: 0; min-height: 44px; padding: 10px 12px; border: 1px solid #ffc40036; border-radius: 7px; color: #ffc400; background: #ffc4000a; font-size: 11px; font-weight: 600; }
+.arena-shell .team-pagination-bar { gap: 18px; margin-top: 24px; padding: 18px 0 0; border: 0; border-top: 1px solid #f1ede01a; border-radius: 0; background: transparent; }
+.arena-shell .team-pagination-info { color: #a6b1a0; font-size: 11px; }
+.arena-shell .team-pagination-info strong { color: #f1ede0; }
+.arena-shell .team-pagination-nav { max-width: 100%; gap: 5px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.arena-shell .team-page-btn { min-width: 44px; height: 44px; padding-inline: 11px; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.arena-shell .team-detail-shell { gap: 20px; }
+.arena-shell .explorer-breadcrumbs { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 7px; color: #8d9b87; font-size: 11px; }
+.arena-shell .explorer-breadcrumbs button { min-height: 44px; padding: 6px 0; border: 0; color: #a8b79f; background: transparent; font-size: 11px; }
+.arena-shell .breadcrumb-current { color: #e0e4d5; }
+.arena-shell .team-profile-hero { margin-bottom: 0; gap: 26px; }
+.arena-shell .team-hero-entity { min-width: 0; flex: 1; gap: 24px; }
+.arena-shell .team-hero-entity > .team-logo { flex-shrink: 0; box-sizing: content-box; width: 70px; height: 70px; padding: 14px; border: 1px solid #e8e6d9; border-radius: 12px; background: #e8e6d9; color: #1d2b1b; }
+.arena-shell .team-hero-info { min-width: 0; gap: 9px; }
+.arena-shell .team-profile-hero .team-hero-name { margin: 3px 0; font-size: clamp(42px, 4.8vw, 70px); }
+.arena-shell .team-hero-eyebrow-row { gap: 8px; }
+.arena-shell .team-hero-comp-pill { min-height: 36px; padding: 7px 11px; border-color: #ffc40038; border-radius: 6px; background: #ffc4000c; color: #dfca78; font-size: 10px; }
+.arena-shell .team-hero-country-pill { padding: 7px 9px; border-color: #f1ede021; border-radius: 6px; color: #a6b1a0; background: #ffffff04; font-size: 10px; }
+.arena-shell .team-hero-quick-strip { gap: 12px; }
+.arena-shell .team-hero-quick-strip .quick-label { color: #a6b1a0; font-size: 10px; }
+.arena-shell .streak-dot { width: 27px; height: 27px; border-radius: 6px; font-size: 10px; }
+.arena-shell .streak-dot.streak-win { background: #91bb8719; border-color: #91bb8754; color: #b4dfa2; }
+.arena-shell .streak-dot.streak-draw { background: #f1ede00c; border-color: #f1ede02b; color: #b5c0b0; }
+.arena-shell .streak-dot.streak-loss { background: #e68c7814; border-color: #e68c784a; color: #eea38f; }
+.arena-shell .quick-metric { padding: 5px 8px; border-color: #f1ede021; background: #ffffff04; }
+.arena-shell .quick-metric strong { color: #f1ede0; font-size: 12px; }
+.arena-shell .team-hero-badges { flex-shrink: 0; gap: 26px; align-items: start; }
+.arena-shell .team-hero-stat { gap: 8px; min-width: 56px; border: 0; background: transparent; padding: 0; }
+.arena-shell .team-hero-stat strong { color: #ffc400; font-family: 'Barlow Condensed', sans-serif; font-size: 64px; font-weight: 600; letter-spacing: -.03em; }
+.arena-shell .team-hero-stat span { color: #a6b1a0; font-size: 10px; }
+.arena-shell .team-nav-tabs { gap: 5px; max-width: 100%; padding: 5px; border-color: #f1ede021; border-radius: 10px; background: #101810; scrollbar-width: none; }
+.arena-shell .team-nav-tab { flex-shrink: 0; min-height: 48px; padding: 12px 18px; border: 0; border-radius: 6px; color: #a6b1a0; background: transparent; font-size: 12px; }
+.arena-shell .team-nav-tab.active { border: 0; color: #171b0d; background: #ffc400; box-shadow: none; }
+.arena-shell .team-tab-badge { border: 0; color: #d7c776; background: #ffc40014; font-size: 10px; }
+.arena-shell .team-nav-tab.active .team-tab-badge { color: #171b0d; background: #171b0d1a; }
+.arena-shell .team-tab-viewport { min-width: 0; }
+.arena-shell .team-profile-grid { min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.arena-shell .team-profile-grid > section { min-width: 0; margin: 0; padding: 24px; border: 1px solid #f1ede023; border-radius: 14px; background: #101810; }
+.arena-shell .team-profile-grid h2 { color: #f1ede0; font-family: 'Barlow Condensed', sans-serif; font-size: 30px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em; }
+.arena-shell :is(.team-profile-standing, .team-season-telemetry, .team-form-analytics-panel, .team-squad-panel) { grid-column: 1 / -1; }
+.arena-shell .team-profile-standing .standing-stats { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); align-items: start; gap: 0; }
+.arena-shell .team-profile-standing .standing-stat { min-width: 0; padding: 0 14px; gap: 10px; border-left: 1px solid #f1ede01a; }
+.arena-shell .team-profile-standing .standing-stat:first-child { padding-left: 0; border-left: 0; }
+.arena-shell .team-profile-standing .standing-stat span { color: #a6b1a0; font-size: 10px; font-weight: 500; letter-spacing: .04em; }
+.arena-shell .team-profile-standing .standing-stat strong { color: #f1ede0; font-size: 24px; font-weight: 500; }
+.arena-shell .team-profile-standing .standing-stat:last-child strong { color: #ffc400; }
+.arena-shell .season-telemetry-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; }
+.arena-shell .season-telemetry-grid .standing-stat { min-width: 0; gap: 8px; }
+.arena-shell .season-telemetry-grid .standing-stat :is(span, small) { color: #a6b1a0; font-size: 10px; font-weight: 500; }
+.arena-shell .season-telemetry-grid .standing-stat strong { color: #f1ede0; font-size: 22px; font-weight: 500; }
+.arena-shell .form-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 20px; gap: 10px; }
+.arena-shell .form-summary-card { gap: 18px; padding: 14px; border-color: #f1ede01a; border-radius: 8px; background: #080f0a; }
+.arena-shell .form-summary-card h3 { color: #dfca78; font-size: 11px; font-weight: 600; }
+.arena-shell .form-summary-body { gap: 11px; }
+.arena-shell .form-summary-row span { color: #a6b1a0; font-size: 10px; }
+.arena-shell .form-summary-row strong { color: #f1ede0; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; }
+.arena-shell .goal-profile-compact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.arena-shell .goal-profile-compact-item { gap: 12px; padding: 17px 14px; border-color: #f1ede01a; border-radius: 8px; background: #080f0a; text-align: left; }
+.arena-shell .goal-profile-compact-item span { color: #a6b1a0; font-size: 11px; font-weight: 500; }
+.arena-shell .goal-profile-compact-item strong { color: #f1ede0; font-family: 'JetBrains Mono', monospace; font-size: 25px; font-weight: 500; }
+.arena-shell .data-coverage-grid { gap: 8px; margin-top: 20px; }
+.arena-shell .data-coverage-item { gap: 10px; min-height: 60px; padding: 12px; border-color: #f1ede01a; border-radius: 8px; background: #080f0a; }
+.arena-shell .data-coverage-item > span:first-child { color: #d6dece; font-size: 11px; font-weight: 500; }
+.arena-shell .data-coverage-item .badge { font-size: 9px; }
+.arena-shell :is(.recent-matches-list, .upcoming-matches-list) { margin-top: 18px; }
+.arena-shell .team-matches-panel .recent-matches-list { border-color: #f1ede01a; }
+.arena-shell :is(.recent-match-row, .upcoming-match-row) { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 20px 0; border-color: #f1ede01a; background: transparent; }
+.arena-shell :is(.recent-match-opponent, .upcoming-match-opponent) { padding-right: 0; gap: 12px; }
+.arena-shell :is(.recent-match-opponent, .upcoming-match-opponent) strong { color: #f1ede0; font-size: 14px; font-weight: 600; line-height: 1.4; }
+.arena-shell :is(.recent-match-opponent, .upcoming-match-opponent) .muted { color: #a6b1a0; font-size: 10px; line-height: 1.6; }
+.arena-shell :is(.recent-match-meta, .upcoming-match-meta) { flex-wrap: wrap; justify-content: flex-start; gap: 9px; padding-right: 0; }
+.arena-shell :is(.recent-match-homeaway, .upcoming-match-homeaway, .recent-match-halftime) { color: #a6b1a0; font-size: 10px; }
+.arena-shell .recent-match-corner { position: static; justify-self: start; border-radius: 4px; padding: 4px 7px; font-size: 9px; line-height: 1.3; }
+.arena-shell .team-detail-shell .result-w { background: #91bb8719; color: #b4dfa2; }
+.arena-shell .team-detail-shell .result-d { background: #f1ede012; color: #c8cebe; }
+.arena-shell .team-detail-shell .result-l { background: #e68c7814; color: #eea38f; }
+.arena-shell .recent-match-score { color: #f1ede0; border-radius: 5px; background: #f1ede00a; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+.arena-shell .upcoming-match-link { min-height: 44px; margin-left: auto; padding: 10px 14px; border-color: #ffc40033; border-radius: 6px; color: #ffc400; background: #ffc4000a; font-size: 11px; }
+
+/* Form, momentum and roster subpages retain every metric in a legible hierarchy. */
+.arena-shell :is(.team-form-analytics-panel, .team-squad-panel) { gap: 24px; }
+.arena-shell .form-streak-badge { flex-wrap: wrap; gap: 10px; padding: 10px 13px; border-color: #f1ede021; border-radius: 7px; color: #a6b1a0; background: #080f0a; font-size: 10px; }
+.arena-shell .team-form-analytics-panel .text-emerald { color: #a8d79a; }
+.arena-shell .team-form-analytics-panel .text-rose { color: #ee9a88; }
+.arena-shell .form-results-strip { min-width: 0; gap: 9px; padding: 2px 1px 12px; overscroll-behavior-inline: contain; scrollbar-color: #526344 #101810; }
+.arena-shell .form-result-node { min-width: 92px; gap: 12px; padding: 14px 10px; border-color: #f1ede021; border-radius: 9px; background: #080f0a; }
+.arena-shell .form-result-pill { width: 31px; height: 31px; border-radius: 7px; font-size: 11px; }
+.arena-shell .res-win .form-result-pill { border-color: #91bb8754; background: #91bb8719; color: #b4dfa2; }
+.arena-shell .res-draw .form-result-pill { border-color: #f1ede02b; background: #f1ede00c; color: #b5c0b0; }
+.arena-shell .res-loss .form-result-pill { border-color: #e68c784a; background: #e68c7814; color: #eea38f; }
+.arena-shell .form-result-details { gap: 6px; }
+.arena-shell .form-opponent-name { max-width: 80px; color: #b7c2b0; font-size: 10px; }
+.arena-shell .form-score { color: #f1ede0; font-size: 12px; }
+.arena-shell .form-venue { color: #8f9c87; font-size: 9px; }
+.arena-shell .form-chart-wrapper { min-width: 0; padding: 18px; border-color: #f1ede01a; border-radius: 10px; background: #080f0a; }
+.arena-shell .form-chart-header { flex-wrap: wrap; gap: 9px; color: #d2dcc9; font-size: 11px; }
+.arena-shell .form-momentum-svg { display: block; width: 100%; height: clamp(150px, 18vw, 230px); overflow: visible; }
+.arena-shell .form-momentum-svg > line { stroke: #f1ede021; }
+.arena-shell .form-momentum-svg > path[fill='none'] { stroke: #ffc400; }
+.arena-shell .home-away-split-matrix { gap: 24px; padding: 22px; border-color: #f1ede01a; border-radius: 10px; background: #080f0a; }
+.arena-shell .home-away-split-matrix h3 { margin: 0; color: #d9e0d1; font-size: 13px; font-weight: 600; }
+.arena-shell .split-grid { gap: 22px; }
+.arena-shell .split-metric-row { grid-template-columns: minmax(130px, .7fr) minmax(0, 2fr); gap: 24px; }
+.arena-shell .split-metric-label { color: #a6b1a0; font-size: 11px; }
+.arena-shell .split-metric-comparison { min-width: 0; grid-template-columns: 65px minmax(0, 1fr) 65px; }
+.arena-shell .split-val strong { color: #f1ede0; font-size: 14px; font-weight: 500; }
+.arena-shell .split-val small { margin-top: 4px; color: #8f9c87; font-size: 9px; }
+.arena-shell .split-dual-bar { gap: 3px; height: 7px; background: transparent; }
+.arena-shell .home-fill { background: #ffc400; }
+.arena-shell .away-fill { background: #79916c; }
+.arena-shell .split-bar-fill { transition: none; }
+.arena-shell .squad-filter-tabs { min-width: 0; gap: 7px; }
+.arena-shell .team-squad-panel .live-telemetry-badge { padding: 7px 10px; border: 1px solid #f1ede021; border-radius: 6px; background: #ffffff04; color: #b4bda9; font-size: 10px; }
+.arena-shell .team-squad-panel .live-telemetry-badge::before { display: none; }
+.arena-shell .squad-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+.arena-shell .squad-player-card { min-width: 0; min-height: 100px; gap: 17px; padding: 18px; border-color: #f1ede01a; border-radius: 10px; background: #080f0a; }
+.arena-shell .squad-player-avatar-wrap { width: 48px; height: 48px; }
+.arena-shell .squad-player-avatar { border-color: #f1ede021; background: #263222; }
+.arena-shell .squad-player-initials { border-color: #f1ede021; color: #c3cb9b; background: #263222; font-size: 14px; }
+.arena-shell .squad-jersey-badge { border-color: #dfc55b5c; color: #f5d15c; background: #111b13; font-size: 9px; }
+.arena-shell .squad-player-info { gap: 8px; }
+.arena-shell .squad-player-info strong { color: #f1ede0; font-size: 13px; font-weight: 500; white-space: normal; line-height: 1.4; }
+.arena-shell .squad-pos-tag { padding: 3px 5px; border-color: #f1ede01a; color: #b2bca8; background: #ffffff04; font-size: 9px; font-weight: 500; }
+.arena-shell .squad-pos-tag.pos-g { color: #dbb078; }
+.arena-shell .squad-pos-tag.pos-d { color: #c8cf91; }
+.arena-shell .squad-pos-tag.pos-m { color: #a8d79a; }
+.arena-shell .squad-pos-tag.pos-f { color: #eea38f; }
+.arena-shell .explorer-skeleton-card { border-color: #f1ede01a; background: #101810; }
+.arena-shell .explorer-skeleton-line { background: #c9d1ba14; animation: none; }
+.arena-shell :is(.empty-results-box, .empty-competitions-panel) { color: #a6b1a0; }
+
+@media (hover: hover) {
+  .arena-shell :is(.featured-league-card, .explorer-league-row-card, .country-league-detail-card, .country-league-pill-btn):hover { padding-left: 19px; transform: translateY(-2px); border-color: #ffc40066; background: #162014; }
+  .arena-shell .country-league-pill-btn:hover { padding-left: 12px; }
+  .arena-shell .team-card:hover { padding-left: 22px; transform: translateY(-3px); border-color: #ffc40066; background: #101810; box-shadow: 0 12px 24px #0003; }
+  .arena-shell .competition-bento-card:hover { padding-left: 0; transform: translateY(-3px); border-color: #ffc40066; background: #101810; }
+  .arena-shell :is(.team-nav-tab, .competition-tab-bar .match-center-tab-btn):hover:not(.active) { color: #f1ede0; background: #ffffff06; }
+  .arena-shell :is(.explorer-chip, .country-chip, .alphabet-letter-btn, .squad-tab-btn, .team-page-btn):hover:not(.active):not(:disabled) { color: #f1ede0; border-color: #f1ede045; background: #1d291a; }
+  .arena-shell :is(.explorer-match-row, .recent-match-row, .upcoming-match-row):hover { padding-left: 0; border-color: #ffc40040; background: transparent; }
+}
+.arena-shell :is(.team-card, .competition-bento-card, .featured-league-card, .explorer-league-row-card, .country-league-detail-card, .country-league-pill-btn, .explorer-team-card, .form-result-node):focus-visible { outline: 2px solid #ffc400; outline-offset: 4px; }
+
+@media (max-width: 1100px) {
+  .arena-shell .team-profile-grid { grid-template-columns: minmax(0, 1fr); }
+  .arena-shell .form-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .arena-shell .team-profile-standing .standing-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px 0; }
+  .arena-shell .team-profile-standing .standing-stat:nth-child(5) { padding-left: 0; border-left: 0; }
+  .arena-shell .season-telemetry-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .arena-shell .teams-header { flex-direction: column; }
+  .arena-shell .teams-header .teams-summary-grid { align-self: stretch; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .arena-shell .country-leagues-list { grid-template-columns: minmax(0, 1fr); }
+  .arena-shell .explorer-match-row { flex-wrap: wrap; gap: 14px; }
+  .arena-shell .explorer-match-teams { flex-basis: 100%; }
+  .arena-shell .explorer-match-cta { margin-left: auto; }
+}
+
+@media (max-width: 760px) {
+  .arena-shell .explorer-leagues-grid { grid-template-columns: minmax(0, 1fr); }
+  .arena-shell :is(.explorer-stat-item, .summary-card) { padding-inline: 16px; }
+  .arena-shell .explorer-global-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px 0; }
+  .arena-shell .explorer-stat-item { border: 0; }
+  .arena-shell .explorer-summary-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px 0; }
+  .arena-shell .explorer-summary-cards .summary-card { border: 0; }
+  .arena-shell .team-hero-entity { gap: 18px; }
+  .arena-shell .team-hero-badges { width: 100%; padding-top: 20px; border-top: 1px solid #f1ede021; }
+  .arena-shell .team-hero-stat { flex-direction: row; align-items: baseline; gap: 12px; }
+  .arena-shell .team-hero-stat strong { font-size: 42px; }
+  .arena-shell .team-hero-stat span { font-size: 11px; }
+  .arena-shell .team-profile-grid > section { padding: 20px; }
+  .arena-shell .standings-legend { font-size: 9px; }
+}
+
+@media (max-width: 620px) {
+  .arena-shell :is(.explorer-hero-header, .country-detail-hero, .teams-header, .competitions-hero, .competition-detail-hero, .team-profile-hero) { margin-bottom: 20px; padding: 24px 20px; border-radius: 14px; }
+  .arena-shell .team-profile-hero { margin-bottom: 0; }
+  .arena-shell :is(.explorer-hero-title, .country-detail-title, .explorer-hero h1, .team-hero-name) { font-size: 44px; line-height: 1; }
+  .arena-shell :is(.explorer-hero-desc, .country-detail-desc) { font-size: 12px; }
+  .arena-shell .teams-header { gap: 24px; }
+  .arena-shell .teams-header .teams-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .arena-shell .teams-header .teams-summary-stat { padding-left: 11px; }
+  .arena-shell :is(.explorer-controls-shell, .teams-toolbar, .competition-filter-bar) { padding: 13px; border-radius: 11px; }
+  .arena-shell .teams-toolbar-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .arena-shell .teams-search-wrap { grid-column: 1 / -1; }
+  .arena-shell .team-filter-select { width: 100%; font-size: 12px; }
+  .arena-shell .team-filter-select:first-of-type { grid-column: 1 / -1; }
+  .arena-shell .explorer-tabs-row { flex-direction: column; align-items: stretch; gap: 13px; }
+  .arena-shell .explorer-segmented-tabs { display: flex; }
+  .arena-shell .explorer-tab-btn { flex: 1; padding-inline: 9px; font-size: 11px; }
+  .arena-shell .explorer-search-box { flex: none; width: 100%; }
+  .arena-shell :is(.explorer-search-input, .teams-search-wrap input, .competition-search-input) { font-size: 16px; }
+  .arena-shell :is(.explorer-country-chips, .team-country-chips, .competition-country-chips, .team-filter-chips, .squad-filter-tabs) { width: 100%; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: none; }
+  .arena-shell .alphabet-ribbon { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .arena-shell .alphabet-ribbon-label { display: none; }
+  .arena-shell .alphabet-letter-btn { min-width: 40px; }
+  .arena-shell .competition-filter-bar { flex-direction: column; align-items: stretch; gap: 13px; }
+  .arena-shell .competition-search-wrap { flex: none; width: 100%; }
+  .arena-shell .competition-sort-wrap { width: 100%; }
+  .arena-shell .competition-sort-select { flex: 1; width: auto; }
+  .arena-shell .featured-leagues-grid { display: grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: min(86%, 310px); gap: 11px; overflow-x: auto; padding: 2px 1px 12px; scroll-snap-type: x proximity; overscroll-behavior-inline: contain; scrollbar-width: none; }
+  .arena-shell .featured-league-card { min-height: 128px; padding: 16px; gap: 13px; scroll-snap-align: start; }
+  .arena-shell .featured-card-name { font-size: 25px; }
+  .arena-shell .section-title-tag { max-width: 100%; font-size: 9px; }
+  .arena-shell .featured-leagues-section { margin-bottom: 22px; }
+  .arena-shell .explorer-league-row-card { min-height: 116px; gap: 13px; padding: 16px; }
+  .arena-shell :is(.league-row-crest-wrap, .cld-crest-wrap) { width: 48px; height: 56px; padding: 7px; }
+  .arena-shell .league-row-title { font-size: 15px; }
+  .arena-shell .league-row-metrics { font-size: 10px; }
+  .arena-shell .country-stream-block { padding: 17px; border-radius: 12px; }
+  .arena-shell .country-stream-header { flex-wrap: wrap; gap: 13px; }
+  .arena-shell .country-stream-name { font-size: 28px; }
+  .arena-shell .country-stream-meta { font-size: 10px; }
+  .arena-shell .country-stream-view-all { margin-left: 44px; }
+  .arena-shell .country-league-detail-card { gap: 13px; padding: 16px; align-items: start; }
+  .arena-shell .cld-name { font-size: 15px; }
+  .arena-shell .cld-telemetry-row { font-size: 10px; gap: 4px 7px; }
+  .arena-shell .cld-cta { align-self: center; font-size: 0; }
+  .arena-shell .cld-cta::after { content: '→'; font-size: 19px; }
+  .arena-shell .competition-bento-grid { gap: 12px; }
+  .arena-shell .comp-card-body { min-height: 110px; padding-block: 18px; }
+  .arena-shell .comp-card-title { font-size: 32px; }
+  .arena-shell .explorer-hero-main { gap: 17px; align-items: start; }
+  .arena-shell .explorer-hero-logo { width: 60px; height: 74px; padding: 9px; }
+  .arena-shell .explorer-hero h1 { font-size: 38px; }
+  .arena-shell .explorer-hero-eyebrow { margin-bottom: 10px; font-size: 9px; }
+  .arena-shell .competition-tab-bar { margin-bottom: 16px; }
+  .arena-shell .competition-tab-bar .match-center-tab-btn { padding-inline: 13px; font-size: 11px; }
+  .arena-shell .explorer-panel { padding: 18px 13px; border-radius: 12px; }
+  .arena-shell .explorer-panel-header { flex-wrap: wrap; padding: 0 3px 16px; }
+  .arena-shell .explorer-panel-header h2 { font-size: 28px; }
+  .arena-shell .standings-table { min-width: 625px; }
+  .arena-shell .standings-table :is(th, td) { padding-inline: 10px; }
+  .arena-shell .standings-table :is(th, td):nth-child(2) { width: 140px; min-width: 140px; max-width: 140px; }
+  .arena-shell .standings-team { font-size: 11px; }
+  .arena-shell .standings-team .team-logo { width: 23px; height: 23px; }
+  .arena-shell .explorer-match-row { padding-block: 18px; }
+  .arena-shell .explorer-match-teams { gap: 9px; }
+  .arena-shell .explorer-match-team { align-items: start; font-size: 12px; }
+  .arena-shell .explorer-match-team .team-logo { width: 24px; height: 24px; flex-shrink: 0; }
+  .arena-shell .team-directory-grid { margin-top: 16px; gap: 12px; }
+  .arena-shell .team-card { padding: 18px; gap: 18px; }
+  .arena-shell .team-card-main { grid-template-columns: auto minmax(0, 1fr); gap: 15px; }
+  .arena-shell .team-card-logo { width: 54px; height: 62px; padding: 8px; }
+  .arena-shell .team-card-body h3 { font-size: 29px; }
+  .arena-shell .team-card-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .arena-shell .team-card-footer { flex-direction: row; align-items: center; }
+  .arena-shell .team-card-action { width: auto; }
+  .arena-shell .team-pagination-bar { gap: 13px; }
+  .arena-shell .team-pagination-nav { width: 100%; }
+  .arena-shell .team-detail-shell { gap: 16px; }
+  .arena-shell .explorer-breadcrumbs { font-size: 10px; }
+  .arena-shell .explorer-breadcrumbs button { font-size: 10px; }
+  .arena-shell .team-hero-entity { gap: 16px; align-items: start; }
+  .arena-shell .team-hero-entity > .team-logo { box-sizing: border-box; width: 68px; height: 78px; padding: 9px; border-radius: 9px; }
+  .arena-shell .team-hero-info { gap: 8px; }
+  .arena-shell .team-profile-hero .team-hero-name { font-size: 39px; }
+  .arena-shell .team-hero-eyebrow-row { gap: 6px; }
+  .arena-shell .team-hero-comp-pill { min-height: 44px; padding: 7px; font-size: 9px; }
+  .arena-shell .team-hero-country-pill { padding: 7px; font-size: 9px; }
+  .arena-shell .team-hero-quick-strip { gap: 9px; }
+  .arena-shell .team-hero-quick-strip .quick-label { font-size: 9px; }
+  .arena-shell .streak-dot { width: 24px; height: 24px; font-size: 9px; }
+  .arena-shell .team-hero-streak-pills { gap: 4px; }
+  .arena-shell .quick-metric { margin-top: 3px; }
+  .arena-shell .team-nav-tabs { border-radius: 9px; padding: 4px; }
+  .arena-shell .team-nav-tab { min-height: 48px; padding-inline: 13px; font-size: 11px; }
+  .arena-shell .team-profile-grid { gap: 14px; }
+  .arena-shell .team-profile-grid > section { padding: 20px 17px; border-radius: 12px; }
+  .arena-shell .team-profile-grid h2 { font-size: 28px; }
+  .arena-shell .team-profile-grid .section-header { flex-wrap: wrap; gap: 15px; }
+  .arena-shell .team-profile-standing .standing-stat { padding-inline: 9px; gap: 9px; }
+  .arena-shell .team-profile-standing .standing-stat span { font-size: 8px; letter-spacing: 0; }
+  .arena-shell .team-profile-standing .standing-stat strong { font-size: 22px; }
+  .arena-shell .season-telemetry-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 20px; }
+  .arena-shell .season-telemetry-grid .standing-stat strong { font-size: 23px; }
+  .arena-shell .form-summary-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .arena-shell .form-summary-card { padding: 16px; }
+  .arena-shell .form-summary-card h3 { font-size: 12px; }
+  .arena-shell .form-summary-row span { font-size: 12px; }
+  .arena-shell .form-summary-row strong { font-size: 12px; }
+  .arena-shell .goal-profile-compact-item { padding: 16px 12px; }
+  .arena-shell .goal-profile-compact-item span { font-size: 10px; line-height: 1.5; }
+  .arena-shell .goal-profile-compact-item strong { font-size: 23px; }
+  .arena-shell .data-coverage-grid { grid-template-columns: minmax(0, 1fr); }
+  .arena-shell .data-coverage-item { min-height: 54px; }
+  .arena-shell .data-coverage-item > span:first-child { font-size: 12px; }
+  .arena-shell .form-streak-badge { width: 100%; gap: 8px; font-size: 9px; }
+  .arena-shell .form-chart-wrapper { padding: 15px 10px; }
+  .arena-shell .form-chart-header { font-size: 10px; }
+  .arena-shell .home-away-split-matrix { gap: 22px; padding: 18px 13px; }
+  .arena-shell .home-away-split-matrix h3 { font-size: 12px; line-height: 1.5; }
+  .arena-shell .split-metric-row { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .arena-shell .split-metric-comparison { grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 10px; }
+  .arena-shell .split-val strong { font-size: 13px; }
+  .arena-shell .squad-grid { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+  .arena-shell .squad-player-card { min-height: 90px; padding: 16px; }
+  .arena-shell .squad-player-info strong { font-size: 14px; }
+  .arena-shell .explorer-skeleton-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 360px) {
+  .arena-shell :is(.explorer-hero-header, .country-detail-hero, .teams-header, .competitions-hero, .competition-detail-hero, .team-profile-hero) { padding-inline: 16px; }
+  .arena-shell .explorer-global-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .arena-shell :is(.explorer-stat-item, .summary-card) { padding-inline: 12px; }
+  .arena-shell .explorer-stat-label { font-size: 9px; }
+  .arena-shell .team-card { padding: 15px; }
+  .arena-shell .team-card-main { gap: 12px; }
+  .arena-shell .team-card-body h3 { font-size: 26px; }
+  .arena-shell .team-card-footer { gap: 10px; }
+  .arena-shell .team-card-action { padding-inline: 9px; font-size: 10px; }
+  .arena-shell .team-card-coverage > span { font-size: 9px; }
+  .arena-shell .team-hero-entity { gap: 12px; }
+  .arena-shell .team-hero-entity > .team-logo { width: 52px; height: 64px; padding: 7px; }
+  .arena-shell .team-profile-hero .team-hero-name { font-size: 34px; }
+  .arena-shell .team-profile-grid > section { padding-inline: 13px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arena-shell :is(.featured-league-card, .explorer-league-row-card, .country-league-detail-card, .country-league-pill-btn, .competition-bento-card, .team-card, .form-result-node, .squad-player-card, .featured-card-arrow, .league-row-action, .pill-btn-arrow, .cld-cta) { transition: none; }
+  .arena-shell :is(.featured-league-card, .explorer-league-row-card, .country-league-detail-card, .country-league-pill-btn, .competition-bento-card, .team-card, .form-result-node, .squad-player-card):hover { transform: none; }
+  .arena-shell .explorer-skeleton-card { animation: none; opacity: 1; }
+  .arena-shell .featured-leagues-grid { scroll-snap-type: none; }
+}

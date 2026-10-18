@@ -1,0 +1,65 @@
+.arena-app-dock, .arena-mobile-back, .arena-mobile-context { display: none; }
+.arena-route-progress { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; overflow: hidden; pointer-events: none; }
+.arena-route-progress i { display: block; width: 38%; height: 2px; background: #ffc400; animation: arena-route-arrive 550ms ease-in-out both; }
+@keyframes arena-route-arrive { from { opacity: 0; transform: translateX(-100%); } 30% { opacity: 1; } to { opacity: 0; transform: translateX(360%); } }
+.app-shell.arena-shell .arena-site-header--member { position: sticky; top: 0; isolation: isolate; }
+.arena-shell .arena-page-wayfinding { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: -12px 0 26px; border-bottom: 1px solid #f1ede014; padding-bottom: 12px; }
+.arena-page-wayfinding ol { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.arena-page-wayfinding li { display: flex; align-items: center; gap: 9px; min-height: 44px; font-size: 12px; }
+.arena-page-wayfinding li + li::before { content: "/"; color: #6d796d; }
+.arena-page-wayfinding li > span { color: #e5e8d9; }
+.arena-page-wayfinding button { min-height: 44px; border: 0; padding: 8px 2px; background: transparent; color: #9faa9d; font: inherit; cursor: pointer; }
+.arena-page-wayfinding button:hover { color: #ffc400; }
+.arena-catalog-shortcuts { display: flex; align-items: center; gap: 20px; }
+.arena-catalog-shortcuts button { font-size: 12px; }
+.arena-shell .arena-account-menu { max-height: calc(100dvh - 110px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #677455 transparent; }
+.arena-shell .arena-account-menu > button { min-height: 44px; }
+.arena-account-menu > button:disabled { opacity: .6; cursor: wait; }
+.arena-account-menu .arena-account-error { margin: 10px 0 0; color: #f8b4a3; font-size: 12px; line-height: 1.5; }
+.arena-shell #app-content:focus { outline: none; }
+.arena-shell .arena-app-dock :focus-visible, .arena-page-wayfinding :focus-visible { outline: 2px solid #ffe26a; outline-offset: 4px; }
+
+@media (max-width: 800px) and (min-width: 621px) {
+  .arena-shell .arena-primary-nav { gap: 19px; }
+  .arena-shell .arena-primary-nav > button { font-size: 13px; }
+  .arena-shell .arena-header-actions { gap: 3px; }
+  .arena-shell .arena-site-header { gap: 18px; }
+}
+
+@media (max-width: 620px) {
+  .app-shell.arena-shell { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  .app-shell.arena-shell .arena-site-header--member { min-height: 64px; padding: max(6px, env(safe-area-inset-top, 0px)) 16px 6px; gap: 8px; border-color: #f1ede018; background: #080f0bee; backdrop-filter: blur(16px); }
+  .arena-shell .arena-primary-nav { display: none; }
+  .arena-shell .arena-header-actions { margin-left: auto; gap: 1px; flex-shrink: 0; }
+  .arena-shell .arena-brand { flex-shrink: 0; gap: 8px; }
+  .arena-shell .arena-brand span { font-size: 29px; }
+  .arena-shell:not(.arena-shell--home) .arena-brand span { display: none; }
+  .arena-shell .arena-mobile-context { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #f1ede0; font-family: "Barlow Condensed", sans-serif; font-size: 23px; line-height: 1.05; font-weight: 700; letter-spacing: -.01em; }
+  .arena-shell--home .arena-mobile-context { display: none; }
+  .arena-shell .arena-site-header--detail .arena-brand { display: none; }
+  .arena-shell .arena-mobile-back { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 44px; height: 44px; margin-left: -8px; border: 0; border-radius: 50%; background: transparent; color: #f1ede0; }
+  .arena-shell .arena-account-toggle { gap: 4px; min-width: 49px; padding: 0 2px; }
+  .arena-shell .arena-account-toggle > span { width: 34px; height: 34px; }
+  .arena-shell .arena-account-toggle > svg { width: 10px; }
+  .arena-shell .arena-account-menu { position: fixed; top: calc(70px + env(safe-area-inset-top, 0px)); right: 12px; left: 12px; width: auto; max-height: calc(100dvh - 166px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); padding: 20px; border-radius: 16px; background: #111b14; }
+  .arena-shell .arena-account-menu > button { min-height: 47px; }
+  .arena-shell .arena-app-dock { position: fixed; z-index: 45; bottom: 0; right: 0; left: 0; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 2px; padding: 7px 10px calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #f1ede024; background: #0a120eF5; backdrop-filter: blur(18px); box-shadow: 0 -10px 34px #0005; }
+  .arena-app-dock > button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 56px; min-width: 0; padding: 0 2px; border: 0; border-radius: 10px; background: transparent; color: #8e9c91; font-size: 10px; line-height: 1.3; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .arena-app-dock__icon { display: grid; width: 46px; height: 31px; place-items: center; border-radius: 10px; transition: background 160ms ease, color 160ms ease, transform 160ms ease; }
+  .arena-app-dock > button[aria-current] { color: #ffcf36; }
+  .arena-app-dock > button[aria-current] .arena-app-dock__icon { background: #ffc4001c; }
+  .arena-app-dock > button:active .arena-app-dock__icon { transform: scale(.9); }
+  .arena-shell .arena-page-wayfinding { margin: -10px 0 18px; padding-bottom: 8px; gap: 10px; }
+  .arena-page-wayfinding li { font-size: 10px; gap: 7px; }
+  .arena-page-wayfinding ol { gap: 7px; }
+  .arena-shell .arena-catalog-shortcuts { display: none; }
+  .arena-shell .page-container { scroll-margin-top: 84px; }
+  .arena-shell :focus-visible { scroll-margin-block: 90px; }
+  .arena-shell .app-route-loading { bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arena-route-progress i { animation: none; width: 100%; opacity: .65; }
+  .arena-app-dock__icon { transition: none; }
+  .arena-app-dock > button:active .arena-app-dock__icon { transform: none; }
+}
