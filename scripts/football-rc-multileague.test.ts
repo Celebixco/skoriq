@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { resolveCompetitionScope, normalizeCompetitionText } from "./football-rc-scope.js";
-import { featureVector, pick, prior } from "./football-rc-prematch.js";
+import { applyPreprocessor, featureVector, pick, prior, validateModelArtifact, validateProbabilities } from "./football-rc-prematch.js";
 
 const rows = [
   { competition_id: "super", name: "Trendyol Süper Lig", country: "Türkiye" },
@@ -52,5 +53,27 @@ describe("multi-league R-C scope", () => {
     expect(pick([0.2, 0.5, 0.3])).toBe("X");
     expect(pick([0.2, 0.3, 0.5])).toBe("2");
     expect(pick([0.4, 0.4, 0.2])).toBe("1");
+  });
+
+  it("accepts valid probability vectors and preserves class order", () => {
+    expect(pick([0.5, 0.3, 0.2])).toBe("1");
+    expect(pick([0.2, 0.5, 0.3])).toBe("X");
+    expect(pick([0.2, 0.3, 0.5])).toBe("2");
+    expect(() => validateProbabilities([0.4, 0.3, 0.3000000005])).not.toThrow();
+  });
+
+  it("rejects malformed model artifacts and missing feature values", () => {
+    const model = JSON.parse(readFileSync(new URL("./football-rc-model.json", import.meta.url), "utf8"));
+    expect(() => validateModelArtifact(model)).not.toThrow();
+    expect(() => validateModelArtifact({ ...model, classOrder: ["X", "1", "2"] })).toThrow();
+    expect(() => validateModelArtifact({ ...model, preprocessor: { ...model.preprocessor, std: model.preprocessor.std.map((v: number, i: number) => i === 0 ? 0 : v) } })).toThrow();
+    expect(() => applyPreprocessor({}, model)).toThrow("missing_required_feature");
+  });
+
+  it("rejects invalid probability vectors instead of defaulting to home", () => {
+    for (const invalid of [[], [NaN, 0.5, 0.5], [0, 0, 0], [0.5, 0.5, 0.5], [0.5, -0.1, 0.6], [0.5, 0.6], [Infinity, 0, 0]]) {
+      expect(() => validateProbabilities(invalid as number[])).toThrow();
+      expect(() => pick(invalid as number[])).toThrow();
+    }
   });
 });

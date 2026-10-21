@@ -141,9 +141,34 @@ export function featureVector(target: MatchRow, history: MatchRow[], model: Mode
   return { features, scope, homeN: h10a.n, awayN: a10a.n, trace: { home5: h5, home10: h10, away5: a5, away10: a10, homeSide5: hh5, awaySide5: aa5 } };
 }
 
-function applyPreprocessor(features: Record<string, number>, model: ModelDefinition): number[] {
+export function validateModelArtifact(model: ModelDefinition): void {
+  if (model.features.length !== 34) throw new Error("invalid_model_features");
+  if (model.classOrder.length !== 3 || model.classOrder.join(",") !== "1,X,2") throw new Error("invalid_class_order");
+  for (const key of ["medians", "mean", "std"] as const) {
+    const values = model.preprocessor?.[key];
+    if (!Array.isArray(values) || values.length !== model.features.length || values.some((value) => !Number.isFinite(value))) throw new Error(`invalid_preprocessor_${key}`);
+  }
+  if (model.preprocessor.std.some((value) => value <= 0)) throw new Error("invalid_preprocessor_std");
+  for (const arm of ["R-A", "R-C"] as const) {
+    const weights = model.models[arm]?.weights;
+    if (!Array.isArray(weights) || weights.length !== model.features.length + 1) throw new Error(`invalid_weights_${arm}`);
+    if (weights.some((row) => !Array.isArray(row) || row.length !== 3 || row.some((value) => !Number.isFinite(value)))) throw new Error(`invalid_weights_${arm}`);
+  }
+}
+
+export function validateProbabilities(probabilities: number[]): asserts probabilities is [number, number, number] {
+  if (!Array.isArray(probabilities) || probabilities.length !== 3) throw new Error("invalid_probability_length");
+  if (probabilities.some((value) => typeof value !== "number" || !Number.isFinite(value))) throw new Error("invalid_probability_value");
+  if (probabilities.some((value) => value < 0 || value > 1)) throw new Error("probability_out_of_range");
+  const total = probabilities[0]! + probabilities[1]! + probabilities[2]!;
+  if (Math.abs(total - 1) > 1e-9) throw new Error("probability_sum_not_one");
+}
+
+export function applyPreprocessor(features: Record<string, number>, model: ModelDefinition): number[] {
   return model.features.map((name, index) => {
-    const raw = Number.isFinite(features[name]) ? features[name]! : model.preprocessor.medians[index]!;
+    if (!Object.prototype.hasOwnProperty.call(features, name)) throw new Error(`missing_required_feature:${name}`);
+    const raw = features[name];
+    if (typeof raw !== "number" || !Number.isFinite(raw)) throw new Error(`non_finite_feature:${name}`);
     return (raw - model.preprocessor.mean[index]!) / model.preprocessor.std[index]!;
   });
 }
@@ -155,13 +180,16 @@ function softmax(values: number[]): number[] {
   return exp.map((v) => v / total);
 }
 
-function predict(model: ModelDefinition, x: number[], arm: "R-A" | "R-C"): number[] {
+export function predict(model: ModelDefinition, x: number[], arm: "R-A" | "R-C"): number[] {
   const weights = model.models[arm].weights;
   const logits = [0, 1, 2].map((k) => weights[0]![k]! + x.reduce((sum, value, i) => sum + value * weights[i + 1]![k]!, 0));
-  return softmax(logits);
+  const probabilities = softmax(logits);
+  validateProbabilities(probabilities);
+  return probabilities;
 }
 
 export function pick(probabilities: number[]): ClassLabel {
+  validateProbabilities(probabilities);
   let best = 0;
   for (let i = 1; i < probabilities.length; i++) if (probabilities[i]! > probabilities[best]!) best = i;
   return CLASSES[best]!;
@@ -205,7 +233,7 @@ async function main() {
   if (!execute && !scopeCheck) throw new Error("--execute is required unless --scope-check is used; this job never writes in dry-run mode.");
   if (process.env.RC_PREMATCH_ENABLED === "false") { console.log(JSON.stringify({ mode: "disabled", execute, at: new Date().toISOString() })); return; }
   const model = JSON.parse(await readFile(join(dir, "football-rc-model.json"), "utf8")) as ModelDefinition;
-  if (model.features.length !== 34 || model.classOrder.join(",") !== "1,X,2") throw new Error("invalid production model artifact");
+  validateModelArtifact(model);
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL is required");
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 2 });
@@ -281,12 +309,22 @@ async function main() {
         blocked.push({ matchId: candidate.match_id, competitionId: candidate.competition_id, competitionName: candidate.competition_name, homeTeam: candidate.home_team, awayTeam: candidate.away_team, kickoffAt: candidate.kickoff_at.toISOString(), reason: "fewer_than_3_prior_results", homeN: f.homeN, awayN: f.awayN });
         continue;
       }
-      const x = applyPreprocessor(f.features, model);
       const cutoff = addSeconds(candidate.kickoff_at, -HORIZON_SECONDS);
       if (generatedAt > cutoff) { blocked.push({ matchId: candidate.match_id, competitionId: candidate.competition_id, competitionName: candidate.competition_name, homeTeam: candidate.home_team, awayTeam: candidate.away_team, kickoffAt: candidate.kickoff_at.toISOString(), reason: "prediction_after_cutoff", homeN: f.homeN, awayN: f.awayN }); continue; }
       const featureHash = sha(stable(f.features));
-      for (const arm of ["R-A", "R-C"] as const) {
-        const probabilities = predict(model, x, arm);
+      const armResults: Array<{ arm: "R-A" | "R-C"; probabilities: number[]; selected: ClassLabel }> = [];
+      try {
+        const x = applyPreprocessor(f.features, model);
+        for (const arm of ["R-A", "R-C"] as const) {
+          const probabilities = predict(model, x, arm);
+          armResults.push({ arm, probabilities, selected: pick(probabilities) });
+        }
+      } catch (error) {
+        const reason = error instanceof Error ? error.message.slice(0, 180) : "invalid_prediction_input";
+        blocked.push({ matchId: candidate.match_id, competitionId: candidate.competition_id, competitionName: candidate.competition_name, homeTeam: candidate.home_team, awayTeam: candidate.away_team, kickoffAt: candidate.kickoff_at.toISOString(), reason, homeN: f.homeN, awayN: f.awayN });
+        continue;
+      }
+      for (const { arm, probabilities, selected } of armResults) {
         const result = await client.query(`insert into football_rc_prematch_predictions
           (match_id, competition_id, model_id, model_version, kickoff_at, prediction_generated_at, published_at,
            prediction_cutoff_at, feature_as_of_at, actual_lead_seconds, p1, px, p2, pick,
@@ -296,7 +334,7 @@ async function main() {
           on conflict (match_id, model_id, model_version) do nothing`,
           [candidate.match_id, candidate.competition_id, arm, model.modelVersion, candidate.kickoff_at, generatedAt, cutoff, startedAt,
            Math.round((candidate.kickoff_at.getTime() - generatedAt.getTime()) / 1000), probabilities[0], probabilities[1], probabilities[2],
-           pick(probabilities), f.homeN, f.awayN, f.scope, featureHash, model.models[arm].modelHash, sourceHash,
+           selected, f.homeN, f.awayN, f.scope, featureHash, model.models[arm].modelHash, sourceHash,
            JSON.stringify({ displayVersion: model.displayVersion, source: "production_db_read_only", featureSource: "matches+football_match_scores", competitionId: candidate.competition_id, competitionName: candidate.competition_name })]);
         inserted += result.rowCount ?? 0;
       }
