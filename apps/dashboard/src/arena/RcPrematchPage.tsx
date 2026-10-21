@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { RcPrematchItem, RcPrematchResponse } from "../types";
 import { fetchRcMatchPrediction, fetchRcUpcomingPredictions } from "../api";
 import "./rc-prematch.css";
@@ -76,6 +76,7 @@ export function RcPredictionCard({ item, navigate }: { item: RcPrematchItem; nav
     </div>
 
     {item.modelsDisagree ? <p className="rc-disagree">Modeller farklı değerlendiriyor: R-A seçimi {item.ra.pickLabel}.</p> : null}
+    {item.performanceNote ? <p className="rc-performance-note">{item.performanceNote}</p> : null}
     {item.dataWarning ? <p className="rc-warning">{item.dataWarning}</p> : null}
 
     <details className="rc-compare">
@@ -95,6 +96,7 @@ export function RcUpcomingPage({ navigate }: { navigate: (path: string) => void 
   const [data, setData] = useState<RcPrematchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [leagueFilter, setLeagueFilter] = useState("all");
   useEffect(() => {
     let cancelled = false;
     setLoading(true); setError(null);
@@ -103,10 +105,23 @@ export function RcUpcomingPage({ navigate }: { navigate: (path: string) => void 
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
+  const leagues = useMemo(() => {
+    const byId = new Map<string, { competitionId: string; league: string; count: number }>();
+    for (const item of data?.items ?? []) {
+      const current = byId.get(item.competitionId) ?? { competitionId: item.competitionId, league: item.league, count: 0 };
+      current.count += 1;
+      byId.set(item.competitionId, current);
+    }
+    return [...byId.values()].sort((a, b) => a.league.localeCompare(b.league, "tr"));
+  }, [data]);
+  const filtered = useMemo(() => (data?.items ?? []).filter((item) => leagueFilter === "all" || item.competitionId === leagueFilter), [data, leagueFilter]);
+  const groups = useMemo(() => leagues
+    .map((league) => ({ ...league, items: filtered.filter((item) => item.competitionId === league.competitionId) }))
+    .filter((group) => group.items.length > 0), [leagues, filtered]);
   return <div className="rc-page">
     <header className="rc-hero">
       <div>
-        <span className="rc-eyebrow">Süper Lig • iç değerlendirme</span>
+        <span className="rc-eyebrow">Çoklu lig • iç değerlendirme</span>
         <h1>Yaklaşan Tahminler</h1>
         <p>R-C beta modelinin maç öncesi olasılıkları. Karşılaştırma için R-A aynı kartta açılır.</p>
       </div>
@@ -117,8 +132,18 @@ export function RcUpcomingPage({ navigate }: { navigate: (path: string) => void 
     {error ? <div className="rc-state rc-state--error" role="alert"><strong>Tahminler yüklenemedi.</strong><span>{error}</span></div> : null}
     {!loading && !error && data && data.items.length === 0 ? <div className="rc-state">Şu anda yayımlanmış yaklaşan tahmin yok.</div> : null}
     {data && data.items.length > 0 ? <>
-      <div className="rc-summary"><strong>{data.count}</strong> maç • <span>{data.disclaimer}</span></div>
-      <div className="rc-grid">{data.items.map((item) => <RcPredictionCard key={item.matchId} item={item} navigate={navigate} />)}</div>
+      <div className="rc-summary"><strong>{filtered.length}</strong> maç • <span>{data.disclaimer}</span></div>
+      {leagues.length > 1 ? <div className="rc-league-filter" aria-label="Lig filtresi">
+        <span>Lig</span>
+        <div role="group" aria-label="Lig seçimi">
+          <button type="button" aria-pressed={leagueFilter === "all"} onClick={() => setLeagueFilter("all")}>Tümü <small>{data.items.length}</small></button>
+          {leagues.map((league) => <button key={league.competitionId} type="button" aria-pressed={leagueFilter === league.competitionId} onClick={() => setLeagueFilter(league.competitionId)}>{league.league} <small>{league.count}</small></button>)}
+        </div>
+      </div> : null}
+      {groups.map((group) => <section className="rc-league-group" key={group.competitionId} aria-labelledby={`rc-league-${group.competitionId}`}>
+        <div className="rc-league-group__head"><h2 id={`rc-league-${group.competitionId}`}>{group.league}</h2><span>{group.items.length} maç</span></div>
+        <div className="rc-grid">{group.items.map((item) => <RcPredictionCard key={item.matchId} item={item} navigate={navigate} />)}</div>
+      </section>)}
     </> : null}
     <p className="rc-footnote">Tahminler maçtan önce üretilir; canlı sonuç veya bağımsız başarı iddiası değildir. Dış zaman kanıtı yoktur.</p>
   </div>;

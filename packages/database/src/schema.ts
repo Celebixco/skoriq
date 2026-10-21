@@ -966,6 +966,7 @@ export const footballRcPrematchPredictions = pgTable(
   {
     id,
     matchId: uuid("match_id").notNull().references(() => matches.id),
+    competitionId: uuid("competition_id").notNull().references(() => competitions.id),
     modelId: text("model_id").notNull(),
     modelVersion: text("model_version").notNull(),
     kickoffAt: timestamp("kickoff_at", { withTimezone: true }).notNull(),
@@ -985,6 +986,7 @@ export const footballRcPrematchPredictions = pgTable(
     featureHash: text("feature_hash").notNull(),
     modelHash: text("model_hash").notNull(),
     sourceSnapshotHash: text("source_snapshot_hash").notNull(),
+    evaluationGroup: text("evaluation_group").notNull().default("multi_league_unassessed"),
     status: text("status").notNull().default("published"),
     supersedesId: uuid("supersedes_id"),
     metadataJson,
@@ -994,6 +996,7 @@ export const footballRcPrematchPredictions = pgTable(
   (table) => [
     uniqueIndex("football_rc_prematch_predictions_version_uidx").on(table.matchId, table.modelId, table.modelVersion),
     index("football_rc_prematch_predictions_match_idx").on(table.matchId),
+    index("football_rc_prematch_predictions_competition_idx").on(table.competitionId),
     index("football_rc_prematch_predictions_kickoff_idx").on(table.kickoffAt),
     index("football_rc_prematch_predictions_published_idx").on(table.publishedAt),
     index("football_rc_prematch_predictions_status_idx").on(table.status)
@@ -1006,6 +1009,7 @@ export const footballRcPrematchResults = pgTable(
     id,
     predictionId: uuid("prediction_id").notNull().references(() => footballRcPrematchPredictions.id),
     matchId: uuid("match_id").notNull().references(() => matches.id),
+    competitionId: uuid("competition_id").notNull().references(() => competitions.id),
     homeScore90: integer("home_score_90"),
     awayScore90: integer("away_score_90"),
     normalTimeStatus: text("normal_time_status").notNull(),

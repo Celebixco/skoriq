@@ -19,6 +19,7 @@ export interface RcPrematchProbability {
 
 export interface RcPrematchItem {
   matchId: string;
+  competitionId: string;
   league: string;
   kickoffAt: string;
   homeTeam: string;
@@ -31,6 +32,8 @@ export interface RcPrematchItem {
   scopeLevel: string;
   historyCompleteness: string;
   dataWarning: string | null;
+  evaluationGroup: string;
+  performanceNote: string | null;
   disclaimer: string;
 }
 
@@ -44,6 +47,7 @@ export interface RcPrematchResponse {
 
 interface RcRow {
   match_id: string;
+  competition_id: string;
   league: string;
   kickoff_at: Date | string;
   home_team: string;
@@ -60,6 +64,7 @@ interface RcRow {
   history_away_n: number;
   scope_level: string;
   history_completeness: string;
+  evaluation_group: string;
 }
 
 const DISCLAIMER = "Deneysel model olasılıklarıdır; sonuç garantisi değildir.";
@@ -84,11 +89,11 @@ export class FootballRcPrematchService {
     this.assertEnabled();
     const rows = await this.execute<RcRow>(sql`
       select
-        m.id as match_id, c.name as league, m.scheduled_start_at as kickoff_at,
+        m.id as match_id, c.id::text as competition_id, c.name as league, m.scheduled_start_at as kickoff_at,
         ht.name as home_team, at.name as away_team,
         p.model_id, p.model_version, p.prediction_generated_at, p.published_at,
         p.p1, p.px, p.p2, p.pick, p.history_home_n, p.history_away_n,
-        p.scope_level, p.history_completeness
+        p.scope_level, p.history_completeness, p.evaluation_group
       from football_rc_prematch_predictions p
       inner join matches m on m.id = p.match_id
       inner join competitions c on c.id = m.competition_id
@@ -109,11 +114,11 @@ export class FootballRcPrematchService {
     this.assertEnabled();
     const rows = await this.execute<RcRow>(sql`
       select
-        m.id as match_id, c.name as league, m.scheduled_start_at as kickoff_at,
+        m.id as match_id, c.id::text as competition_id, c.name as league, m.scheduled_start_at as kickoff_at,
         ht.name as home_team, at.name as away_team,
         p.model_id, p.model_version, p.prediction_generated_at, p.published_at,
         p.p1, p.px, p.p2, p.pick, p.history_home_n, p.history_away_n,
-        p.scope_level, p.history_completeness
+        p.scope_level, p.history_completeness, p.evaluation_group
       from football_rc_prematch_predictions p
       inner join matches m on m.id = p.match_id
       inner join competitions c on c.id = m.competition_id
@@ -153,7 +158,7 @@ export class FootballRcPrematchService {
       const scopeWarning = rc.scope_level !== "last10_available_unverified" || rc.history_completeness !== "verified"
         ? "Geçmiş pencere tam doğrulanmadı; olasılıklar mevcut kayıtlara dayanır." : null;
       items.push({
-        matchId: rc.match_id, league: rc.league, kickoffAt: iso(rc.kickoff_at),
+        matchId: rc.match_id, competitionId: rc.competition_id, league: rc.league, kickoffAt: iso(rc.kickoff_at),
         homeTeam: rc.home_team, awayTeam: rc.away_team,
         rc: { p1: Number(rc.p1), px: Number(rc.px), p2: Number(rc.p2), pick: rc.pick,
           pickLabel: pickLabel(rc.pick), modelId: "R-C", modelVersion: rc.model_version, modelLabel: MODEL_LABEL,
@@ -165,6 +170,8 @@ export class FootballRcPrematchService {
         historyHomeN: rc.history_home_n, historyAwayN: rc.history_away_n,
         scopeLevel: rc.scope_level, historyCompleteness: rc.history_completeness,
         dataWarning: scopeWarning,
+        evaluationGroup: rc.evaluation_group,
+        performanceNote: rc.evaluation_group === "stage12_1" ? null : "Bu ligde model performansı henüz değerlendirilmedi.",
         disclaimer: DISCLAIMER
       });
     }

@@ -5,6 +5,7 @@ import { RcPredictionCard } from "./RcPrematchPage";
 
 const item: RcPrematchItem = {
   matchId: "match-1",
+  competitionId: "competition-1",
   league: "Trendyol Süper Lig",
   kickoffAt: "2026-10-23T17:00:00Z",
   homeTeam: "Alanyaspor",
@@ -17,6 +18,8 @@ const item: RcPrematchItem = {
   scopeLevel: "last10_available_unverified",
   historyCompleteness: "unverified",
   dataWarning: "Geçmiş pencere tam doğrulanmadı.",
+  evaluationGroup: "stage12_1",
+  performanceNote: null,
   disclaimer: "Deneysel model olasılıklarıdır; sonuç garantisi değildir."
 };
 

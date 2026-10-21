@@ -920,6 +920,7 @@ export interface RcPrematchProbability {
 
 export interface RcPrematchItem {
   matchId: string;
+  competitionId: string;
   league: string;
   kickoffAt: string;
   homeTeam: string;
@@ -932,6 +933,8 @@ export interface RcPrematchItem {
   scopeLevel: string;
   historyCompleteness: string;
   dataWarning: string | null;
+  evaluationGroup: string;
+  performanceNote: string | null;
   disclaimer: string;
 }
 
