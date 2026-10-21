@@ -198,6 +198,7 @@ async function main() {
   const execute = args.includes("--execute");
   const seed = args.includes("--seed");
   if (!execute) throw new Error("--execute is required; this job never writes in dry-run mode.");
+  if (process.env.RC_PREMATCH_ENABLED === "false") { console.log(JSON.stringify({ mode: "disabled", execute, at: new Date().toISOString() })); return; }
   const model = JSON.parse(await readFile(join(dir, "football-rc-model.json"), "utf8")) as ModelDefinition;
   if (model.features.length !== 34 || model.classOrder.join(",") !== "1,X,2") throw new Error("invalid production model artifact");
   const databaseUrl = process.env.DATABASE_URL;

@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, Optional, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { loadConfig } from "@sports-data/config";
 import { createDatabase } from "@sports-data/database";
 import type { Database } from "@sports-data/database";
@@ -81,6 +81,7 @@ export class FootballRcPrematchService {
   }
 
   async listUpcoming(): Promise<RcPrematchResponse> {
+    this.assertEnabled();
     const rows = await this.execute<RcRow>(sql`
       select
         m.id as match_id, c.name as league, m.scheduled_start_at as kickoff_at,
@@ -105,6 +106,7 @@ export class FootballRcPrematchService {
   }
 
   async getMatch(matchId: string): Promise<RcPrematchItem> {
+    this.assertEnabled();
     const rows = await this.execute<RcRow>(sql`
       select
         m.id as match_id, c.name as league, m.scheduled_start_at as kickoff_at,
@@ -128,6 +130,12 @@ export class FootballRcPrematchService {
     const items = this.groupRows(rows);
     if (!items[0]) throw new NotFoundException("No published R-C beta prediction for this match.");
     return items[0];
+  }
+
+  private assertEnabled() {
+    if (process.env.RC_PREMATCH_ENABLED === "false") {
+      throw new ServiceUnavailableException("R-C beta tahminleri geçici olarak kapalı.");
+    }
   }
 
   private groupRows(rows: RcRow[]): RcPrematchItem[] {

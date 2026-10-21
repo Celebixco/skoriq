@@ -52,6 +52,7 @@ services:
       AUTH_ENABLED: "true"
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Set a random AUTH_JWT_SECRET of at least 32 characters}
       AUTH_COOKIE_NAME: betify_auth
+      RC_PREMATCH_ENABLED: ${RC_PREMATCH_ENABLED:-true}
       AUTH_TOKEN_TTL_SECONDS: ${AUTH_TOKEN_TTL_SECONDS:-86400}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set the deployed frontend origin}
       MOCK_PROVIDER_ENABLED: "false"
@@ -149,6 +150,7 @@ services:
       REDIS_URL: redis://dragonfly:6379
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DB_EXECUTION_TARGET: local
+      RC_PREMATCH_ENABLED: ${RC_PREMATCH_ENABLED:-true}
       AUTH_ENABLED: "true"
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Set a random AUTH_JWT_SECRET of at least 32 characters}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set the deployed frontend origin}
