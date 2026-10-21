@@ -1,9 +1,9 @@
 import "reflect-metadata";
-import { BadRequestException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { AuthGuard } from "../auth/auth.guard.js";
 import { FootballRcPrematchController } from "./football-rc-prematch.controller.js";
-import type { FootballRcPrematchService } from "./football-rc-prematch.service.js";
+import { FootballRcPrematchService } from "./football-rc-prematch.service.js";
 
 const matchId = "11111111-1111-4111-8111-111111111111";
 
@@ -12,6 +12,18 @@ describe("FootballRcPrematchController", () => {
     expect(Reflect.getMetadata("__guards__", FootballRcPrematchController)).toContain(AuthGuard);
     await expect(runAuthGuard(null)).rejects.toBeInstanceOf(UnauthorizedException);
     await expect(runAuthGuard({ id: "member-1", email: "member@example.test", role: "member", status: "active" })).resolves.toBe(true);
+  });
+
+  it("fails closed when the feature switch is off", async () => {
+    const previous = process.env.RC_PREMATCH_ENABLED;
+    process.env.RC_PREMATCH_ENABLED = "false";
+    try {
+      const service = new FootballRcPrematchService({} as never);
+      await expect(service.listUpcoming()).rejects.toBeInstanceOf(ServiceUnavailableException);
+    } finally {
+      if (previous === undefined) delete process.env.RC_PREMATCH_ENABLED;
+      else process.env.RC_PREMATCH_ENABLED = previous;
+    }
   });
 
   it("validates the match UUID and serves only the sanitized response", async () => {
