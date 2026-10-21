@@ -6,9 +6,9 @@
 - Navigation: **Tahminler**.
 - Match detail: `/football/analytics/:matchId`.
 - Model: **R-C • Beta** (`stage11-fixed-R-A-R-C`).
-- Runtime commit: `0d2bd6b`; image `t2aekaofrcrelkuhxxf8iigv_api:0d2bd6b0c121f11087a5cd7e3d5500c784191ed6`.
+- Runtime commit: `7668c35`; image `t2aekaofrcrelkuhxxf8iigv_api:7668c35cdd820ac4613ecdbada8cbec5ffa208cc`.
 - Kill-switch environment: `RC_PREMATCH_ENABLED=true`.
-- Published matches: **9**; prediction rows: **18**.
+- Published matches: **83**; prediction rows: **166** (includes the original 9/18).
 - API: `GET /api/member/football/predictions/upcoming`.
 - Access: existing `AuthGuard`; anonymous requests return **401**.
 
@@ -42,19 +42,50 @@ Existing analytics service, no second scheduler:
 
 Window: next 7 days, minimum 24h to kickoff, Süper Lig only, at least 3 prior results per team.
 
+## Multi-league scope (2026-10-21)
+
+The production scope is resolved from the existing reviewed+enabled national-league
+configuration (`scripts/apifootball-manual-league-config.ts`) and matched to real
+`competitions.id` values. Cup and international competitions are not enabled by
+that configuration.
+
+| League | Candidates | Eligible | Newly published | Previously published | Blocked |
+|---|---:|---:|---:|---:|---:|
+| 2. Bundesliga | 9 | 9 | 9 | 0 | 0 |
+| Bundesliga | 9 | 9 | 9 | 0 | 0 |
+| Eredivisie | 9 | 9 | 9 | 0 | 0 |
+| LaLiga | 10 | 10 | 10 | 0 | 0 |
+| Ligue 1 | 9 | 9 | 9 | 0 | 0 |
+| Premier League | 10 | 10 | 10 | 0 | 0 |
+| Serie A | 18 | 18 | 18 | 0 | 0 |
+| Trendyol Süper Lig | 9 | 9 | 0 | 9 | 0 |
+| **Total** | **83** | **83** | **74** | **9** | **0** |
+
+- Runtime commit: `7668c35` (image tag `7668c35cdd820ac4613ecdbada8cbec5ffa208cc`).
+- Migration `0025` adds `competition_id` and `evaluation_group`; existing nine
+  records are backfilled as `stage12_1` and their probabilities/generation times
+  remain unchanged.
+- Feature history is partitioned by `competition_id`; home/away 5/10 windows and
+  the three-prior-result minimum are applied inside each league.
+- New rows are `multi_league_unassessed`; the UI shows the per-league note.
+- API returned 83 matches / 166 prediction rows after generation.
+- Scope check: 83 candidates, 83 eligible, 0 blocked.
+- Duplicate rerun: 0 inserted.
+- Not opened: Serie B, Championship, LaLiga 2, Ligue 2, Trendyol 1.Lig and Liga Portugal are outside the reviewed/enabled configuration; cup and UEFA competitions are excluded by scope.
+
 ## Kill switch
 
 Set `RC_PREMATCH_ENABLED=false` for `api` and `analytics`, then restart those services. API returns 503 and the generator exits without writing. The deployed containers currently carry `RC_PREMATCH_ENABLED=true`; default is `true`.
 
 ## Rollback
 
-Previous application image: `t2aekaofrcrelkuhxxf8iigv_api:5f34389fd94efaadbd976a828bd7c06194faf2da` (and matching dashboard/analytics images). Use the Coolify rollback UI or the application compose path with the previous image tags. The current deployment was applied through the existing application compose path after the Coolify build completed.
+Previous application image before this rollout: `t2aekaofrcrelkuhxxf8iigv_api:33558f1cc1d6bd7c1735e73df64ec345c453be67` (and matching dashboard/analytics images). The older pre-kill-switch image is `5f34389fd94efaadbd976a828bd7c06194faf2da`. Use the Coolify rollback UI or the application compose path with the previous image tags. Migration `0025` is additive; rolling the application back does not require dropping the new columns.
 
 ## Verification
 
 - Production build: pass.
 - Typecheck: pass.
-- Targeted tests: 28 passing (API guard/kill switch, prediction card, navigation).
+- Targeted tests: 31 passing (API guard/kill switch, prediction card, navigation, multi-league scope/history).
 - Browser: 9 cards desktop, 9 cards mobile, 2 model disagreements, no console errors.
 - Unauthenticated API: 401.
 - Manual generator rerun: 0 duplicate inserts.
