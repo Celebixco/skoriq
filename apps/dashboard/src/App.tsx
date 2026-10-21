@@ -1201,7 +1201,6 @@ export function MatchDetailReportView({
           <div className="analysis-kpi-grid">
             <AnalysisKpiCard title="Analiz Durumu" value={statusLabel(report.featureStatus)} body={analysisStatusHelper(report.featureStatus)} tone={report.featureStatus === "ready" ? "success" : report.featureStatus === "partial" ? "warning" : "muted"} icon="shield" />
             <AnalysisKpiCard title="Tahmine Uygunluk" value={report.predictionEligible ? "Uygun" : "Uygun değil"} body={report.predictionEligible ? "Ön analiz üretilebilir" : "Tahmin için yeterli değil"} tone={report.predictionEligible ? "success" : "muted"} icon="star" />
-            <AnalysisKpiCard title="Güven Tavanı" value={report.confidenceCeiling} body="En yüksek güven sınırı" tone="blue" icon="trend" />
             <AnalysisKpiCard title="Veri Kapsamı" value={formatPercent(report.combinedCoverageScore)} body="Kullanılan veri yeterliliği" tone="blue" icon="target">
               <ProgressBar value={report.combinedCoverageScore} />
             </AnalysisKpiCard>
