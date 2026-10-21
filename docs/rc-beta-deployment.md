@@ -73,6 +73,26 @@ that configuration.
 - Duplicate rerun: 0 inserted.
 - Not opened: Serie B, Championship, LaLiga 2, Ligue 2, Trendyol 1.Lig and Liga Portugal are outside the reviewed/enabled configuration; cup and UEFA competitions are excluded by scope.
 
+## Member card and coupon (2026-10-21)
+
+- The member predictions screen now shows one main prediction per match. Model ids,
+  probabilities, comparison data, training/feature metadata and confidence bars are
+  not rendered. Backend fields remain available to API consumers.
+- Cards use real team logos from `teams.logo_url`; broken images fall back to the
+  existing neutral initials mark.
+- The existing `CouponProvider`/`CouponRail` store is reused. R-C selections persist
+  in the account-scoped browser store, survive filter/reload/navigation, and are
+  revalidated through the published R-C match endpoint.
+- Same match/same selection is a duplicate. A different pick for the same match
+  returns a conflict and the card asks for confirmation before replacing it.
+- Clear-all asks for confirmation. Copy uses simple fixture/selection text; when
+  clipboard access fails, a selectable textarea is shown instead of a success toast.
+- No bets, stakes, odds or winnings are modeled.
+
+Validation: 42 targeted tests pass; build and typecheck pass. Browser evidence is in
+`.research/stage12_deploy/design-verification.json` and the `design-*.png` files.
+Runtime: dashboard `284b166`, API/analytics `9acee9a`.
+
 ## Kill switch
 
 Set `RC_PREMATCH_ENABLED=false` for `api` and `analytics`, then restart those services. API returns 503 and the generator exits without writing. The deployed containers currently carry `RC_PREMATCH_ENABLED=true`; default is `true`.
