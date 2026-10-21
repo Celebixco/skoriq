@@ -6,6 +6,8 @@
 - Navigation: **Tahminler**.
 - Match detail: `/football/analytics/:matchId`.
 - Model: **R-C • Beta** (`stage11-fixed-R-A-R-C`).
+- Runtime commit: `0d2bd6b`; image `t2aekaofrcrelkuhxxf8iigv_api:0d2bd6b0c121f11087a5cd7e3d5500c784191ed6`.
+- Kill-switch environment: `RC_PREMATCH_ENABLED=true`.
 - Published matches: **9**; prediction rows: **18**.
 - API: `GET /api/member/football/predictions/upcoming`.
 - Access: existing `AuthGuard`; anonymous requests return **401**.
@@ -42,11 +44,11 @@ Window: next 7 days, minimum 24h to kickoff, Süper Lig only, at least 3 prior r
 
 ## Kill switch
 
-Set `RC_PREMATCH_ENABLED=false` for `api` and `analytics`, then restart those services. API returns 503 and the generator exits without writing. Default is `true`.
+Set `RC_PREMATCH_ENABLED=false` for `api` and `analytics`, then restart those services. API returns 503 and the generator exits without writing. The deployed containers currently carry `RC_PREMATCH_ENABLED=true`; default is `true`.
 
 ## Rollback
 
-Previous application image: `t2aekaofrcrelkuhxxf8iigv_api:5f34389fd94efaadbd976a828bd7c06194faf2da` (and matching dashboard/analytics images). Use the Coolify rollback UI or the application compose path with the previous image tags.
+Previous application image: `t2aekaofrcrelkuhxxf8iigv_api:5f34389fd94efaadbd976a828bd7c06194faf2da` (and matching dashboard/analytics images). Use the Coolify rollback UI or the application compose path with the previous image tags. The current deployment was applied through the existing application compose path after the Coolify build completed.
 
 ## Verification
 
