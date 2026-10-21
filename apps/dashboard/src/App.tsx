@@ -72,6 +72,7 @@ import { AppShell } from "./app/AppShell";
 import "./app/app.css";
 import { LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage } from "./arena/AuthPages";
 import { ArenaHome } from "./arena/ArenaHome";
+import { RcMatchPrediction, RcUpcomingPage } from "./arena/RcPrematchPage";
 import { SkorIQMark } from "./arena/SkorIQMark";
 import "./arena/theme.css";
 import { FilterDisclosure, SectionTabs } from "./arena/SectionTabs";
@@ -530,6 +531,7 @@ export function App() {
       {route.kind === "draft-detail" ? <DraftPredictionDetailPage predictionId={route.id} navigate={navigate} /> : null}
       {route.kind === "match-drafts" ? <MatchPredictionDraftsPage matchId={route.id} navigate={navigate} /> : null}
       {route.kind === "prediction-results" ? <PredictionResultsPage navigate={navigate} /> : null}
+      {route.kind === "upcoming-predictions" ? <RcUpcomingPage navigate={navigate} /> : null}
       {route.kind === "settlement-list" ? <SettlementListPage navigate={navigate} /> : null}
       {route.kind === "settlement-detail" ? <SettlementDetailPage settlementId={route.id} navigate={navigate} /> : null}
       {route.kind === "match-settlements" ? <MatchSettlementsPage matchId={route.id} navigate={navigate} /> : null}
@@ -1191,6 +1193,7 @@ export function MatchDetailReportView({
       {/* 1. OVERVIEW TAB */}
       {activeTab === "overview" && (
         <>
+          <RcMatchPrediction matchId={matchId} />
           <MemberPredictionPreview match={report.match} />
 
 
@@ -6531,6 +6534,7 @@ function resolveRoute(path: string):
   | { kind: "draft-detail"; id: string }
   | { kind: "match-drafts"; id: string }
   | { kind: "prediction-results" }
+  | { kind: "upcoming-predictions" }
   | { kind: "settlement-list" }
   | { kind: "settlement-detail"; id: string }
   | { kind: "match-settlements"; id: string }
@@ -6563,6 +6567,7 @@ function resolveRoute(path: string):
   if (countryDetail?.[1]) return { kind: "country-detail", id: countryDetail[1] };
   if (path === "/football/analytics") return { kind: "match-list" };
   if (path === "/football/prediction-results") return { kind: "prediction-results" };
+  if (path === "/football/predictions/upcoming") return { kind: "upcoming-predictions" };
   if (path === "/football/predictions/drafts") return { kind: "draft-list" };
   if (path === "/football/predictions/settlements") return { kind: "settlement-list" };
   if (path === "/football/public-eligibility") return { kind: "public-eligibility-list" };

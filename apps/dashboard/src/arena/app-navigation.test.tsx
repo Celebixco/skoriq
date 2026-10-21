@@ -11,7 +11,7 @@ describe("Authenticated arena navigation", () => {
   it.each([
     ["/", "home"], ["/overview", "home"], ["/dashboard", "home"],
     ["/football/analytics", "matches"], ["/football/analytics/match-12", "matches"],
-    ["/football/prediction-results", "results"], ["/football", "discover"],
+    ["/football/prediction-results", "results"], ["/football/predictions/upcoming", "predictions"], ["/football", "discover"],
     ["/football/teams/team-1", "discover"], ["/football/competitions/league-1", "discover"],
     ["/football/countries/tr", "discover"], ["/football/predictions/drafts/draft-1", "discover"],
     ["/football/matches/match-1/prediction-settlements", "matches"]
@@ -19,8 +19,8 @@ describe("Authenticated arena navigation", () => {
     expect(appRouteContext(path).section).toBe(section);
   });
 
-  it("provides four distinct existing destinations, including a real discovery hub", () => {
-    expect(appDestinations.map(({ path }) => path)).toEqual(["/", "/football/analytics", "/football/prediction-results", "/football"]);
+  it("provides five distinct destinations, including upcoming predictions and discovery", () => {
+    expect(appDestinations.map(({ path }) => path)).toEqual(["/", "/football/analytics", "/football/predictions/upcoming", "/football/prediction-results", "/football"]);
     const html = renderToStaticMarkup(<ArenaNavigation currentPath="/football/analytics/fixture" user={member} navigate={vi.fn()} onLogout={vi.fn()} />);
     expect(html).toContain('aria-label="Uygulama gezinmesi"');
     const dock = html.split('aria-label="Uygulama gezinmesi"')[1]!;

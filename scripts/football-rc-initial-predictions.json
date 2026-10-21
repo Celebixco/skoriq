@@ -1,0 +1,266 @@
+{
+  "modelVersion": "stage11-fixed-R-A-R-C",
+  "predictions": [
+    {
+      "matchId": "1a10bc2e-1499-4bde-b86e-cc3624987a86",
+      "homeTeam": "Alanyaspor",
+      "awayTeam": "Kocaelispor",
+      "kickoffAt": "2026-10-23T17:00:00Z",
+      "predictionGeneratedAt": "2026-10-21T15:26:46.480701+00:00",
+      "actualLeadSeconds": 178393.519299,
+      "featureAsOfAt": "2026-10-21T15:26:45.675755+00:00",
+      "historyHomeN": 10,
+      "historyAwayN": 10,
+      "scopeLevel": "last10_available_unverified",
+      "historyCompleteness": "unverified",
+      "featureHash": "44b57f1766f2f85874af086c8093e6b10f8eeaa6b3ac97d9e08255cbab6851ae",
+      "sourceSnapshotHash": "e7987d5570aa6637d5c510291cfe83e5d1b5deeeaf5204403be3a0db4612098e",
+      "R-A": {
+        "p1": 0.4903822731576799,
+        "px": 0.2728679647194021,
+        "p2": 0.23674976212291804,
+        "pick": "1",
+        "modelHash": "bb72945230e2d268a9064ec5ba59b6a0d35d42f0a33027bbb2ed6ed6c2b8ae41"
+      },
+      "R-C": {
+        "p1": 0.4666794562369526,
+        "px": 0.2634505163090398,
+        "p2": 0.2698700274540075,
+        "pick": "1",
+        "modelHash": "abf33e32a727150c39b17366c237aac2de92b72a66fe24f85ff4318c6dbf60c4"
+      }
+    },
+    {
+      "matchId": "71251337-84f6-42d7-947d-55ee88adf94f",
+      "homeTeam": "Eyüpspor",
+      "awayTeam": "Kasımpaşa",
+      "kickoffAt": "2026-10-24T10:30:00Z",
+      "predictionGeneratedAt": "2026-10-21T15:26:46.480701+00:00",
+      "actualLeadSeconds": 241393.519299,
+      "featureAsOfAt": "2026-10-21T15:26:45.675755+00:00",
+      "historyHomeN": 10,
+      "historyAwayN": 10,
+      "scopeLevel": "last10_available_unverified",
+      "historyCompleteness": "unverified",
+      "featureHash": "d8f01db4e56f017d97d64e34d9205b17ce94b556e8daba5473456b86fff8d7ae",
+      "sourceSnapshotHash": "e7987d5570aa6637d5c510291cfe83e5d1b5deeeaf5204403be3a0db4612098e",
+      "R-A": {
+        "p1": 0.23094365515525972,
+        "px": 0.2986273870527327,
+        "p2": 0.47042895779200755,
+        "pick": "2",
+        "modelHash": "bb72945230e2d268a9064ec5ba59b6a0d35d42f0a33027bbb2ed6ed6c2b8ae41"
+      },
+      "R-C": {
+        "p1": 0.35439082749349254,
+        "px": 0.2808941777388975,
+        "p2": 0.36471499476760993,
+        "pick": "2",
+        "modelHash": "abf33e32a727150c39b17366c237aac2de92b72a66fe24f85ff4318c6dbf60c4"
+      }
+    },
+    {
+      "matchId": "0eab5535-f8d7-4e78-af64-9aa34d423318",
+      "homeTeam": "Gaziantep FK",
+      "awayTeam": "Erzurumspor FK",
+      "kickoffAt": "2026-10-24T13:00:00Z",
+      "predictionGeneratedAt": "2026-10-21T15:26:46.480701+00:00",
+      "actualLeadSeconds": 250393.519299,
+      "featureAsOfAt": "2026-10-21T15:26:45.675755+00:00",
+      "historyHomeN": 10,
+      "historyAwayN": 8,
+      "scopeLevel": "last5_available_unverified",
+      "historyCompleteness": "unverified",
+      "featureHash": "5a21a954ae023ce4e40a9f4ab333dae8939c234940c080e64235d657c1b920d7",
+      "sourceSnapshotHash": "e7987d5570aa6637d5c510291cfe83e5d1b5deeeaf5204403be3a0db4612098e",
+      "R-A": {
+        "p1": 0.39824536880689787,
+        "px": 0.2995058891199683,
+        "p2": 0.3022487420731339,
+        "pick": "1",
+        "modelHash": "bb72945230e2d268a9064ec5ba59b6a0d35d42f0a33027bbb2ed6ed6c2b8ae41"
+      },
+      "R-C": {
+        "p1": 0.49082463058122217,
+        "px": 0.2630299367179459,
+        "p2": 0.2461454327008319,
+        "pick": "1",
+        "modelHash": "abf33e32a727150c39b17366c237aac2de92b72a66fe24f85ff4318c6dbf60c4"
+      }
+    },
+    {
+      "matchId": "364a1124-e385-4436-9d44-a8e6bd8f1df1",
+      "homeTeam": "Samsunspor",
+      "awayTeam": "Amed Sportif Faaliyetler",
+      "kickoffAt": "2026-10-24T16:00:00Z",
+      "predictionGeneratedAt": "2026-10-21T15:26:46.480701+00:00",
+      "actualLeadSeconds": 261193.519299,
+      "featureAsOfAt": "2026-10-21T15:26:45.675755+00:00",
+      "historyHomeN": 10,
+      "historyAwayN": 8,
+      "scopeLevel": "last5_available_unverified",
+      "historyCompleteness": "unverified",
+      "featureHash": "f6854be4ba6f510019a5c63735a689b5c8571eb0e8c4e79f08526a9215578bc2",
+      "sourceSnapshotHash": "e7987d5570aa6637d5c510291cfe83e5d1b5deeeaf5204403be3a0db4612098e",
+      "R-A": {
+        "p1": 0.21898067564837675,
+        "px": 0.2713485407396902,
+        "p2": 0.509670783611933,
+        "pick": "2",
+        "modelHash": "bb72945230e2d268a9064ec5ba59b6a0d35d42f0a33027bbb2ed6ed6c2b8ae41"
+      },
+      "R-C": {
+        "p1": 0.3875867370931246,
+        "px": 0.25263868673641526,
+        "p2": 0.35977457617046016,
+        "pick": "1",
+        "modelHash": "abf33e32a727150c39b17366c237aac2de92b72a66fe24f85ff4318c6dbf60c4"
+      }
+    },
+    {
+      "matchId": "0534ac34-4e52-46eb-91fe-74ffefdc0fb3",
+      "homeTeam": "Konyaspor",
+      "awayTeam": "Gençlerbirliği",
+      "kickoffAt": "2026-10-25T13:00:00Z",
+      "predictionGeneratedAt": "2026-10-21T15:26:46.480701+00:00",
+      "actualLeadSeconds": 336793.519299,
+      "featureAsOfAt": "2026-10-21T15:26:45.675755+00:00",
+      "historyHomeN": 10,
+      "historyAwayN": 10,
+      "scopeLevel": "last10_available_unverified",
+      "historyCompleteness": "unverified",
+      "featureHash": "0483b81f5aa39ead6fec392d7d89869bc09d4b2892a6c21d8c835af568560489",
+      "sourceSnapshotHash": "e7987d5570aa6637d5c510291cfe83e5d1b5deeeaf5204403be3a0db4612098e",
+      "R-A": {
+        "p1": 0.4589070644339931,
+        "px": 0.2902886693206087,
+        "p2": 0.25080426624539814,
+        "pick": "1",
+        "modelHash": "bb72945230e2d268a9064ec5ba59b6a0d35d42f0a33027bbb2ed6ed6c2b8ae41"
+      },
+      "R-C": {
+        "p1": 0.45034549627500736,
+        "px": 0.26438077651464237,
+        "p2": 0.2852737272103502,
+        "pick": "1",
+        "modelHash": "abf33e32a727150c39b17366c237aac2de92b72a66fe24f85ff4318c6dbf60c4"
+      }
+    },
+    {
+      "matchId": "25bbb5a9-052d-4489-9731-35e09bc145b6",
+      "homeTeam": "Göztepe",
+      "awayTeam": "Çorum FK",
+      "kickoffAt": "2026-10-25T16:00:00Z",
+      "predictionGeneratedAt": "2026-10-21T15:26:46.480701+00:00",
+      "actualLeadSeconds": 347593.519299,
+      "featureAsOfAt": "2026-10-21T15:26:45.675755+00:00",
+      "historyHomeN": 10,
+      "historyAwayN": 8,
+      "scopeLevel": "last5_available_unverified",
+      "historyCompleteness": "unverified",
+      "featureHash": "84faec89c66c44ce699a6d5c40ed8c5721304b6fb4cbf835117818beb8feebd9",
+      "sourceSnapshotHash": "e7987d5570aa6637d5c510291cfe83e5d1b5deeeaf5204403be3a0db4612098e",
+      "R-A": {
+        "p1": 0.3394940346353578,
+        "px": 0.25094608257834394,
+        "p2": 0.4095598827862983,
+        "pick": "2",
+        "modelHash": "bb72945230e2d268a9064ec5ba59b6a0d35d42f0a33027bbb2ed6ed6c2b8ae41"
+      },
+      "R-C": {
+        "p1": 0.3809295595542579,
+        "px": 0.23793743755211258,
+        "p2": 0.38113300289362945,
+        "pick": "2",
+        "modelHash": "abf33e32a727150c39b17366c237aac2de92b72a66fe24f85ff4318c6dbf60c4"
+      }
+    },
+    {
+      "matchId": "8c7a3932-c17c-4b5f-98c4-70ebf51df4cf",
+      "homeTeam": "Çaykur Rizespor",
+      "awayTeam": "Trabzonspor",
+      "kickoffAt": "2026-10-26T16:00:00Z",
+      "predictionGeneratedAt": "2026-10-21T15:26:46.480701+00:00",
+      "actualLeadSeconds": 433993.519299,
+      "featureAsOfAt": "2026-10-21T15:26:45.675755+00:00",
+      "historyHomeN": 10,
+      "historyAwayN": 10,
+      "scopeLevel": "last10_available_unverified",
+      "historyCompleteness": "unverified",
+      "featureHash": "685975e2a0882d2a8ea8b11fc3097b4cd594f8dcb3b2064d08a333847bac415a",
+      "sourceSnapshotHash": "e7987d5570aa6637d5c510291cfe83e5d1b5deeeaf5204403be3a0db4612098e",
+      "R-A": {
+        "p1": 0.23741406725225014,
+        "px": 0.2878012922994369,
+        "p2": 0.47478464044831303,
+        "pick": "2",
+        "modelHash": "bb72945230e2d268a9064ec5ba59b6a0d35d42f0a33027bbb2ed6ed6c2b8ae41"
+      },
+      "R-C": {
+        "p1": 0.36234330583119484,
+        "px": 0.25663861932497706,
+        "p2": 0.3810180748438281,
+        "pick": "2",
+        "modelHash": "abf33e32a727150c39b17366c237aac2de92b72a66fe24f85ff4318c6dbf60c4"
+      }
+    },
+    {
+      "matchId": "4abd6e0c-32ac-4364-b5a0-5c42caca7c35",
+      "homeTeam": "Beşiktaş JK",
+      "awayTeam": "Başakşehir FK",
+      "kickoffAt": "2026-10-26T16:00:00Z",
+      "predictionGeneratedAt": "2026-10-21T15:26:46.480701+00:00",
+      "actualLeadSeconds": 433993.519299,
+      "featureAsOfAt": "2026-10-21T15:26:45.675755+00:00",
+      "historyHomeN": 10,
+      "historyAwayN": 10,
+      "scopeLevel": "last10_available_unverified",
+      "historyCompleteness": "unverified",
+      "featureHash": "97aeabdc4aa6ef68cb436defe68f458c99171328b09c0f88164b255b3f05d89c",
+      "sourceSnapshotHash": "e7987d5570aa6637d5c510291cfe83e5d1b5deeeaf5204403be3a0db4612098e",
+      "R-A": {
+        "p1": 0.5646194970567673,
+        "px": 0.2440445431224099,
+        "p2": 0.19133595982082283,
+        "pick": "1",
+        "modelHash": "bb72945230e2d268a9064ec5ba59b6a0d35d42f0a33027bbb2ed6ed6c2b8ae41"
+      },
+      "R-C": {
+        "p1": 0.5228094321243968,
+        "px": 0.24346512090464545,
+        "p2": 0.23372544697095773,
+        "pick": "1",
+        "modelHash": "abf33e32a727150c39b17366c237aac2de92b72a66fe24f85ff4318c6dbf60c4"
+      }
+    },
+    {
+      "matchId": "030815b8-b1d4-4ad4-b84b-3ac354f68869",
+      "homeTeam": "Galatasaray",
+      "awayTeam": "Fenerbahçe",
+      "kickoffAt": "2026-10-26T18:30:00Z",
+      "predictionGeneratedAt": "2026-10-21T15:26:46.480701+00:00",
+      "actualLeadSeconds": 442993.519299,
+      "featureAsOfAt": "2026-10-21T15:26:45.675755+00:00",
+      "historyHomeN": 10,
+      "historyAwayN": 10,
+      "scopeLevel": "last10_available_unverified",
+      "historyCompleteness": "unverified",
+      "featureHash": "8654ba579bf1387d22064d5c1f20a0ea46fa612eee78f88b2903c1866e80c791",
+      "sourceSnapshotHash": "e7987d5570aa6637d5c510291cfe83e5d1b5deeeaf5204403be3a0db4612098e",
+      "R-A": {
+        "p1": 0.3508366790684718,
+        "px": 0.27190034038869343,
+        "p2": 0.3772629805428347,
+        "pick": "2",
+        "modelHash": "bb72945230e2d268a9064ec5ba59b6a0d35d42f0a33027bbb2ed6ed6c2b8ae41"
+      },
+      "R-C": {
+        "p1": 0.39005774626996326,
+        "px": 0.24325917802167116,
+        "p2": 0.36668307570836556,
+        "pick": "1",
+        "modelHash": "abf33e32a727150c39b17366c237aac2de92b72a66fe24f85ff4318c6dbf60c4"
+      }
+    }
+  ]
+}

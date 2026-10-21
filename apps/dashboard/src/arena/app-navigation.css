@@ -45,7 +45,7 @@
   .arena-shell .arena-account-toggle > svg { width: 10px; }
   .arena-shell .arena-account-menu { position: fixed; top: calc(70px + env(safe-area-inset-top, 0px)); right: 12px; left: 12px; width: auto; max-height: calc(100dvh - 166px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); padding: 20px; border-radius: 16px; background: #111b14; }
   .arena-shell .arena-account-menu > button { min-height: 47px; }
-  .arena-shell .arena-app-dock { position: fixed; z-index: 45; bottom: 0; right: 0; left: 0; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 2px; padding: 7px 10px calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #f1ede024; background: #0a120eF5; backdrop-filter: blur(18px); box-shadow: 0 -10px 34px #0005; }
+  .arena-shell .arena-app-dock { position: fixed; z-index: 45; bottom: 0; right: 0; left: 0; display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 2px; padding: 7px 10px calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #f1ede024; background: #0a120eF5; backdrop-filter: blur(18px); box-shadow: 0 -10px 34px #0005; }
   .arena-app-dock > button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 56px; min-width: 0; padding: 0 2px; border: 0; border-radius: 10px; background: transparent; color: #8e9c91; font-size: 10px; line-height: 1.3; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .arena-app-dock__icon { display: grid; width: 46px; height: 31px; place-items: center; border-radius: 10px; transition: background 160ms ease, color 160ms ease, transform 160ms ease; }
   .arena-app-dock > button[aria-current] { color: #ffcf36; }

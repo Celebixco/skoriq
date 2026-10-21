@@ -1,8 +1,9 @@
-export type AppSection = "home" | "matches" | "results" | "discover";
+export type AppSection = "home" | "matches" | "predictions" | "results" | "discover";
 
 export const appDestinations: { section: AppSection; label: string; path: string }[] = [
   { section: "home", label: "Ana sayfa", path: "/" },
   { section: "matches", label: "Maçlar", path: "/football/analytics" },
+  { section: "predictions", label: "Tahminler", path: "/football/predictions/upcoming" },
   { section: "results", label: "Sonuçlar", path: "/football/prediction-results" },
   { section: "discover", label: "Keşfet", path: "/football" }
 ];
@@ -11,6 +12,7 @@ export function appRouteContext(path: string): { section: AppSection; label: str
   const route = path.split(/[?#]/)[0]!.replace(/\/+$/, "") || "/";
   if (["/", "/overview", "/dashboard"].includes(route)) return { section: "home", label: "Maç gecesi" };
   if (route === "/football/analytics") return { section: "matches", label: "Maç merkezi" };
+  if (route === "/football/predictions/upcoming") return { section: "predictions", label: "Yaklaşan tahminler" };
   if (route.startsWith("/football/analytics/")) return { section: "matches", label: "Maç analizi", parent: { label: "Maçlar", path: "/football/analytics" } };
   if (route.startsWith("/football/prediction-results")) return { section: "results", label: "Tahmin sonuçları" };
   if (route.startsWith("/football/players/")) return { section: "discover", label: "Oyuncu profili", parent: { label: "Takımlar", path: "/football/teams" } };
@@ -34,6 +36,7 @@ export function AppNavIcon({ section }: { section: AppSection }) {
   return <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{
     section === "home" ? <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></> :
     section === "matches" ? <><rect x="3" y="4" width="18" height="17" rx="3" /><path d="M3 9h18M8 2v4m8-4v4m-7 8 5 3-5 3Z" /></> :
+    section === "predictions" ? <><path d="M4 19V5m0 14h16" /><path d="m7 15 4-4 3 2 5-7" /><circle cx="19" cy="6" r="1.5" /></> :
     section === "results" ? <><path d="M5 21V11m7 10V4m7 17v-7M3 21h18" /><path d="m16 5 2 2 3-4" /></> :
     <><circle cx="12" cy="12" r="9" /><path d="m16 8-2.5 5.5L8 16l2.5-5.5Z" /></>
   }</svg>;

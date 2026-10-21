@@ -14,6 +14,8 @@ import type {
   FootballMatchLineupsResponse,
   FootballMatchStatisticsResponse,
   FootballMemberPredictionPreviewResponse,
+  RcPrematchItem,
+  RcPrematchResponse,
   FootballPlayerProfileResponse,
   FootballMatchPublicEligibilityResponse,
   FootballMatchPredictionSettlementsResponse,
@@ -196,6 +198,14 @@ export async function fetchFootballMatchPredictionDrafts(matchId: string): Promi
 
 export async function fetchFootballMemberPredictionPreview(matchId: string): Promise<FootballMemberPredictionPreviewResponse> {
   return requestJson<FootballMemberPredictionPreviewResponse>(`/member/football/matches/${encodeURIComponent(matchId)}/prediction-preview`);
+}
+
+export async function fetchRcUpcomingPredictions(): Promise<RcPrematchResponse> {
+  return requestJson<RcPrematchResponse>("/member/football/predictions/upcoming");
+}
+
+export async function fetchRcMatchPrediction(matchId: string): Promise<RcPrematchItem> {
+  return requestJson<RcPrematchItem>(`/member/football/matches/${encodeURIComponent(matchId)}/rc-prediction`);
 }
 
 export async function fetchFootballMatchLineups(matchId: string): Promise<FootballMatchLineupsResponse> {

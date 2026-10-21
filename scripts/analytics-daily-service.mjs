@@ -27,12 +27,28 @@ const JOBS = [
     timeoutSeconds: 1_200
   },
   {
+    key: "rc-prematch",
+    hour: 9,
+    minute: 20,
+    script: "scripts/football-rc-prematch.ts",
+    args: ["--execute"],
+    timeoutSeconds: 600
+  },
+  {
     key: "settlement",
     hour: 9,
     minute: 30,
     script: "scripts/analytics-football-predictions-settle.ts",
     args: ["--all-competitions", "--lookback-hours=96", "--execute"],
     timeoutSeconds: 900
+  },
+  {
+    key: "rc-settlement",
+    hour: 9,
+    minute: 35,
+    script: "scripts/football-rc-settle.ts",
+    args: [],
+    timeoutSeconds: 300
   },
   {
     key: "model-shadow",

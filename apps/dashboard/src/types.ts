@@ -904,3 +904,41 @@ export interface FootballTeamProfileDataCoverage {
   lineupsAvailable: boolean;
   injuriesAvailable: boolean;
 }
+
+export interface RcPrematchProbability {
+  p1: number;
+  px: number;
+  p2: number;
+  pick: "1" | "X" | "2";
+  pickLabel: string;
+  modelId: "R-A" | "R-C";
+  modelVersion: string;
+  modelLabel: string;
+  generatedAt: string;
+  publishedAt: string;
+}
+
+export interface RcPrematchItem {
+  matchId: string;
+  league: string;
+  kickoffAt: string;
+  homeTeam: string;
+  awayTeam: string;
+  rc: RcPrematchProbability;
+  ra: RcPrematchProbability;
+  modelsDisagree: boolean;
+  historyHomeN: number;
+  historyAwayN: number;
+  scopeLevel: string;
+  historyCompleteness: string;
+  dataWarning: string | null;
+  disclaimer: string;
+}
+
+export interface RcPrematchResponse {
+  modelVersion: string;
+  modelLabel: string;
+  count: number;
+  disclaimer: string;
+  items: RcPrematchItem[];
+}

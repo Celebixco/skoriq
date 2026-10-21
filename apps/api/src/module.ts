@@ -13,6 +13,8 @@ import { FootballMatchAnalyticsController } from "./routes/football-match-analyt
 import { FootballMatchAnalyticsService } from "./routes/football-match-analytics.service.js";
 import { FootballMemberPredictionPreviewController } from "./routes/football-member-prediction-preview.controller.js";
 import { FootballMemberPredictionPreviewService } from "./routes/football-member-prediction-preview.service.js";
+import { FootballRcPrematchController } from "./routes/football-rc-prematch.controller.js";
+import { FootballRcPrematchService } from "./routes/football-rc-prematch.service.js";
 import { FootballPredictionDraftsController } from "./routes/football-prediction-drafts.controller.js";
 import { FootballPredictionDraftsService } from "./routes/football-prediction-drafts.service.js";
 import { FootballPublicEligibilityController } from "./routes/football-public-eligibility.controller.js";
@@ -31,6 +33,7 @@ import { SyncStatusController } from "./routes/sync-status.controller.js";
     DashboardOverviewController,
     FootballMatchAnalyticsController,
     FootballMemberPredictionPreviewController,
+    FootballRcPrematchController,
     FootballCatalogController,
     FootballPredictionDraftsController,
     FootballPublicEligibilityController,
@@ -49,6 +52,7 @@ import { SyncStatusController } from "./routes/sync-status.controller.js";
     DashboardOverviewService,
     FootballMatchAnalyticsService,
     FootballMemberPredictionPreviewService,
+    FootballRcPrematchService,
     FootballCatalogService,
     FootballPredictionDraftsService,
     FootballPublicEligibilityService,
@@ -56,3 +60,4 @@ import { SyncStatusController } from "./routes/sync-status.controller.js";
   ]
 })
 export class ApiModule {}
+
