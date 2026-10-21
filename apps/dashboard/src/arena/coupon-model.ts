@@ -1,4 +1,4 @@
-import type { FootballMemberPredictionPreviewCandidate, FootballMemberPredictionPreviewResponse } from "../types";
+import type { FootballMemberPredictionPreviewCandidate, FootballMemberPredictionPreviewResponse, RcPrematchItem } from "../types";
 
 export interface CouponMatch {
   matchId: string;
@@ -16,7 +16,7 @@ export interface CouponSelection {
   addedAt: string;
 }
 
-export type CouponAddOutcome = "added" | "replaced" | "duplicate" | "expired" | "limit";
+export type CouponAddOutcome = "added" | "replaced" | "duplicate" | "conflict" | "expired" | "limit";
 export const MAX_COUPON_SELECTIONS = 20;
 
 type JsonRecord = Record<string, unknown>;
@@ -60,6 +60,7 @@ function normalizeSelection(value: unknown, now: number): CouponSelection | null
   if (match.status !== "scheduled" && match.status !== "not_started") return null;
   if (!date(item.addedAt) || typeof item.minimumLeadMinutes !== "number" || !Number.isFinite(item.minimumLeadMinutes) || item.minimumLeadMinutes < 0) return null;
   if (!text(prediction.predictionId) || !text(prediction.displayLabel) || !text(prediction.predictionType) || !text(prediction.predictionValue) || !text(prediction.riskLevel)) return null;
+  if (prediction.selectionSource !== undefined && prediction.selectionSource !== "rc_beta") return null;
   if (prediction.recommendationTier !== "primary" && prediction.recommendationTier !== "try" && prediction.recommendationTier !== "alternative") return null;
   if (!date(prediction.generatedAt) || !date(prediction.kickoffAt) || prediction.isFresh !== true) return null;
   if (prediction.analysisWindowStatus !== null && prediction.analysisWindowStatus !== "within_window") return null;
@@ -74,7 +75,8 @@ function normalizeSelection(value: unknown, now: number): CouponSelection | null
       predictionType: prediction.predictionType, predictionValue: prediction.predictionValue,
       recommendationTier: prediction.recommendationTier, confidenceScore, riskLevel: prediction.riskLevel,
       reasoningSummary: typeof prediction.reasoningSummary === "string" ? prediction.reasoningSummary.trim().slice(0, 2_000) || null : null, generatedAt: prediction.generatedAt,
-      kickoffAt: prediction.kickoffAt, isFresh: true, analysisWindowStatus: prediction.analysisWindowStatus
+      kickoffAt: prediction.kickoffAt, isFresh: true, analysisWindowStatus: prediction.analysisWindowStatus,
+      selectionSource: prediction.selectionSource === "rc_beta" ? "rc_beta" : undefined
     },
     minimumLeadMinutes: item.minimumLeadMinutes,
     addedAt: item.addedAt
@@ -97,6 +99,7 @@ export function addCouponSelection(selections: CouponSelection[], match: CouponM
   const index = fresh.findIndex((selection) => selection.match.matchId === next.match.matchId);
   if (index >= 0) {
     if (fresh[index]?.prediction.predictionId === next.prediction.predictionId) return { selections: fresh, outcome: "duplicate" };
+    if (next.prediction.selectionSource === "rc_beta" || fresh[index]?.prediction.selectionSource === "rc_beta") return { selections: fresh, outcome: "conflict" };
     return { selections: fresh.map((selection, position) => position === index ? next : selection), outcome: "replaced" };
   }
   if (fresh.length >= MAX_COUPON_SELECTIONS) return { selections: fresh, outcome: "limit" };
@@ -148,9 +151,37 @@ export function reconcileCouponStorageChange(current: CouponSelection[], event: 
   return serializeCoupon(userId, incoming) === serializeCoupon(userId, current) ? null : incoming;
 }
 
-export async function validateCouponSelections(selections: CouponSelection[], fetchPreview: (matchId: string) => Promise<FootballMemberPredictionPreviewResponse>): Promise<CouponValidationResult[]> {
+export function rcCouponCandidate(item: RcPrematchItem): FootballMemberPredictionPreviewCandidate {
+  return {
+    predictionId: item.rc.predictionId,
+    displayLabel: item.rc.predictionText,
+    predictionType: "rc_match_result",
+    predictionValue: item.rc.pick,
+    recommendationTier: "primary",
+    confidenceScore: null,
+    riskLevel: "unknown",
+    reasoningSummary: null,
+    generatedAt: item.rc.generatedAt,
+    kickoffAt: item.kickoffAt,
+    isFresh: true,
+    analysisWindowStatus: "within_window",
+    selectionSource: "rc_beta"
+  };
+}
+
+export async function validateCouponSelections(
+  selections: CouponSelection[],
+  fetchPreview: (matchId: string) => Promise<FootballMemberPredictionPreviewResponse>,
+  fetchRc?: (matchId: string) => Promise<RcPrematchItem>
+): Promise<CouponValidationResult[]> {
   return Promise.all(selections.map(async (original): Promise<CouponValidationResult> => {
     try {
+      if (original.prediction.selectionSource === "rc_beta") {
+        if (!fetchRc) return { original, status: "error" };
+        const item = await fetchRc(original.match.matchId);
+        if (item.matchId !== original.match.matchId || item.rc.predictionId !== original.prediction.predictionId || Date.parse(item.kickoffAt) <= Date.now()) return { original, status: "unavailable" };
+        return { original, status: "available", prediction: rcCouponCandidate(item), minimumLeadMinutes: 0 };
+      }
       const response = await fetchPreview(original.match.matchId);
       if (response.matchId !== original.match.matchId || response.status !== "available" || response.analysisWindow?.status !== "within_window") return { original, status: "unavailable" };
       const prediction = [response.groups?.primary, response.groups?.try, response.groups?.alternative].flatMap((group) => Array.isArray(group) ? group : []).find((item) => item?.predictionId === original.prediction.predictionId);
@@ -188,13 +219,11 @@ export function reconcileCouponValidation(current: CouponSelection[], results: C
 }
 
 const couponDate = new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
-const confidence = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 });
 
 export function formatCouponText(selections: CouponSelection[]): string {
   const rows = selections.map((selection, index) => {
-    const risk = ({ low: "Düşük", medium: "Orta", high: "Yüksek" } as Record<string, string>)[selection.prediction.riskLevel.toLowerCase()] ?? "Belirtilmedi";
-    const score = selection.prediction.confidenceScore;
-    return `${index + 1}. ${selection.match.homeTeam.name} - ${selection.match.awayTeam.name}\n${selection.match.competition.name} · ${couponDate.format(new Date(selection.prediction.kickoffAt))} (TSİ)\nSeçim: ${selection.prediction.displayLabel} · Güven: ${score === null ? "—" : `${confidence.format(score)}/100`} · Risk: ${risk}`;
+    const selectionText = selection.prediction.displayLabel.startsWith("Tahmin:") ? selection.prediction.displayLabel : `Tahmin: ${selection.prediction.displayLabel}`;
+    return `${index + 1}. ${selection.match.homeTeam.name} - ${selection.match.awayTeam.name}\n${selection.match.competition.name} · ${couponDate.format(new Date(selection.prediction.kickoffAt))} (TSİ)\n${selectionText}`;
   });
-  return [`SkorIQ · ${selections.length} maçlık kombin`, ...rows, "Bu bir analiz taslağıdır. Sonuç garantisi içermez."].join("\n\n");
+  return [`SkorIQ · ${selections.length} maçlık seçim`, ...rows, "Tahminler kesin sonuç garantisi değildir."].join("\n\n");
 }

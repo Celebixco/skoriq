@@ -1,0 +1,36 @@
+.rc-coupon-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rc-coupon-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid rgba(255, 196, 0, .44);
+  border-radius: 9px;
+  color: #1b1500;
+  background: #ffc400;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rc-coupon-button:hover { background: #ffd43b; }
+.rc-coupon-button.is-selected {
+  border-color: rgba(126, 226, 168, .40);
+  color: #9eedbd;
+  background: rgba(126, 226, 168, .08);
+}
+.rc-coupon-message { color: #e5be62; font-size: 10px; line-height: 1.3; }
+
+@media (max-width: 460px) {
+  .rc-simple-card__foot { flex-wrap: wrap; }
+  .rc-coupon-action { flex: 1 1 auto; }
+  .rc-coupon-button { flex: 1 1 auto; justify-content: center; }
+}

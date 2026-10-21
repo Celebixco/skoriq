@@ -5,6 +5,8 @@ import type { Database } from "@sports-data/database";
 import { sql } from "drizzle-orm";
 
 export interface RcPrematchProbability {
+  predictionId: string;
+  predictionText: string;
   p1: number;
   px: number;
   p2: number;
@@ -24,6 +26,10 @@ export interface RcPrematchItem {
   kickoffAt: string;
   homeTeam: string;
   awayTeam: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  homeTeamLogoUrl: string | null;
+  awayTeamLogoUrl: string | null;
   rc: RcPrematchProbability;
   ra: RcPrematchProbability;
   modelsDisagree: boolean;
@@ -52,6 +58,11 @@ interface RcRow {
   kickoff_at: Date | string;
   home_team: string;
   away_team: string;
+  home_team_id: string;
+  away_team_id: string;
+  home_team_logo_url: string | null;
+  away_team_logo_url: string | null;
+  prediction_id: string;
   model_id: "R-A" | "R-C";
   model_version: string;
   prediction_generated_at: Date | string;
@@ -74,6 +85,10 @@ function pickLabel(pick: string): string {
   return pick === "1" ? "Ev sahibi" : pick === "X" ? "Beraberlik" : "Deplasman";
 }
 
+function predictionText(pick: string, home: string, away: string): string {
+  return pick === "1" ? `Tahmin: ${home} kazanır` : pick === "X" ? "Tahmin: Beraberlik" : `Tahmin: ${away} kazanır`;
+}
+
 function iso(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
@@ -91,6 +106,9 @@ export class FootballRcPrematchService {
       select
         m.id as match_id, c.id::text as competition_id, c.name as league, m.scheduled_start_at as kickoff_at,
         ht.name as home_team, at.name as away_team,
+        ht.id::text as home_team_id, at.id::text as away_team_id,
+        ht.logo_url as home_team_logo_url, at.logo_url as away_team_logo_url,
+        p.id::text as prediction_id,
         p.model_id, p.model_version, p.prediction_generated_at, p.published_at,
         p.p1, p.px, p.p2, p.pick, p.history_home_n, p.history_away_n,
         p.scope_level, p.history_completeness, p.evaluation_group
@@ -116,6 +134,9 @@ export class FootballRcPrematchService {
       select
         m.id as match_id, c.id::text as competition_id, c.name as league, m.scheduled_start_at as kickoff_at,
         ht.name as home_team, at.name as away_team,
+        ht.id::text as home_team_id, at.id::text as away_team_id,
+        ht.logo_url as home_team_logo_url, at.logo_url as away_team_logo_url,
+        p.id::text as prediction_id,
         p.model_id, p.model_version, p.prediction_generated_at, p.published_at,
         p.p1, p.px, p.p2, p.pick, p.history_home_n, p.history_away_n,
         p.scope_level, p.history_completeness, p.evaluation_group
@@ -160,10 +181,12 @@ export class FootballRcPrematchService {
       items.push({
         matchId: rc.match_id, competitionId: rc.competition_id, league: rc.league, kickoffAt: iso(rc.kickoff_at),
         homeTeam: rc.home_team, awayTeam: rc.away_team,
-        rc: { p1: Number(rc.p1), px: Number(rc.px), p2: Number(rc.p2), pick: rc.pick,
+        homeTeamId: rc.home_team_id, awayTeamId: rc.away_team_id,
+        homeTeamLogoUrl: rc.home_team_logo_url, awayTeamLogoUrl: rc.away_team_logo_url,
+        rc: { predictionId: rc.prediction_id, predictionText: predictionText(rc.pick, rc.home_team, rc.away_team), p1: Number(rc.p1), px: Number(rc.px), p2: Number(rc.p2), pick: rc.pick,
           pickLabel: pickLabel(rc.pick), modelId: "R-C", modelVersion: rc.model_version, modelLabel: MODEL_LABEL,
           generatedAt: iso(rc.prediction_generated_at), publishedAt: iso(rc.published_at) },
-        ra: { p1: Number(ra.p1), px: Number(ra.px), p2: Number(ra.p2), pick: ra.pick,
+        ra: { predictionId: ra.prediction_id, predictionText: predictionText(ra.pick, ra.home_team, ra.away_team), p1: Number(ra.p1), px: Number(ra.px), p2: Number(ra.p2), pick: ra.pick,
           pickLabel: pickLabel(ra.pick), modelId: "R-A", modelVersion: ra.model_version, modelLabel: "R-A",
           generatedAt: iso(ra.prediction_generated_at), publishedAt: iso(ra.published_at) },
         modelsDisagree: rc.pick !== ra.pick,

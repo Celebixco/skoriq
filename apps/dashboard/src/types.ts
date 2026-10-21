@@ -446,6 +446,7 @@ export interface FootballMemberPredictionPreviewCandidate {
   kickoffAt: string;
   isFresh: boolean;
   analysisWindowStatus: string | null;
+  selectionSource?: "rc_beta";
 }
 
 export interface FootballMemberPredictionPreviewResponse {
@@ -906,6 +907,8 @@ export interface FootballTeamProfileDataCoverage {
 }
 
 export interface RcPrematchProbability {
+  predictionId: string;
+  predictionText: string;
   p1: number;
   px: number;
   p2: number;
@@ -925,6 +928,10 @@ export interface RcPrematchItem {
   kickoffAt: string;
   homeTeam: string;
   awayTeam: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  homeTeamLogoUrl: string | null;
+  awayTeamLogoUrl: string | null;
   rc: RcPrematchProbability;
   ra: RcPrematchProbability;
   modelsDisagree: boolean;

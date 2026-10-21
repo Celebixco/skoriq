@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { fetchFootballMemberPredictionPreview } from "../api";
+import { fetchFootballMemberPredictionPreview, fetchRcMatchPrediction } from "../api";
 import type { FootballMemberPredictionPreviewCandidate } from "../types";
 import {
   addCouponSelection, couponSelectionDeadline, couponStorageKey, expireCouponSelections,
@@ -38,6 +38,7 @@ function restore(userId: string): CouponSelection[] {
 const addMessages: Record<CouponAddOutcome, string> = {
   added: "Seçim kupon taslağına eklendi.",
   replaced: "Bu maçın seçimi kupon taslağında değiştirildi.",
+  conflict: "Bu maçta farklı bir seçim var. Değiştirmeden önce onay isteyin.",
   duplicate: "Bu seçim zaten kupon taslağında.",
   expired: "Bu seçim artık güncel analiz penceresinde değil.",
   limit: "Kupon taslağına en fazla 20 maç ekleyebilirsin."
@@ -84,7 +85,7 @@ function CouponScope({ userId, children }: { userId: string; children: ReactNode
     const startedAtRevision = revision.current;
     setChecking(true);
     setValidationError(null);
-    const results = await validateCouponSelections(snapshot, fetchFootballMemberPredictionPreview);
+    const results = await validateCouponSelections(snapshot, fetchFootballMemberPredictionPreview, fetchRcMatchPrediction);
     if (!mounted.current || id !== requestId.current) return false;
     const editedDuringRequest = revision.current !== startedAtRevision;
     const reconciled = reconcileCouponValidation(current.current, results);

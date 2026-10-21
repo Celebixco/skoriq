@@ -1,7 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useCoupon } from "./CouponProvider";
 import { formatCouponText, type CouponSelection } from "./coupon-model";
-import { confidenceValue, riskText } from "./home-data";
 import "./coupon.css";
 
 function CouponIcon({ close = false }: { close?: boolean }) {
@@ -15,14 +14,12 @@ function SelectionRow({ selection, onOpen, onRemove, disabled }: {
   disabled: boolean;
 }) {
   const { match, prediction } = selection;
-  const confidence = confidenceValue(prediction.confidenceScore);
   const date = new Date(match.kickoffAt);
   const kickoff = Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }).format(date) : "Saat bekleniyor";
   return <li className="arena-coupon-pick">
     <div className="arena-coupon-pick__meta"><span>{match.competition.name}</span><time dateTime={match.kickoffAt}>{kickoff}</time></div>
     <div className="arena-coupon-pick__fixture"><button className="arena-coupon-match" type="button" onClick={onOpen} aria-label={`${match.homeTeam.name} - ${match.awayTeam.name} maç analizini aç`}><span>{match.homeTeam.name}</span><span>{match.awayTeam.name}</span></button><button className="arena-coupon-remove" type="button" disabled={disabled} onClick={onRemove} aria-label={`${match.homeTeam.name} - ${match.awayTeam.name} seçimini kaldır`}><CouponIcon close /></button></div>
     <strong className="arena-coupon-pick__selection">{prediction.displayLabel}</strong>
-    <dl className="arena-coupon-pick__signals"><div><dt>Risk</dt><dd>{riskText(prediction.riskLevel)}</dd></div><div><dt>Güven</dt><dd>{confidence === null ? "—" : `${confidence}/100`}</dd></div></dl>
   </li>;
 }
 
@@ -33,6 +30,7 @@ export function CouponRail({ navigate }: { navigate: (path: string) => void }) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [copyFallback, setCopyFallback] = useState("");
   const [feedback, setFeedback] = useState("");
   const [toast, setToast] = useState("");
   const toastMessage = feedback || coupon?.validationError || coupon?.message || "";
@@ -45,7 +43,7 @@ export function CouponRail({ navigate }: { navigate: (path: string) => void }) {
   const mountedRef = useRef(false);
 
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
-  useEffect(() => { setFeedback(""); }, [selectionKey]);
+  useEffect(() => { setFeedback(""); setCopyFallback(""); }, [selectionKey]);
   useEffect(() => {
     setToast(toastMessage);
     if (!toastMessage) return;
@@ -103,9 +101,10 @@ export function CouponRail({ navigate }: { navigate: (path: string) => void }) {
       if (!valid) { setFeedback("Kupon doğrulanamadı. Güncel seçimlerini kontrol edip tekrar dene."); return; }
       const fresh = couponRef.current?.getSelections() ?? [];
       if (!fresh.length) { setFeedback("Kopyalanacak seçim kalmadı. Hazır bir tahmin ekleyebilirsin."); return; }
-      if (!navigator.clipboard?.writeText) { setFeedback("Bu tarayıcıda panoya erişilemiyor. Güvenli bağlantıda tekrar dene."); return; }
-      await navigator.clipboard.writeText(formatCouponText(fresh));
-      if (mountedRef.current) setFeedback("Kupon panoya kopyalandı.");
+      const text = formatCouponText(fresh);
+      if (!navigator.clipboard?.writeText) { setCopyFallback(text); setFeedback("Panoya erişilemiyor. Metni seçip kopyalayabilirsin."); return; }
+      try { await navigator.clipboard.writeText(text); if (mountedRef.current) setFeedback("Kupon panoya kopyalandı."); }
+      catch { setCopyFallback(text); setFeedback("Kupon kopyalanamadı. Metni seçip kopyalayabilirsin."); }
     } catch { if (mountedRef.current) setFeedback("Kupon kopyalanamadı. Bağlantını ve pano iznini kontrol edip tekrar dene."); }
     finally { if (mountedRef.current) setCopying(false); }
   };
@@ -118,8 +117,8 @@ export function CouponRail({ navigate }: { navigate: (path: string) => void }) {
     <footer className="arena-coupon-footer">
       {validationError ? <p className="arena-coupon-error" role="alert">{validationError}</p> : null}
       {status ? <p className="arena-coupon-status" role="status">{status}</p> : null}
-      <div className="arena-coupon-actions"><button className="arena-coupon-clear" type="button" disabled={!count || busy} onClick={() => { setFeedback(""); coupon.clear(); }}>Temizle</button><button className="arena-coupon-copy" type="button" disabled={!count || busy} onClick={() => void copy()}>{copying || checking ? "Kontrol ediliyor…" : "Kuponu kopyala"}<svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="7" y="7" width="9" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M12 7V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3" stroke="currentColor" strokeWidth="1.4" /></svg></button></div>
-      <p className="arena-coupon-safety">Güven skoru kazanma olasılığı değildir. Analizler kesin sonuç garantisi vermez.</p>
+      {copyFallback ? <div className="arena-coupon-copy-fallback"><p>Metni seçip kopyala:</p><textarea readOnly value={copyFallback} onFocus={(event) => event.currentTarget.select()} aria-label="Kupon metni" /></div> : null}
+      <div className="arena-coupon-actions"><button className="arena-coupon-clear" type="button" disabled={!count || busy} onClick={() => { setFeedback(""); if (window.confirm("Kupondaki tüm seçimler temizlensin mi?")) coupon.clear(); }}>Tümünü temizle</button><button className="arena-coupon-copy" type="button" disabled={!count || busy} onClick={() => void copy()}>{copying || checking ? "Kontrol ediliyor…" : "Kuponu kopyala"}<svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="7" y="7" width="9" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M12 7V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3" stroke="currentColor" strokeWidth="1.4" /></svg></button></div>
     </footer>
   </div>;
   return <>

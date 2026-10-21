@@ -182,15 +182,16 @@ describe("coupon preview validation", () => {
 });
 
 describe("coupon text", () => {
-  it("summarizes individual match picks and risk without inventing combined probabilities or odds", () => {
+  it("summarizes individual match picks without model, confidence or odds", () => {
     const text = formatCouponText([{ ...selection(), prediction: candidate }]);
-    expect(text).toContain("1 maçlık kombin");
+    expect(text).toContain("1 maçlık seçim");
     expect(text).toContain("Ankara Kuzey - İzmir Güney");
     expect(text).toContain("MS 2,5 Üst");
-    expect(text).toContain("Güven: 64/100");
-    expect(text).not.toContain("%64");
-    expect(text).toContain("Orta");
+    expect(text).toContain("Tahmin: MS 2,5 Üst");
+    expect(text).not.toContain("Güven");
+    expect(text).not.toContain("Risk");
     expect(text).toContain("18.10.2026");
+    expect(text).toContain("Tahminler kesin sonuç garantisi değildir.");
     expect(text).not.toMatch(/oran|toplam güven|kazanma olasılığı/i);
   });
 });

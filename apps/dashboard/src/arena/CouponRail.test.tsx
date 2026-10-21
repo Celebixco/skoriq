@@ -27,26 +27,28 @@ describe("member coupon rail", () => {
     expect(html).toContain('aria-haspopup="dialog" aria-expanded="false"');
   });
 
-  it("shows the combination count with separate confidence and risk for each match", () => {
+  it("shows the combination count and plain selections without model or confidence data", () => {
     mock.selections = [selection("one"), selection("two", 72)];
     const html = renderToStaticMarkup(<CouponRail navigate={vi.fn()} />);
     expect(html).toContain("2 maçlık kombin");
-    expect(html).toContain("64/100");
-    expect(html).toContain("72/100");
-    expect(html.match(/<dt>Risk<\/dt><dd>Orta<\/dd>/g)).toHaveLength(2);
+    expect(html).toContain("MS 2,5 Üst");
+    expect(html).not.toContain("64/100");
+    expect(html).not.toContain("72/100");
+    expect(html).not.toContain("Risk");
+    expect(html).not.toContain("Güven");
     expect(html.match(/seçimini kaldır/g)).toHaveLength(2);
     expect(html.match(/maç analizini aç/g)).toHaveLength(2);
     expect(html).toContain("MS 2,5 Üst");
     expect(html).not.toMatch(/toplam güven|kombin güveni|toplam oran|kupon tutarı/i);
   });
 
-  it("preserves unknown confidence and announces a validation problem without inventing a number", () => {
+  it("shows a validation problem without confidence or risk labels", () => {
     mock.selections = [selection("one", null)];
     mock.validationError = "Bağlantı kurulamadı. Tekrar dene.";
     const html = renderToStaticMarkup(<CouponRail navigate={vi.fn()} />);
-    expect(html).toContain("<dt>Güven</dt><dd>—</dd>");
+    expect(html).not.toContain("Güven");
+    expect(html).not.toContain("Risk");
     expect(html).toContain('role="alert">Bağlantı kurulamadı. Tekrar dene.');
-    expect(html).toContain("Güven skoru kazanma olasılığı değildir.");
   });
 
   it("keeps the panel status available without rendering a second initial live announcement", () => {

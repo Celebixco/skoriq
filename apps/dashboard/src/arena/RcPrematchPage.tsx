@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { RcPrematchItem, RcPrematchResponse } from "../types";
 import { fetchRcMatchPrediction, fetchRcUpcomingPredictions } from "../api";
+import { TeamLogo } from "../components";
+import { RcCouponButton } from "./RcCouponButton";
 import "./rc-prematch.css";
 
 const ISTANBUL = "Europe/Istanbul";
-const DISCLAIMER = "Deneysel model olasılıklarıdır; sonuç garantisi değildir.";
-
-function pct(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
-}
+const DISCLAIMER = "Tahminler kesin sonuç garantisi değildir.";
 
 function istanbul(value: string): string {
   return new Intl.DateTimeFormat("tr-TR", {
@@ -20,74 +18,30 @@ function istanbul(value: string): string {
   }).format(new Date(value));
 }
 
-function utc(value: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: "UTC",
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  }).format(new Date(value));
-}
-
-function Bar({ label, value, tone }: { label: string; value: number; tone: "home" | "draw" | "away" }) {
-  return <div className={`rc-prob rc-prob--${tone}`}>
-    <div className="rc-prob__line"><span>{label}</span><strong>{pct(value)}</strong></div>
-    <div className="rc-prob__track" aria-hidden="true"><span style={{ width: `${Math.max(1, value * 100)}%` }} /></div>
-  </div>;
-}
-
-function ProbabilityBlock({ item, comparison = false }: { item: RcPrematchItem; comparison?: boolean }) {
-  const p = comparison ? item.ra : item.rc;
-  return <div className="rc-probabilities">
-    <Bar label="Ev" value={p.p1} tone="home" />
-    <Bar label="Beraberlik" value={p.px} tone="draw" />
-    <Bar label="Deplasman" value={p.p2} tone="away" />
-  </div>;
-}
-
 export function RcPredictionCard({ item, navigate }: { item: RcPrematchItem; navigate?: (path: string) => void }) {
-  return <article className="rc-card">
-    <header className="rc-card__head">
-      <div>
-        <span className="rc-eyebrow">{item.league}</span>
-        <h3>{item.homeTeam} <span>vs</span> {item.awayTeam}</h3>
-      </div>
-      <span className="rc-beta">R-C • Beta</span>
+  return <article className="rc-simple-card">
+    <header className="rc-simple-card__head">
+      <span className="rc-simple-card__league">{item.league}</span>
+      <time dateTime={item.kickoffAt}>{istanbul(item.kickoffAt)} <small>TSİ</small></time>
     </header>
 
-    <div className="rc-card__time">
-      <span>{istanbul(item.kickoffAt)} <small>İstanbul</small></span>
-      <span>{utc(item.kickoffAt)} <small>UTC</small></span>
+    <div className="rc-simple-teams">
+      <div className="rc-simple-team">
+        <TeamLogo name={item.homeTeam} logoUrl={item.homeTeamLogoUrl} size="sm" />
+        <strong>{item.homeTeam}</strong>
+      </div>
+      <span className="rc-simple-vs" aria-hidden="true">–</span>
+      <div className="rc-simple-team rc-simple-team--away">
+        <TeamLogo name={item.awayTeam} logoUrl={item.awayTeamLogoUrl} size="sm" />
+        <strong>{item.awayTeam}</strong>
+      </div>
     </div>
 
-    <div className="rc-pick">
-      <span>R-C seçimi</span>
-      <strong>{item.rc.pickLabel}</strong>
-    </div>
-    <ProbabilityBlock item={item} />
+    <p className="rc-simple-pick">{item.rc.predictionText}</p>
 
-    <div className="rc-meta">
-      <span>Model: {item.rc.modelVersion}</span>
-      <span>Üretim: {istanbul(item.rc.generatedAt)}</span>
-      <span>Yayın: {istanbul(item.rc.publishedAt)}</span>
-      <span>Geçmiş: {item.historyHomeN} / {item.historyAwayN}</span>
-    </div>
-
-    {item.modelsDisagree ? <p className="rc-disagree">Modeller farklı değerlendiriyor: R-A seçimi {item.ra.pickLabel}.</p> : null}
-    {item.performanceNote ? <p className="rc-performance-note">{item.performanceNote}</p> : null}
-    {item.dataWarning ? <p className="rc-warning">{item.dataWarning}</p> : null}
-
-    <details className="rc-compare">
-      <summary>Model karşılaştırması <span>R-A</span></summary>
-      <ProbabilityBlock item={item} comparison />
-      <p>R-A seçimi: <strong>{item.ra.pickLabel}</strong></p>
-    </details>
-
-    <footer className="rc-card__foot">
-      <span>{DISCLAIMER}</span>
-      {navigate ? <button type="button" onClick={() => navigate(`/football/analytics/${item.matchId}`)}>Maç detayı →</button> : null}
+    <footer className="rc-simple-card__foot">
+      <RcCouponButton item={item} />
+      {navigate ? <button className="rc-simple-detail" type="button" onClick={() => navigate(`/football/analytics/${item.matchId}`)}>Maç detayı <span aria-hidden="true">→</span></button> : null}
     </footer>
   </article>;
 }
@@ -118,21 +72,21 @@ export function RcUpcomingPage({ navigate }: { navigate: (path: string) => void 
   const groups = useMemo(() => leagues
     .map((league) => ({ ...league, items: filtered.filter((item) => item.competitionId === league.competitionId) }))
     .filter((group) => group.items.length > 0), [leagues, filtered]);
+
   return <div className="rc-page">
     <header className="rc-hero">
       <div>
-        <span className="rc-eyebrow">Çoklu lig • iç değerlendirme</span>
+        <span className="rc-eyebrow">SkorIQ • maç öncesi</span>
         <h1>Yaklaşan Tahminler</h1>
-        <p>R-C beta modelinin maç öncesi olasılıkları. Karşılaştırma için R-A aynı kartta açılır.</p>
+        <p>Her maç için tek bir ön tahmin. Beğendiğin seçimi kuponuna ekle.</p>
       </div>
-      <div className="rc-hero__badge"><span>Yayın modeli</span><strong>R-C • Beta</strong><small>34 sonuç-temelli özellik</small></div>
     </header>
 
     {loading ? <div className="rc-state" role="status">Tahminler yükleniyor…</div> : null}
     {error ? <div className="rc-state rc-state--error" role="alert"><strong>Tahminler yüklenemedi.</strong><span>{error}</span></div> : null}
     {!loading && !error && data && data.items.length === 0 ? <div className="rc-state">Şu anda yayımlanmış yaklaşan tahmin yok.</div> : null}
     {data && data.items.length > 0 ? <>
-      <div className="rc-summary"><strong>{filtered.length}</strong> maç • <span>{data.disclaimer}</span></div>
+      <div className="rc-summary"><strong>{filtered.length}</strong> maç</div>
       {leagues.length > 1 ? <div className="rc-league-filter" aria-label="Lig filtresi">
         <span>Lig</span>
         <div role="group" aria-label="Lig seçimi">
@@ -145,7 +99,7 @@ export function RcUpcomingPage({ navigate }: { navigate: (path: string) => void 
         <div className="rc-grid">{group.items.map((item) => <RcPredictionCard key={item.matchId} item={item} navigate={navigate} />)}</div>
       </section>)}
     </> : null}
-    <p className="rc-footnote">Tahminler maçtan önce üretilir; canlı sonuç veya bağımsız başarı iddiası değildir. Dış zaman kanıtı yoktur.</p>
+    <p className="rc-footnote">{DISCLAIMER}</p>
   </div>;
 }
 
@@ -157,5 +111,5 @@ export function RcMatchPrediction({ matchId }: { matchId: string }) {
     return () => { cancelled = true; };
   }, [matchId]);
   if (!item) return null;
-  return <section className="rc-detail"><div className="rc-section-title"><span>R-C • Beta</span><h2>Maç öncesi model olasılığı</h2></div><RcPredictionCard item={item} /></section>;
+  return <section className="rc-detail"><div className="rc-section-title"><span>Maç öncesi</span><h2>Tek tahmin</h2></div><RcPredictionCard item={item} /></section>;
 }
