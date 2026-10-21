@@ -89,7 +89,7 @@ that configuration.
   clipboard access fails, a selectable textarea is shown instead of a success toast.
 - No bets, stakes, odds or winnings are modeled.
 
-Validation: 42 targeted tests pass; build and typecheck pass. Browser evidence is in
+Validation: 71 targeted tests pass; build and typecheck pass. Browser evidence is in
 `.research/stage12_deploy/design-verification.json` and the `design-*.png` files.
 Runtime: dashboard `284b166`, API/analytics `9acee9a`.
 
