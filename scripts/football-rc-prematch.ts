@@ -168,6 +168,31 @@ function rankX(probabilities: number[]): number {
   return order.indexOf(1) + 1;
 }
 
+async function insertInitial(client: pg.PoolClient, model: ModelDefinition, startedAt: Date) {
+  const document = JSON.parse(await readFile(join(dir, "football-rc-initial-predictions.json"), "utf8")) as { predictions: InitialPrediction[] };
+  let inserted = 0; let skipped = 0;
+  for (const item of document.predictions) {
+    const match = await client.query<{ id: string; scheduled_start_at: Date; status: string }>("select id, scheduled_start_at, status from matches where id = $1", [item.matchId]);
+    if (!match.rows[0] || match.rows[0].status !== "scheduled" || match.rows[0].scheduled_start_at <= startedAt) { skipped += 2; continue; }
+    for (const arm of ["R-A", "R-C"] as const) {
+      const p = item[arm];
+      const result = await client.query(`insert into football_rc_prematch_predictions
+        (match_id, model_id, model_version, kickoff_at, prediction_generated_at, published_at,
+         prediction_cutoff_at, feature_as_of_at, actual_lead_seconds, p1, px, p2, pick,
+         history_home_n, history_away_n, scope_level, history_completeness, feature_hash, model_hash,
+         source_snapshot_hash, status, metadata_json)
+        values ($1,$2,$3,$4,$5,now(),$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,'published',$20)
+        on conflict (match_id, model_id, model_version) do nothing`,
+        [item.matchId, arm, model.modelVersion, new Date(item.kickoffAt), new Date(item.predictionGeneratedAt),
+         new Date(new Date(item.kickoffAt).getTime() - HORIZON_SECONDS * 1000), new Date(item.featureAsOfAt), Math.round(item.actualLeadSeconds),
+         p.p1, p.px, p.p2, p.pick, item.historyHomeN, item.historyAwayN, item.scopeLevel, item.historyCompleteness,
+         item.featureHash, p.modelHash, item.sourceSnapshotHash, JSON.stringify({ displayVersion: model.displayVersion, seededFrom: "stage12_1_initial_package" })]);
+      inserted += result.rowCount ?? 0;
+    }
+  }
+  return { inserted, skipped };
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const execute = args.includes("--execute");
@@ -183,31 +208,12 @@ async function main() {
   try {
     await client.query("begin");
     if (seed) {
-      const document = JSON.parse(await readFile(join(dir, "football-rc-initial-predictions.json"), "utf8")) as { predictions: InitialPrediction[] };
-      let inserted = 0; let skipped = 0;
-      for (const item of document.predictions) {
-        const match = await client.query<{ id: string; scheduled_start_at: Date; status: string }>("select id, scheduled_start_at, status from matches where id = $1", [item.matchId]);
-        if (!match.rows[0] || match.rows[0].status !== "scheduled" || match.rows[0].scheduled_start_at <= startedAt) { skipped += 2; continue; }
-        for (const arm of ["R-A", "R-C"] as const) {
-          const p = item[arm];
-          const result = await client.query(`insert into football_rc_prematch_predictions
-            (match_id, model_id, model_version, kickoff_at, prediction_generated_at, published_at,
-             prediction_cutoff_at, feature_as_of_at, actual_lead_seconds, p1, px, p2, pick,
-             history_home_n, history_away_n, scope_level, history_completeness, feature_hash, model_hash,
-             source_snapshot_hash, status, metadata_json)
-            values ($1,$2,$3,$4,$5,now(),$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,'published',$20)
-            on conflict (match_id, model_id, model_version) do nothing`,
-            [item.matchId, arm, model.modelVersion, new Date(item.kickoffAt), new Date(item.predictionGeneratedAt),
-             new Date(new Date(item.kickoffAt).getTime() - HORIZON_SECONDS * 1000), new Date(item.featureAsOfAt), item.actualLeadSeconds,
-             p.p1, p.px, p.p2, p.pick, item.historyHomeN, item.historyAwayN, item.scopeLevel, item.historyCompleteness,
-             item.featureHash, p.modelHash, item.sourceSnapshotHash, JSON.stringify({ displayVersion: model.displayVersion, seededFrom: "stage12_1_initial_package" })]);
-          inserted += result.rowCount ?? 0;
-        }
-      }
+      const result = await insertInitial(client, model, startedAt);
       await client.query("commit");
-      console.log(JSON.stringify({ mode: "seed", execute, inserted, skipped, modelVersion: model.modelVersion, at: startedAt.toISOString() }));
+      console.log(JSON.stringify({ mode: "seed", execute, ...result, modelVersion: model.modelVersion, at: startedAt.toISOString() }));
       return;
     }
+    const initial = await insertInitial(client, model, startedAt);
 
     const rows = await client.query<MatchRow>(`
       select m.id as match_id, m.metadata_json->>'sofascoreId' as source_event_id, s.name as season,
@@ -256,7 +262,7 @@ async function main() {
     }
     await client.query("commit");
     console.log(JSON.stringify({ mode: execute ? "execute" : "dry_run", execute, windowStart: windowStart.toISOString(), windowEnd: windowEnd.toISOString(),
-      candidates: candidates.length, inserted, blocked, modelVersion: model.modelVersion, at: startedAt.toISOString() }));
+      candidates: candidates.length, inserted, initial, blocked, modelVersion: model.modelVersion, at: startedAt.toISOString() }));
   } catch (error) {
     await client.query("rollback");
     throw error;
