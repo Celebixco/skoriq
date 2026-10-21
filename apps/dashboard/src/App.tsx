@@ -1194,7 +1194,6 @@ export function MatchDetailReportView({
       {activeTab === "overview" && (
         <>
           <RcMatchPrediction matchId={matchId} />
-          <MemberPredictionPreview match={report.match} />
 
 
 
