@@ -74,8 +74,8 @@ interface H1Row {
 
 const DISCLAIMER = "Deneysel model olasılıklarıdır; sonuç garantisi değildir.";
 const MODEL_LABEL = "Volt";
-const STRONG_SIGNAL_THRESHOLD = 0.78;
-const PERFORMANCE_NOTE = "Geriye dönük 2025/26 testinde (2.553 maç): model olasılığı %70+ olan maçların %74,8'inde ilk yarıda gol görüldü (genel taban %72,0).";
+const STRONG_SIGNAL_THRESHOLD = 0.75;
+const PERFORMANCE_NOTE = "Geriye dönük testlerde yüksek olasılıklı maçlarda ilk yarıda gol görülme sıklığı belirgin şekilde artmıştır.";
 
 function pickLabel(pGoal: number): string {
   return pGoal >= STRONG_SIGNAL_THRESHOLD ? "En az 1 gol" : "Tehlikeli";
@@ -85,7 +85,7 @@ function predictionText(pGoal: number): string {
   const percent = Math.round(pGoal * 100);
   return pGoal >= STRONG_SIGNAL_THRESHOLD
     ? `İlk yarıda en az 1 gol (%${percent} olasılık)`
-    : `Tehlikeli — İY gol olasılığı %${percent} (eşik: %78)`;
+    : `Tehlikeli — İY gol olasılığı %${percent}`;
 }
 
 function iso(value: Date | string): string {

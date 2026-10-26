@@ -178,7 +178,7 @@ export function h1CouponCandidate(item: H1PrematchItem): FootballMemberPredictio
     predictionValue: item.h1.pick,
     recommendationTier: "primary",
     confidenceScore: Math.round(item.h1.pGoal * 100),
-    riskLevel: item.h1.pGoal >= 0.78 ? "low" : "medium",
+    riskLevel: item.h1.pGoal >= 0.75 ? "low" : "medium",
     reasoningSummary: `Beklenen ilk yarı golü: ${item.h1.expectedH1Goals.toFixed(2)}`,
     generatedAt: item.h1.generatedAt,
     kickoffAt: item.kickoffAt,

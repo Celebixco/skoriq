@@ -46,7 +46,7 @@ describe("first-half goal prediction card", () => {
   it("marks low probabilities with the low tone and risky verdict styling", () => {
     const low: H1PrematchItem = {
       ...item,
-      h1: { ...item.h1, pGoal: 0.44, pick: "under_0_5", predictionText: "Tehlikeli — İY gol olasılığı %44 (eşik: %78)" }
+      h1: { ...item.h1, pGoal: 0.44, pick: "under_0_5", predictionText: "Tehlikeli — İY gol olasılığı %44" }
     };
     const html = renderToStaticMarkup(<H1PredictionCard item={low} navigate={() => {}} />);
     expect(html).toContain('data-tone="low"');
@@ -54,10 +54,10 @@ describe("first-half goal prediction card", () => {
     expect(html).toContain("Tehlikeli");
   });
 
-  it("labels 78%+ matches as a safe goal call and below as dangerous", () => {
+  it("labels 75%+ matches as a safe goal call and below as dangerous", () => {
     const mid: H1PrematchItem = {
       ...item,
-      h1: { ...item.h1, pGoal: 0.729, predictionText: "Tehlikeli — İY gol olasılığı %73 (eşik: %78)" }
+      h1: { ...item.h1, pGoal: 0.729, predictionText: "Tehlikeli — İY gol olasılığı %73" }
     };
     const riskyHtml = renderToStaticMarkup(<H1PredictionCard item={mid} navigate={() => {}} />);
     expect(riskyHtml).toContain("Tehlikeli");
@@ -68,6 +68,15 @@ describe("first-half goal prediction card", () => {
     expect(safeHtml).toContain("En az 1 gol");
     expect(safeHtml).not.toContain("Tehlikeli");
     expect(safeHtml).toContain('data-tone="high"');
+  });
+
+  it("never leaks the internal threshold value to members", () => {
+    for (const pGoal of [0.44, 0.729, 0.7812]) {
+      const variant: H1PrematchItem = { ...item, h1: { ...item.h1, pGoal } };
+      const html = renderToStaticMarkup(<H1PredictionCard item={variant} navigate={() => {}} />);
+      expect(html).not.toContain("eşik");
+      expect(html).not.toContain("Eşik");
+    }
   });
 
   it("does not leak internal model ids onto the member card", () => {
