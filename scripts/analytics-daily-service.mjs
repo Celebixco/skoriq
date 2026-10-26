@@ -27,10 +27,26 @@ const JOBS = [
     timeoutSeconds: 1_200
   },
   {
+    key: "finished-sync",
+    hour: 9,
+    minute: 10,
+    script: "scripts/provider-football-finished-sync.ts",
+    args: ["--execute", "--all-reviewed-enabled", "--lookback-hours=96"],
+    timeoutSeconds: 900
+  },
+  {
     key: "rc-prematch",
     hour: 9,
     minute: 20,
     script: "scripts/football-rc-prematch.ts",
+    args: ["--execute"],
+    timeoutSeconds: 600
+  },
+  {
+    key: "h1-prematch",
+    hour: 9,
+    minute: 25,
+    script: "scripts/football-h1-prematch.ts",
     args: ["--execute"],
     timeoutSeconds: 600
   },
@@ -64,6 +80,13 @@ const INTERVAL_JOBS = [
     key: "rc-settlement",
     intervalMinutes: 15,
     script: "scripts/football-rc-settle.ts",
+    args: [],
+    timeoutSeconds: 300
+  },
+  {
+    key: "h1-settlement",
+    intervalMinutes: 15,
+    script: "scripts/football-h1-settle.ts",
     args: [],
     timeoutSeconds: 300
   }

@@ -26,6 +26,24 @@
   text-transform: uppercase;
 }
 
+/* Cross-engine switch (Trey <-> Volt) shared by both prediction pages. */
+.h1-engine-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 7px 12px;
+  border: 1px solid rgba(181, 244, 74, .25);
+  border-radius: 999px;
+  color: #d9ff8a;
+  background: rgba(181, 244, 74, .07);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease;
+}
+.h1-engine-switch:hover { background: rgba(181, 244, 74, .14); border-color: rgba(181, 244, 74, .45); }
+
 .rc-hero h1 {
   margin: 6px 0 7px;
   color: #f7f4e9;

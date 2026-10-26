@@ -111,3 +111,24 @@
   .arena-shell .prediction-line { padding: 10px 0; }
   .arena-shell .match-detail-link { width: 100%; justify-content: center; }
 }
+
+/* Engine switcher: Trey (match result) vs Volt (first-half goals). */
+.arena-shell .results-engine-switch { display: flex; gap: 8px; align-self: end; }
+.arena-shell .results-engine-switch button {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 9px 14px;
+  border: 1px solid var(--line); border-radius: 10px;
+  color: var(--muted); background: #0b120d;
+  font: 650 12px "Archivo", sans-serif; cursor: pointer;
+  transition: border-color .2s ease, color .2s ease, background .2s ease;
+}
+.arena-shell .results-engine-switch button small { color: var(--muted); font-size: 10px; font-weight: 500; }
+.arena-shell .results-engine-switch button[aria-pressed="true"] { color: var(--text); border-color: #ffc40055; background: #ffc4000d; }
+.arena-shell .results-engine-dot { width: 7px; height: 7px; border-radius: 999px; background: #ffc400; }
+.arena-shell .results-engine-dot--volt { background: #b5f44a; }
+.arena-shell .results-engine-switch button[aria-pressed="true"] .results-engine-dot--trey { box-shadow: 0 0 8px #ffc40090; }
+.arena-shell .results-engine-switch button[aria-pressed="true"] .results-engine-dot--volt { box-shadow: 0 0 8px #b5f44a90; }
+@media (max-width: 760px) {
+  .arena-shell .results-engine-switch { width: 100%; }
+  .arena-shell .results-engine-switch button { flex: 1; justify-content: center; }
+}

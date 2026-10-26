@@ -961,6 +961,71 @@ export const footballPredictionOutputs = pgTable(
   ]
 );
 
+export const footballH1PrematchPredictions = pgTable(
+  "football_h1_prematch_predictions",
+  {
+    id,
+    matchId: uuid("match_id").notNull().references(() => matches.id),
+    competitionId: uuid("competition_id").notNull().references(() => competitions.id),
+    modelId: text("model_id").notNull(),
+    modelVersion: text("model_version").notNull(),
+    kickoffAt: timestamp("kickoff_at", { withTimezone: true }).notNull(),
+    predictionGeneratedAt: timestamp("prediction_generated_at", { withTimezone: true }).notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
+    predictionCutoffAt: timestamp("prediction_cutoff_at", { withTimezone: true }).notNull(),
+    featureAsOfAt: timestamp("feature_as_of_at", { withTimezone: true }).notNull(),
+    actualLeadSeconds: integer("actual_lead_seconds").notNull(),
+    pGoal: doublePrecision("p_goal").notNull(),
+    expectedH1Goals: doublePrecision("expected_h1_goals").notNull(),
+    pick: text("pick").notNull(),
+    historyHomeN: integer("history_home_n").notNull(),
+    historyAwayN: integer("history_away_n").notNull(),
+    scopeLevel: text("scope_level").notNull(),
+    historyCompleteness: text("history_completeness").notNull().default("unverified"),
+    featureHash: text("feature_hash").notNull(),
+    modelHash: text("model_hash").notNull(),
+    sourceSnapshotHash: text("source_snapshot_hash").notNull(),
+    evaluationGroup: text("evaluation_group").notNull().default("h1_stage1_retrospective"),
+    status: text("status").notNull().default("published"),
+    supersedesId: uuid("supersedes_id"),
+    metadataJson,
+    createdAt,
+    updatedAt
+  },
+  (table) => [
+    uniqueIndex("football_h1_prematch_predictions_version_uidx").on(table.matchId, table.modelId, table.modelVersion),
+    index("football_h1_prematch_predictions_match_idx").on(table.matchId),
+    index("football_h1_prematch_predictions_competition_idx").on(table.competitionId),
+    index("football_h1_prematch_predictions_kickoff_idx").on(table.kickoffAt),
+    index("football_h1_prematch_predictions_published_idx").on(table.publishedAt),
+    index("football_h1_prematch_predictions_status_idx").on(table.status)
+  ]
+);
+
+export const footballH1PrematchResults = pgTable(
+  "football_h1_prematch_results",
+  {
+    id,
+    predictionId: uuid("prediction_id").notNull().references(() => footballH1PrematchPredictions.id),
+    matchId: uuid("match_id").notNull().references(() => matches.id),
+    competitionId: uuid("competition_id").notNull().references(() => competitions.id),
+    homeScoreHalftime: integer("home_score_halftime"),
+    awayScoreHalftime: integer("away_score_halftime"),
+    h1Goals: integer("h1_goals"),
+    halftimeStatus: text("halftime_status").notNull(),
+    resultLabel: text("result_label"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }).notNull(),
+    sourceLabel: text("source_label").notNull(),
+    metadataJson,
+    createdAt
+  },
+  (table) => [
+    uniqueIndex("football_h1_prematch_results_prediction_uidx").on(table.predictionId),
+    index("football_h1_prematch_results_match_idx").on(table.matchId),
+    index("football_h1_prematch_results_status_idx").on(table.halftimeStatus)
+  ]
+);
+
 export const footballRcPrematchPredictions = pgTable(
   "football_rc_prematch_predictions",
   {

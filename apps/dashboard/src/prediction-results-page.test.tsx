@@ -29,6 +29,20 @@ describe("PredictionResultsPage", () => {
     expect(html).not.toContain("member_visible");
   });
 
+  it("offers the Trey and Volt engine tabs with Volt defaulted off", () => {
+    const html = renderToStaticMarkup(<PredictionResultsPage navigate={vi.fn()} />);
+    expect(html).toContain("Tahmin motoru seçimi");
+    expect(html).toContain("Trey");
+    expect(html).toContain("Volt");
+    expect(html).toContain("İlk yarı gol");
+    const treyPressed = html.indexOf('aria-pressed="true"');
+    const voltButton = html.indexOf("Volt");
+    expect(treyPressed).toBeGreaterThan(-1);
+    expect(voltButton).toBeGreaterThan(-1);
+    const pressedCount = (html.match(/aria-pressed="true"/g) ?? []).length;
+    expect(pressedCount).toBe(1);
+  });
+
   it("keeps Sonuçlar in the member sidebar without admin internals", () => {
     const html = renderToStaticMarkup(
       <Shell

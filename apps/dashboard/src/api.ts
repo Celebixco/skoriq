@@ -16,6 +16,10 @@ import type {
   FootballMemberPredictionPreviewResponse,
   RcPrematchItem,
   RcPrematchResponse,
+  H1PrematchItem,
+  H1PrematchResponse,
+  H1PredictionResultsResponse,
+  H1PredictionResultsSummary,
   FootballPlayerProfileResponse,
   FootballMatchPublicEligibilityResponse,
   FootballMatchPredictionSettlementsResponse,
@@ -208,6 +212,42 @@ export async function fetchRcUpcomingPredictions(): Promise<RcPrematchResponse> 
 
 export async function fetchRcMatchPrediction(matchId: string): Promise<RcPrematchItem> {
   return requestJson<RcPrematchItem>(`/member/football/matches/${encodeURIComponent(matchId)}/rc-prediction`);
+}
+
+export async function fetchH1UpcomingPredictions(): Promise<H1PrematchResponse> {
+  return requestJson<H1PrematchResponse>("/member/football/h1-predictions/upcoming");
+}
+
+export async function fetchH1MatchPrediction(matchId: string): Promise<H1PrematchItem> {
+  return requestJson<H1PrematchItem>(`/member/football/matches/${encodeURIComponent(matchId)}/h1-prediction`);
+}
+
+export async function fetchH1PredictionResults(filters: FootballPredictionResultsFilters = {}): Promise<H1PredictionResultsResponse> {
+  const params = new URLSearchParams();
+  params.set("limit", String(filters.limit ?? 50));
+  params.set("offset", String(filters.offset ?? 0));
+  if (filters.countryId) params.set("countryId", filters.countryId);
+  if (filters.competitionId) params.set("competitionId", filters.competitionId);
+  if (filters.teamId) params.set("teamId", filters.teamId);
+  if (filters.matchId) params.set("matchId", filters.matchId);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.search?.trim()) params.set("search", filters.search.trim());
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  return requestJson<H1PredictionResultsResponse>(`/member/football/h1-prediction-results?${params.toString()}`);
+}
+
+export async function fetchH1PredictionResultsSummary(filters: FootballPredictionResultsFilters = {}): Promise<H1PredictionResultsSummary> {
+  const params = new URLSearchParams();
+  if (filters.countryId) params.set("countryId", filters.countryId);
+  if (filters.competitionId) params.set("competitionId", filters.competitionId);
+  if (filters.teamId) params.set("teamId", filters.teamId);
+  if (filters.matchId) params.set("matchId", filters.matchId);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.search?.trim()) params.set("search", filters.search.trim());
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  return requestJson<H1PredictionResultsSummary>(`/member/football/h1-prediction-results/summary?${params.toString()}`);
 }
 
 export async function fetchFootballMatchLineups(matchId: string): Promise<FootballMatchLineupsResponse> {

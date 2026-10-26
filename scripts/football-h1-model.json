@@ -1,0 +1,155 @@
+{
+  "modelId": "H1-A",
+  "modelVersion": "h1-stage1-logistic-blend",
+  "displayVersion": "İY Gol • Beta",
+  "formula": "logit(p) = w.logit_league*x1 + ... -> P(first-half goal >= 1)",
+  "features": [
+    "logit_league",
+    "inv_recent",
+    "inv_season",
+    "log_lam_ratio",
+    "h2h",
+    "log_ft_ratio",
+    "n_avg"
+  ],
+  "weights": {
+    "logit_league": 0.8647,
+    "inv_recent": -0.05937,
+    "inv_season": 0.16009,
+    "log_lam_ratio": 0.15083,
+    "h2h": 0.11675,
+    "log_ft_ratio": 0.63148,
+    "n_avg": 0.20818
+  },
+  "leagueConstants": {
+    "2bundesliga": {
+      "label": "2. Bundesliga",
+      "h1Home": 0.697368,
+      "h1Away": 0.548246,
+      "ftHome": 1.605263,
+      "ftAway": 1.254386,
+      "n": 456
+    },
+    "laliga": {
+      "label": "La Liga",
+      "h1Home": 0.678947,
+      "h1Away": 0.496053,
+      "ftHome": 1.468421,
+      "ftAway": 1.163158,
+      "n": 760
+    },
+    "superlig": {
+      "label": "Super Lig",
+      "h1Home": 0.713889,
+      "h1Away": 0.545833,
+      "ftHome": 1.619444,
+      "ftAway": 1.241667,
+      "n": 720
+    },
+    "eredivisie": {
+      "label": "Eredivisie",
+      "h1Home": 0.740196,
+      "h1Away": 0.578431,
+      "ftHome": 1.732026,
+      "ftAway": 1.382353,
+      "n": 612
+    },
+    "premierleague": {
+      "label": "Premier League",
+      "h1Home": 0.743421,
+      "h1Away": 0.618421,
+      "ftHome": 1.656579,
+      "ftAway": 1.45,
+      "n": 760
+    },
+    "ligue1": {
+      "label": "Ligue 1",
+      "h1Home": 0.681373,
+      "h1Away": 0.576797,
+      "ftHome": 1.527778,
+      "ftAway": 1.310458,
+      "n": 612
+    },
+    "bundesliga": {
+      "label": "Bundesliga",
+      "h1Home": 0.79085,
+      "h1Away": 0.699346,
+      "ftHome": 1.720588,
+      "ftAway": 1.455882,
+      "n": 612
+    },
+    "seriea": {
+      "label": "Serie A",
+      "h1Home": 0.593421,
+      "h1Away": 0.528947,
+      "ftHome": 1.386842,
+      "ftAway": 1.198684,
+      "n": 760
+    }
+  },
+  "globalFallback": {
+    "label": "global",
+    "h1Home": 0.70257,
+    "h1Away": 0.571995,
+    "ftHome": 1.582577,
+    "ftAway": 1.304233,
+    "n": 5292
+  },
+  "tuning": {
+    "recentWindow": 10,
+    "venueWindow": 14,
+    "h2hWindow": 4,
+    "shrinkAlpha": 6.0,
+    "invShrinkAlpha": 4.0,
+    "seasonShrinkAlpha": 3.0,
+    "venueShrinkAlpha": 2.0,
+    "venueBlend": 0.3,
+    "ftBlend": 0.4,
+    "lambdaFloor": 0.05,
+    "ftRatioFloor": 0.3,
+    "minPriorMatches": 3,
+    "pickThreshold": 0.5
+  },
+  "training": {
+    "matches": 5008,
+    "leagues": 8,
+    "seasons": [
+      "2023/24",
+      "2024/25"
+    ],
+    "test": {
+      "matches": 2553,
+      "season": "2025/26",
+      "logLoss": 0.58717,
+      "auc": 0.56627,
+      "brier": 0.19928,
+      "thresholdSweep": [
+        {
+          "threshold": 0.65,
+          "n": 2514,
+          "coverage": 0.985,
+          "hitRate": 0.722
+        },
+        {
+          "threshold": 0.7,
+          "n": 1984,
+          "coverage": 0.777,
+          "hitRate": 0.748
+        },
+        {
+          "threshold": 0.75,
+          "n": 700,
+          "coverage": 0.274,
+          "hitRate": 0.7557
+        },
+        {
+          "threshold": 0.78,
+          "n": 176,
+          "coverage": 0.069,
+          "hitRate": 0.8182
+        }
+      ]
+    }
+  },
+  "evaluationGroup": "h1_stage1_retrospective"
+}

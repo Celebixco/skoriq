@@ -446,7 +446,50 @@ export interface FootballMemberPredictionPreviewCandidate {
   kickoffAt: string;
   isFresh: boolean;
   analysisWindowStatus: string | null;
-  selectionSource?: "rc_beta";
+  selectionSource?: "rc_beta" | "h1_beta";
+}
+
+export interface H1PrematchPrediction {
+  predictionId: string;
+  predictionText: string;
+  pGoal: number;
+  expectedH1Goals: number;
+  pick: "over_0_5" | "under_0_5";
+  pickLabel: string;
+  modelId: "H1-A";
+  modelVersion: string;
+  modelLabel: string;
+  generatedAt: string;
+  publishedAt: string;
+}
+
+export interface H1PrematchItem {
+  matchId: string;
+  competitionId: string;
+  league: string;
+  kickoffAt: string;
+  homeTeam: string;
+  awayTeam: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  homeTeamLogoUrl: string | null;
+  awayTeamLogoUrl: string | null;
+  h1: H1PrematchPrediction;
+  historyHomeN: number;
+  historyAwayN: number;
+  scopeLevel: string;
+  historyCompleteness: string;
+  evaluationGroup: string;
+  performanceNote: string | null;
+  disclaimer: string;
+}
+
+export interface H1PrematchResponse {
+  modelVersion: string;
+  modelLabel: string;
+  count: number;
+  disclaimer: string;
+  items: H1PrematchItem[];
 }
 
 export interface FootballMemberPredictionPreviewResponse {
@@ -583,6 +626,7 @@ export interface FootballPredictionResultItem {
     displayLabel: string;
     tier: "primary" | "try" | "alternative";
     confidence: number | null;
+    probability?: number | null;
   };
   settlement: {
     status: "won" | "lost" | "void" | "push" | "pending" | "not_settleable" | "missing_score" | "unsupported_market";
@@ -617,6 +661,25 @@ export interface RcPredictionResultsResponse {
 }
 
 export interface RcPredictionResultsSummary {
+  modelLabel: string;
+  total: number;
+  totalSettled: number;
+  won: number;
+  lost: number;
+  pending: number;
+  void: number;
+  byCountry: Array<{ id: string | null; name: string | null; count: number }>;
+  byLeague: Array<{ id: string; name: string; count: number }>;
+}
+
+export interface H1PredictionResultsResponse {
+  items: FootballPredictionResultItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface H1PredictionResultsSummary {
   modelLabel: string;
   total: number;
   totalSettled: number;

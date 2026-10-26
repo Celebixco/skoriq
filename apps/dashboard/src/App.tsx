@@ -27,6 +27,8 @@ import {
   fetchFootballTeams,
   fetchRcPredictionResults,
   fetchRcPredictionResultsSummary,
+  fetchH1PredictionResults,
+  fetchH1PredictionResultsSummary,
   fetchCurrentUser,
   logout as logoutRequest
 } from "./api";
@@ -73,6 +75,7 @@ import "./app/app.css";
 import { LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage } from "./arena/AuthPages";
 import { ArenaHome } from "./arena/ArenaHome";
 import { RcMatchPrediction, RcUpcomingPage } from "./arena/RcPrematchPage";
+import { H1MatchPrediction, H1UpcomingPage } from "./arena/H1PrematchPage";
 import { SkorIQMark } from "./arena/SkorIQMark";
 import "./arena/theme.css";
 import { FilterDisclosure, SectionTabs } from "./arena/SectionTabs";
@@ -532,6 +535,7 @@ export function App() {
       {route.kind === "match-drafts" ? <MatchPredictionDraftsPage matchId={route.id} navigate={navigate} /> : null}
       {route.kind === "prediction-results" ? <PredictionResultsPage navigate={navigate} /> : null}
       {route.kind === "upcoming-predictions" ? <RcUpcomingPage navigate={navigate} /> : null}
+      {route.kind === "upcoming-h1-predictions" ? <H1UpcomingPage navigate={navigate} /> : null}
       {route.kind === "settlement-list" ? <SettlementListPage navigate={navigate} /> : null}
       {route.kind === "settlement-detail" ? <SettlementDetailPage settlementId={route.id} navigate={navigate} /> : null}
       {route.kind === "match-settlements" ? <MatchSettlementsPage matchId={route.id} navigate={navigate} /> : null}
@@ -1194,6 +1198,7 @@ export function MatchDetailReportView({
       {activeTab === "overview" && (
         <>
           <RcMatchPrediction matchId={matchId} />
+          <H1MatchPrediction matchId={matchId} />
 
 
 
@@ -4958,6 +4963,7 @@ const initialPredictionResultsFilters: FootballPredictionResultsFilters = {
 };
 
 export function PredictionResultsPage({ navigate }: { navigate: (path: string) => void }) {
+  const [engine, setEngine] = useState<"trey" | "volt">("trey");
   const [filters, setFilters] = useState<FootballPredictionResultsFilters>(initialPredictionResultsFilters);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedLeagues, setExpandedLeagues] = useState<Set<string>>(new Set());
@@ -4965,8 +4971,14 @@ export function PredictionResultsPage({ navigate }: { navigate: (path: string) =
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const requestFilters = useMemo(() => ({ ...filters, search: debouncedSearch }), [filters, debouncedSearch]);
-  const { data, loading, error } = useLoad(() => fetchRcPredictionResults(requestFilters), [requestFilters]);
-  const { data: summary } = useLoad(() => fetchRcPredictionResultsSummary(requestFilters), [requestFilters]);
+  const { data, loading, error } = useLoad(
+    () => (engine === "volt" ? fetchH1PredictionResults(requestFilters) : fetchRcPredictionResults(requestFilters)),
+    [engine, requestFilters]
+  );
+  const { data: summary } = useLoad(
+    () => (engine === "volt" ? fetchH1PredictionResultsSummary(requestFilters) : fetchRcPredictionResultsSummary(requestFilters)),
+    [engine, requestFilters]
+  );
 
   const filteredItems = useMemo(() => {
     if (!data) return [];
@@ -5040,7 +5052,15 @@ export function PredictionResultsPage({ navigate }: { navigate: (path: string) =
           <h1>Sonuçlar</h1>
           <p>SkorIQ tahminlerinin maç sonuçlarına göre değerlendirmesini incele.</p>
           <p className="results-helper-note">Bu sayfada yalnızca sonuçlanmış veya değerlendirilmeyi bekleyen tahminler gösterilir.</p>
-          <p className="results-helper-note">Tahminler deneysel {summary?.modelLabel ?? "Trey"} tahmin motoru tarafından üretilir; sonuç garantisi değildir.</p>
+          <p className="results-helper-note">Tahminler deneysel {summary?.modelLabel ?? (engine === "volt" ? "Volt" : "Trey")} tahmin motoru tarafından üretilir; sonuç garantisi değildir.</p>
+        </div>
+        <div className="results-engine-switch" role="group" aria-label="Tahmin motoru seçimi">
+          <button type="button" aria-pressed={engine === "trey"} onClick={() => { setEngine("trey"); setFilters(prev => ({ ...prev, offset: 0 })); }}>
+            <span className="results-engine-dot results-engine-dot--trey" aria-hidden="true" />Trey <small>Maç sonucu</small>
+          </button>
+          <button type="button" aria-pressed={engine === "volt"} onClick={() => { setEngine("volt"); setFilters(prev => ({ ...prev, offset: 0 })); }}>
+            <span className="results-engine-dot results-engine-dot--volt" aria-hidden="true" />Volt <small>İlk yarı gol</small>
+          </button>
         </div>
       </header>
 
@@ -6519,6 +6539,7 @@ function resolveRoute(path: string):
   | { kind: "match-drafts"; id: string }
   | { kind: "prediction-results" }
   | { kind: "upcoming-predictions" }
+  | { kind: "upcoming-h1-predictions" }
   | { kind: "settlement-list" }
   | { kind: "settlement-detail"; id: string }
   | { kind: "match-settlements"; id: string }
@@ -6552,6 +6573,7 @@ function resolveRoute(path: string):
   if (path === "/football/analytics") return { kind: "match-list" };
   if (path === "/football/prediction-results") return { kind: "prediction-results" };
   if (path === "/football/predictions/upcoming") return { kind: "upcoming-predictions" };
+  if (path === "/football/h1-predictions/upcoming") return { kind: "upcoming-h1-predictions" };
   if (path === "/football/predictions/drafts") return { kind: "draft-list" };
   if (path === "/football/predictions/settlements") return { kind: "settlement-list" };
   if (path === "/football/public-eligibility") return { kind: "public-eligibility-list" };

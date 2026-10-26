@@ -65,7 +65,9 @@
     "test": "vitest run",
     "test:sofascore": "python -m unittest discover -s scripts -p test_sofascore*.py",
     "test:integration": "npm run db:test:reset && npm run db:test:migrate && vitest run --config vitest.integration.config.ts",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "results:repair": "tsx scripts/football-results-repair.ts",
+    "results:repair:execute": "tsx scripts/football-results-repair.ts --execute"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.9",

@@ -1,4 +1,4 @@
-import type { FootballMemberPredictionPreviewCandidate, FootballMemberPredictionPreviewResponse, RcPrematchItem } from "../types";
+import type { FootballMemberPredictionPreviewCandidate, FootballMemberPredictionPreviewResponse, H1PrematchItem, RcPrematchItem } from "../types";
 
 export interface CouponMatch {
   matchId: string;
@@ -60,7 +60,7 @@ function normalizeSelection(value: unknown, now: number): CouponSelection | null
   if (match.status !== "scheduled" && match.status !== "not_started") return null;
   if (!date(item.addedAt) || typeof item.minimumLeadMinutes !== "number" || !Number.isFinite(item.minimumLeadMinutes) || item.minimumLeadMinutes < 0) return null;
   if (!text(prediction.predictionId) || !text(prediction.displayLabel) || !text(prediction.predictionType) || !text(prediction.predictionValue) || !text(prediction.riskLevel)) return null;
-  if (prediction.selectionSource !== undefined && prediction.selectionSource !== "rc_beta") return null;
+  if (prediction.selectionSource !== undefined && prediction.selectionSource !== "rc_beta" && prediction.selectionSource !== "h1_beta") return null;
   if (prediction.recommendationTier !== "primary" && prediction.recommendationTier !== "try" && prediction.recommendationTier !== "alternative") return null;
   if (!date(prediction.generatedAt) || !date(prediction.kickoffAt) || prediction.isFresh !== true) return null;
   if (prediction.analysisWindowStatus !== null && prediction.analysisWindowStatus !== "within_window") return null;
@@ -76,7 +76,7 @@ function normalizeSelection(value: unknown, now: number): CouponSelection | null
       recommendationTier: prediction.recommendationTier, confidenceScore, riskLevel: prediction.riskLevel,
       reasoningSummary: typeof prediction.reasoningSummary === "string" ? prediction.reasoningSummary.trim().slice(0, 2_000) || null : null, generatedAt: prediction.generatedAt,
       kickoffAt: prediction.kickoffAt, isFresh: true, analysisWindowStatus: prediction.analysisWindowStatus,
-      selectionSource: prediction.selectionSource === "rc_beta" ? "rc_beta" : undefined
+      selectionSource: prediction.selectionSource === "rc_beta" || prediction.selectionSource === "h1_beta" ? prediction.selectionSource : undefined
     },
     minimumLeadMinutes: item.minimumLeadMinutes,
     addedAt: item.addedAt
@@ -99,7 +99,8 @@ export function addCouponSelection(selections: CouponSelection[], match: CouponM
   const index = fresh.findIndex((selection) => selection.match.matchId === next.match.matchId);
   if (index >= 0) {
     if (fresh[index]?.prediction.predictionId === next.prediction.predictionId) return { selections: fresh, outcome: "duplicate" };
-    if (next.prediction.selectionSource === "rc_beta" || fresh[index]?.prediction.selectionSource === "rc_beta") return { selections: fresh, outcome: "conflict" };
+    const lockedSource = (source: string | undefined) => source === "rc_beta" || source === "h1_beta";
+    if (lockedSource(next.prediction.selectionSource) || lockedSource(fresh[index]?.prediction.selectionSource)) return { selections: fresh, outcome: "conflict" };
     return { selections: fresh.map((selection, position) => position === index ? next : selection), outcome: "replaced" };
   }
   if (fresh.length >= MAX_COUPON_SELECTIONS) return { selections: fresh, outcome: "limit" };
@@ -169,10 +170,29 @@ export function rcCouponCandidate(item: RcPrematchItem): FootballMemberPredictio
   };
 }
 
+export function h1CouponCandidate(item: H1PrematchItem): FootballMemberPredictionPreviewCandidate {
+  return {
+    predictionId: item.h1.predictionId,
+    displayLabel: item.h1.predictionText,
+    predictionType: "h1_first_half_goals",
+    predictionValue: item.h1.pick,
+    recommendationTier: "primary",
+    confidenceScore: Math.round(item.h1.pGoal * 100),
+    riskLevel: item.h1.pGoal >= 0.7 ? "low" : "medium",
+    reasoningSummary: `Beklenen ilk yarı golü: ${item.h1.expectedH1Goals.toFixed(2)}`,
+    generatedAt: item.h1.generatedAt,
+    kickoffAt: item.kickoffAt,
+    isFresh: true,
+    analysisWindowStatus: "within_window",
+    selectionSource: "h1_beta"
+  };
+}
+
 export async function validateCouponSelections(
   selections: CouponSelection[],
   fetchPreview: (matchId: string) => Promise<FootballMemberPredictionPreviewResponse>,
-  fetchRc?: (matchId: string) => Promise<RcPrematchItem>
+  fetchRc?: (matchId: string) => Promise<RcPrematchItem>,
+  fetchH1?: (matchId: string) => Promise<H1PrematchItem>
 ): Promise<CouponValidationResult[]> {
   return Promise.all(selections.map(async (original): Promise<CouponValidationResult> => {
     try {
@@ -181,6 +201,12 @@ export async function validateCouponSelections(
         const item = await fetchRc(original.match.matchId);
         if (item.matchId !== original.match.matchId || item.rc.predictionId !== original.prediction.predictionId || Date.parse(item.kickoffAt) <= Date.now()) return { original, status: "unavailable" };
         return { original, status: "available", prediction: rcCouponCandidate(item), minimumLeadMinutes: 0 };
+      }
+      if (original.prediction.selectionSource === "h1_beta") {
+        if (!fetchH1) return { original, status: "error" };
+        const item = await fetchH1(original.match.matchId);
+        if (item.matchId !== original.match.matchId || item.h1.predictionId !== original.prediction.predictionId || Date.parse(item.kickoffAt) <= Date.now()) return { original, status: "unavailable" };
+        return { original, status: "available", prediction: h1CouponCandidate(item), minimumLeadMinutes: 0 };
       }
       const response = await fetchPreview(original.match.matchId);
       if (response.matchId !== original.match.matchId || response.status !== "available" || response.analysisWindow?.status !== "within_window") return { original, status: "unavailable" };

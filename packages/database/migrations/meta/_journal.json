@@ -183,6 +183,13 @@
       "when": 1792611738354,
       "tag": "0025_ancient_norman_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792700000000,
+      "tag": "0026_quiet_dynamo",
+      "breakpoints": true
     }
   ]
 }
