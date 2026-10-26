@@ -76,9 +76,9 @@ export function RcUpcomingPage({ navigate }: { navigate: (path: string) => void 
   return <div className="rc-page">
     <header className="rc-hero">
       <div>
-        <span className="rc-eyebrow">SkorIQ • maç öncesi</span>
+        <span className="rc-eyebrow">SkorIQ • Trey tahmin motoru</span>
         <h1>Yaklaşan Tahminler</h1>
-        <p>Her maç için tek bir ön tahmin. Beğendiğin seçimi kuponuna ekle.</p>
+        <p>Trey'in her maç için tek ön tahmini. Beğendiğin seçimi kuponuna ekle.</p>
       </div>
     </header>
 

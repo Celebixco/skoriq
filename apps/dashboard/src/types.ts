@@ -952,7 +952,7 @@ export interface RcPrematchItem {
   homeTeamLogoUrl: string | null;
   awayTeamLogoUrl: string | null;
   rc: RcPrematchProbability;
-  ra: RcPrematchProbability;
+  ra: RcPrematchProbability | null;
   modelsDisagree: boolean;
   historyHomeN: number;
   historyAwayN: number;

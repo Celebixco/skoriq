@@ -113,6 +113,20 @@ beta system instead of the internal goal-profile draft pipeline:
   compatibility; the internal goal-profile pipeline keeps its own admin settlement
   screens.
 
+## Engine designation: Trey (2026-10-26)
+
+The match-result prediction engine is officially **R-C**; its member-facing product
+name is **Trey**:
+
+- `modelLabel` returned by the R-C endpoints and rendered on the Sonuçlar page is
+  `Trey` (API `MODEL_LABEL` in both services). The internal `model_id` stays `R-C`
+  in the database and generator; no migration.
+- The member card no longer requires an R-A row to appear: R-C alone is the engine
+  of record. R-A continues to be generated and stored as an internal comparison
+  arm (`ra` is now `null`-able in the API response; `modelsDisagree` is `false`
+  when R-A is absent). No R-A/model metadata is rendered on member cards.
+- The Tahminler page eyebrow reads "SkorIQ • Trey tahmin motoru".
+
 ## Kill switch
 
 Set `RC_PREMATCH_ENABLED=false` for `api` and `analytics`, then restart those services. API returns 503 and the generator exits without writing. The deployed containers currently carry `RC_PREMATCH_ENABLED=true`; default is `true`.

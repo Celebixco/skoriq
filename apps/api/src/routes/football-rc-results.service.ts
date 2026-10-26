@@ -88,7 +88,7 @@ export interface RcResultRow {
   resolved_at: Date | string | null;
 }
 
-const MODEL_LABEL = "R-C • Beta";
+const MODEL_LABEL = "Trey";
 
 @Injectable()
 export class FootballRcResultsService {

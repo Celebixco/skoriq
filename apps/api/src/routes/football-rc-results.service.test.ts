@@ -15,7 +15,7 @@ describe("FootballRcResultsService", () => {
     const results = await service.listResults({ limit: 50, offset: 0 });
     expect(results.total).toBe(4);
     expect(results.items.map((item) => item.settlement.status)).toEqual(["won", "lost", "void", "pending"]);
-    expect(results.items[0]?.prediction.displayLabel).toBe("R-C • Beta — Arsenal kazanır");
+    expect(results.items[0]?.prediction.displayLabel).toBe("Trey — Arsenal kazanır");
     expect(results.items[0]?.prediction.tier).toBe("primary");
     expect(results.items[0]?.prediction.confidence).toBeNull();
     expect(results.items[0]?.settlement.explanation).toBe("Normal süre sonucu 2-1: tahmin tuttu.");
@@ -33,7 +33,7 @@ describe("FootballRcResultsService", () => {
     ]);
 
     const summary = await service.getResultsSummary();
-    expect(summary.modelLabel).toBe("R-C • Beta");
+    expect(summary.modelLabel).toBe("Trey");
     expect(summary.total).toBe(3);
     expect(summary.totalSettled).toBe(2);
     expect(summary.won).toBe(1);

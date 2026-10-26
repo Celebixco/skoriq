@@ -31,7 +31,7 @@ export interface RcPrematchItem {
   homeTeamLogoUrl: string | null;
   awayTeamLogoUrl: string | null;
   rc: RcPrematchProbability;
-  ra: RcPrematchProbability;
+  ra: RcPrematchProbability | null;
   modelsDisagree: boolean;
   historyHomeN: number;
   historyAwayN: number;
@@ -79,7 +79,7 @@ interface RcRow {
 }
 
 const DISCLAIMER = "Deneysel model olasılıklarıdır; sonuç garantisi değildir.";
-const MODEL_LABEL = "R-C • Beta";
+const MODEL_LABEL = "Trey";
 
 function pickLabel(pick: string): string {
   return pick === "1" ? "Ev sahibi" : pick === "X" ? "Beraberlik" : "Deplasman";
@@ -175,7 +175,7 @@ export class FootballRcPrematchService {
     for (const list of byMatch.values()) {
       const rc = list.find((row) => row.model_id === "R-C");
       const ra = list.find((row) => row.model_id === "R-A");
-      if (!rc || !ra) continue;
+      if (!rc) continue;
       const scopeWarning = rc.scope_level !== "last10_available_unverified" || rc.history_completeness !== "verified"
         ? "Geçmiş pencere tam doğrulanmadı; olasılıklar mevcut kayıtlara dayanır." : null;
       items.push({
@@ -186,10 +186,10 @@ export class FootballRcPrematchService {
         rc: { predictionId: rc.prediction_id, predictionText: predictionText(rc.pick, rc.home_team, rc.away_team), p1: Number(rc.p1), px: Number(rc.px), p2: Number(rc.p2), pick: rc.pick,
           pickLabel: pickLabel(rc.pick), modelId: "R-C", modelVersion: rc.model_version, modelLabel: MODEL_LABEL,
           generatedAt: iso(rc.prediction_generated_at), publishedAt: iso(rc.published_at) },
-        ra: { predictionId: ra.prediction_id, predictionText: predictionText(ra.pick, ra.home_team, ra.away_team), p1: Number(ra.p1), px: Number(ra.px), p2: Number(ra.p2), pick: ra.pick,
+        ra: ra ? { predictionId: ra.prediction_id, predictionText: predictionText(ra.pick, ra.home_team, ra.away_team), p1: Number(ra.p1), px: Number(ra.px), p2: Number(ra.p2), pick: ra.pick,
           pickLabel: pickLabel(ra.pick), modelId: "R-A", modelVersion: ra.model_version, modelLabel: "R-A",
-          generatedAt: iso(ra.prediction_generated_at), publishedAt: iso(ra.published_at) },
-        modelsDisagree: rc.pick !== ra.pick,
+          generatedAt: iso(ra.prediction_generated_at), publishedAt: iso(ra.published_at) } : null,
+        modelsDisagree: ra ? rc.pick !== ra.pick : false,
         historyHomeN: rc.history_home_n, historyAwayN: rc.history_away_n,
         scopeLevel: rc.scope_level, historyCompleteness: rc.history_completeness,
         dataWarning: scopeWarning,

@@ -5040,7 +5040,7 @@ export function PredictionResultsPage({ navigate }: { navigate: (path: string) =
           <h1>Sonuçlar</h1>
           <p>SkorIQ tahminlerinin maç sonuçlarına göre değerlendirmesini incele.</p>
           <p className="results-helper-note">Bu sayfada yalnızca sonuçlanmış veya değerlendirilmeyi bekleyen tahminler gösterilir.</p>
-          <p className="results-helper-note">Tahminler deneysel {summary?.modelLabel ?? "R-C • Beta"} modeli tarafından üretilir; sonuç garantisi değildir.</p>
+          <p className="results-helper-note">Tahminler deneysel {summary?.modelLabel ?? "Trey"} tahmin motoru tarafından üretilir; sonuç garantisi değildir.</p>
         </div>
       </header>
 

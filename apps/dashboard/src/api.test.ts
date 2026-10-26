@@ -260,7 +260,7 @@ describe("football analytics dashboard API client", () => {
   it("fetches RC prediction results and summary with member-safe filters", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ items: [], total: 0, limit: 50, offset: 0 }))
-      .mockResolvedValueOnce(jsonResponse({ modelLabel: "R-C • Beta", total: 0, totalSettled: 0, won: 0, lost: 0, pending: 0, void: 0, byCountry: [], byLeague: [] }));
+      .mockResolvedValueOnce(jsonResponse({ modelLabel: "Trey", total: 0, totalSettled: 0, won: 0, lost: 0, pending: 0, void: 0, byCountry: [], byLeague: [] }));
 
     await fetchRcPredictionResults({
       countryId: "country-1",

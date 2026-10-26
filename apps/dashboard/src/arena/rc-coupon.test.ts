@@ -13,7 +13,7 @@ const item: RcPrematchItem = {
   awayTeamId: "team-away",
   homeTeamLogoUrl: "https://img.example.test/home.png",
   awayTeamLogoUrl: null,
-  rc: { predictionId: "rc-prediction-1", predictionText: "Tahmin: Ipswich Town kazanır", p1: 0.47, px: 0.26, p2: 0.27, pick: "1", pickLabel: "Ev sahibi", modelId: "R-C", modelVersion: "stage11-fixed-R-A-R-C", modelLabel: "R-C • Beta", generatedAt: "2026-10-21T19:50:47Z", publishedAt: "2026-10-21T19:50:47Z" },
+  rc: { predictionId: "rc-prediction-1", predictionText: "Tahmin: Ipswich Town kazanır", p1: 0.47, px: 0.26, p2: 0.27, pick: "1", pickLabel: "Ev sahibi", modelId: "R-C", modelVersion: "stage11-fixed-R-A-R-C", modelLabel: "Trey", generatedAt: "2026-10-21T19:50:47Z", publishedAt: "2026-10-21T19:50:47Z" },
   ra: { predictionId: "ra-prediction-1", predictionText: "Tahmin: Ipswich Town kazanır", p1: 0.46, px: 0.28, p2: 0.26, pick: "1", pickLabel: "Ev sahibi", modelId: "R-A", modelVersion: "stage11-fixed-R-A-R-C", modelLabel: "R-A", generatedAt: "2026-10-21T19:50:47Z", publishedAt: "2026-10-21T19:50:47Z" },
   modelsDisagree: false,
   historyHomeN: 10,
