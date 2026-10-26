@@ -35,5 +35,11 @@ app.useGlobalPipes(
 );
 app.useGlobalFilters(new GlobalExceptionFilter(logger));
 
+// Traefik (Coolify) keeps upstream connections idle for up to 180s. Node's default 5s
+// keep-alive closes them first, which surfaces to clients as randomly dropped connections.
+const server = app.getHttpServer();
+server.keepAliveTimeout = 185_000;
+server.headersTimeout = 186_000;
+
 await app.listen(config.API_PORT);
 logger.info("API service started", { port: config.API_PORT });

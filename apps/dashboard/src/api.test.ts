@@ -16,6 +16,8 @@ import {
   fetchFootballPredictionResults,
   fetchFootballPredictionSettlements,
   fetchFootballPublicEligibility,
+  fetchRcPredictionResults,
+  fetchRcPredictionResultsSummary,
   fetchFootballTeam,
   fetchFootballTeams,
   login,
@@ -255,6 +257,41 @@ describe("football analytics dashboard API client", () => {
     expect(requestedUrl).toContain("offset=10");
   });
 
+  it("fetches RC prediction results and summary with member-safe filters", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ items: [], total: 0, limit: 50, offset: 0 }))
+      .mockResolvedValueOnce(jsonResponse({ modelLabel: "R-C • Beta", total: 0, totalSettled: 0, won: 0, lost: 0, pending: 0, void: 0, byCountry: [], byLeague: [] }));
+
+    await fetchRcPredictionResults({
+      countryId: "country-1",
+      competitionId: "competition-1",
+      status: "won",
+      search: " Arsenal ",
+      from: "2026-05-01",
+      to: "2026-05-07",
+      limit: 20,
+      offset: 10
+    });
+
+    const requestedUrl = String(fetchMock.mock.calls[0]?.[0]);
+    expect(requestedUrl).toContain("/member/football/prediction-results?");
+    expect(requestedUrl).toContain("countryId=country-1");
+    expect(requestedUrl).toContain("competitionId=competition-1");
+    expect(requestedUrl).toContain("status=won");
+    expect(requestedUrl).toContain("search=Arsenal");
+    expect(requestedUrl).toContain("from=2026-05-01");
+    expect(requestedUrl).toContain("to=2026-05-07");
+    expect(requestedUrl).toContain("limit=20");
+    expect(requestedUrl).toContain("offset=10");
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ credentials: "include" });
+
+    await fetchRcPredictionResultsSummary({ status: "won" });
+    const summaryUrl = String(fetchMock.mock.calls[1]?.[0]);
+    expect(summaryUrl).toContain("/member/football/prediction-results/summary?");
+    expect(summaryUrl).toContain("status=won");
+    expect(summaryUrl).not.toContain("limit=");
+  });
+
   it("fetches settlement review endpoints with credentials", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ items: [], pagination: { limit: 20, offset: 0, total: 0 } }));
 
@@ -324,6 +361,34 @@ describe("football analytics dashboard API client", () => {
     fetchMock.mockResolvedValue({ ok: false, status: 404, json: vi.fn() });
 
     await expect(fetchFootballAnalyticsMatch("missing")).rejects.toThrow("API request failed with status 404.");
+  });
+
+  it("retries GET requests after a transient network failure", async () => {
+    fetchMock
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(jsonResponse({ items: [], pagination: { limit: 20, offset: 0, total: 0 } }));
+
+    await fetchFootballAnalyticsMatches();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries GET requests after a transient 5xx response", async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: false, status: 502, json: vi.fn().mockResolvedValue({}) })
+      .mockResolvedValueOnce(jsonResponse({ items: [], pagination: { limit: 20, offset: 0, total: 0 } }));
+
+    await fetchFootballAnalyticsMatches();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry auth POST requests after a network failure", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await expect(login("member@example.test", "password-123")).rejects.toThrow("Failed to fetch");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

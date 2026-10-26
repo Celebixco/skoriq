@@ -29,6 +29,8 @@ import type {
   FootballPredictionResultsFilters,
   FootballPredictionResultsResponse,
   FootballPredictionResultsSummary,
+  RcPredictionResultsResponse,
+  RcPredictionResultsSummary,
   FootballPredictionSettlementsListResponse,
   FootballTeamDetail,
   FootballTeamPlayersResponse,
@@ -273,6 +275,34 @@ export async function fetchFootballPredictionResultsSummary(filters: FootballPre
   return requestJson<FootballPredictionResultsSummary>(`/football/prediction-results/summary?${params.toString()}`);
 }
 
+export async function fetchRcPredictionResults(filters: FootballPredictionResultsFilters = {}): Promise<RcPredictionResultsResponse> {
+  const params = new URLSearchParams();
+  params.set("limit", String(filters.limit ?? 50));
+  params.set("offset", String(filters.offset ?? 0));
+  if (filters.countryId) params.set("countryId", filters.countryId);
+  if (filters.competitionId) params.set("competitionId", filters.competitionId);
+  if (filters.teamId) params.set("teamId", filters.teamId);
+  if (filters.matchId) params.set("matchId", filters.matchId);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.search?.trim()) params.set("search", filters.search.trim());
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  return requestJson<RcPredictionResultsResponse>(`/member/football/prediction-results?${params.toString()}`);
+}
+
+export async function fetchRcPredictionResultsSummary(filters: FootballPredictionResultsFilters = {}): Promise<RcPredictionResultsSummary> {
+  const params = new URLSearchParams();
+  if (filters.countryId) params.set("countryId", filters.countryId);
+  if (filters.competitionId) params.set("competitionId", filters.competitionId);
+  if (filters.teamId) params.set("teamId", filters.teamId);
+  if (filters.matchId) params.set("matchId", filters.matchId);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.search?.trim()) params.set("search", filters.search.trim());
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  return requestJson<RcPredictionResultsSummary>(`/member/football/prediction-results/summary?${params.toString()}`);
+}
+
 export async function fetchFootballPublicEligibility(filters: FootballPublicEligibilityFilters = {}): Promise<FootballPublicEligibilityResponse> {
   const params = new URLSearchParams();
   params.set("limit", String(filters.limit ?? 20));
@@ -289,21 +319,59 @@ export async function fetchFootballMatchPublicEligibility(matchId: string): Prom
   return requestJson<FootballMatchPublicEligibilityResponse>(`/football/matches/${encodeURIComponent(matchId)}/public-eligibility`);
 }
 
+const REQUEST_TIMEOUT_MS = 20_000;
+const GET_RETRY_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 300;
+const RETRY_JITTER_MS = 200;
+
 async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    ...init,
-    credentials: "include",
-    headers: {
-      accept: "application/json",
-      ...(init.body ? { "content-type": "application/json" } : {}),
-      ...init.headers
+  const method = (init.method ?? "GET").toUpperCase();
+  const attempts = method === "GET" ? GET_RETRY_ATTEMPTS : 1;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const retryDelayMs = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1) + Math.random() * RETRY_JITTER_MS;
+    try {
+      const response = await fetch(`${apiBaseUrl}${path}`, {
+        ...init,
+        credentials: "include",
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        headers: {
+          accept: "application/json",
+          ...(init.body ? { "content-type": "application/json" } : {}),
+          ...init.headers
+        }
+      });
+      if (response.ok) {
+        return (await response.json()) as T;
+      }
+      const message = await readApiErrorMessage(response);
+      if (attempt < attempts && isRetryableStatus(response.status)) {
+        await delay(retryDelayMs);
+        continue;
+      }
+      throw new ApiError(message, response.status);
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      if (attempt < attempts && isTransientRequestFailure(error)) {
+        await delay(retryDelayMs);
+        continue;
+      }
+      throw error;
     }
-  });
-  if (!response.ok) {
-    const message = await readApiErrorMessage(response);
-    throw new ApiError(message, response.status);
   }
-  return (await response.json()) as T;
+  throw new ApiError("API request failed without receiving a response.", 0);
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
+function isTransientRequestFailure(error: unknown): boolean {
+  // Network failures reject with TypeError; the per-attempt timeout rejects with a TimeoutError DOMException.
+  return error instanceof TypeError || error instanceof DOMException;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function readApiErrorMessage(response: Response) {
