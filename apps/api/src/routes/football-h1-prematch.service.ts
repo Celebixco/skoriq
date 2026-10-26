@@ -74,17 +74,18 @@ interface H1Row {
 
 const DISCLAIMER = "Deneysel model olasılıklarıdır; sonuç garantisi değildir.";
 const MODEL_LABEL = "Volt";
+const STRONG_SIGNAL_THRESHOLD = 0.78;
 const PERFORMANCE_NOTE = "Geriye dönük 2025/26 testinde (2.553 maç): model olasılığı %70+ olan maçların %74,8'inde ilk yarıda gol görüldü (genel taban %72,0).";
 
-function pickLabel(pick: string): string {
-  return pick === "over_0_5" ? "İlk yarıda gol var" : "İlk yarıda gol yok";
+function pickLabel(pGoal: number): string {
+  return pGoal >= STRONG_SIGNAL_THRESHOLD ? "En az 1 gol" : "Tehlikeli";
 }
 
-function predictionText(pick: string, pGoal: number): string {
+function predictionText(pGoal: number): string {
   const percent = Math.round(pGoal * 100);
-  return pick === "over_0_5"
+  return pGoal >= STRONG_SIGNAL_THRESHOLD
     ? `İlk yarıda en az 1 gol (%${percent} olasılık)`
-    : `İlk yarı golsüz biter (%${100 - percent} olasılık)`;
+    : `Tehlikeli — İY gol olasılığı %${percent} (eşik: %78)`;
 }
 
 function iso(value: Date | string): string {
@@ -154,11 +155,11 @@ export class FootballH1PrematchService {
       homeTeamLogoUrl: row.home_team_logo_url, awayTeamLogoUrl: row.away_team_logo_url,
       h1: {
         predictionId: row.prediction_id,
-        predictionText: predictionText(row.pick, Number(row.p_goal)),
+        predictionText: predictionText(Number(row.p_goal)),
         pGoal: Number(row.p_goal),
         expectedH1Goals: Number(row.expected_h1_goals),
         pick: row.pick,
-        pickLabel: pickLabel(row.pick),
+        pickLabel: pickLabel(Number(row.p_goal)),
         modelId: "H1-A",
         modelVersion: row.model_version,
         modelLabel: MODEL_LABEL,

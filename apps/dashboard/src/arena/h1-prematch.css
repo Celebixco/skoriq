@@ -99,10 +99,30 @@
   font-weight: 750;
   line-height: 1.35;
 }
+.h1-pick--risky,
 .h1-pick--under {
-  border-left-color: #e8a96a;
-  color: #ffe2c2;
-  background: rgba(232, 169, 106, .07);
+  border-left-color: #e8963f;
+  color: #ffd9b0;
+  background: rgba(232, 150, 63, .08);
+}
+
+.h1-verdict {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid rgba(232, 150, 63, .35);
+  border-radius: 999px;
+  color: #ffb877;
+  background: rgba(232, 150, 63, .10);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.h1-verdict--safe {
+  border-color: rgba(181, 244, 74, .40);
+  color: #d9ff8a;
+  background: rgba(181, 244, 74, .12);
 }
 
 .h1-meta {

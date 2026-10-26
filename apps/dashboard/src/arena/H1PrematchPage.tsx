@@ -20,7 +20,7 @@ function istanbul(value: string): string {
 }
 
 function probabilityTone(pGoal: number): "high" | "mid" | "low" {
-  if (pGoal >= 0.75) return "high";
+  if (pGoal >= 0.78) return "high";
   if (pGoal >= 0.6) return "mid";
   return "low";
 }
@@ -28,7 +28,7 @@ function probabilityTone(pGoal: number): "high" | "mid" | "low" {
 export function H1PredictionCard({ item, navigate }: { item: H1PrematchItem; navigate?: (path: string) => void }) {
   const percent = Math.round(item.h1.pGoal * 100);
   const tone = probabilityTone(item.h1.pGoal);
-  const isOver = item.h1.pick === "over_0_5";
+  const isSafe = item.h1.pGoal >= 0.78;
   return <article className="h1-card" data-tone={tone}>
     <header className="h1-card__head">
       <span className="h1-card__league">{item.league}</span>
@@ -55,9 +55,9 @@ export function H1PredictionCard({ item, navigate }: { item: H1PrematchItem; nav
       </div>
     </div>
 
-    <p className={`h1-pick${isOver ? "" : " h1-pick--under"}`}>{item.h1.predictionText}</p>
-
+    <p className={`h1-pick${isSafe ? "" : " h1-pick--risky"}`}>{item.h1.predictionText}</p>
     <div className="h1-meta">
+      <span className={`h1-verdict${isSafe ? " h1-verdict--safe" : ""}`}>{isSafe ? "En az 1 gol" : "Tehlikeli"}</span>
       <span>Beklenen İY golü: <strong>{item.h1.expectedH1Goals.toFixed(2)}</strong></span>
       <span className="h1-meta__spacer" aria-hidden="true" />
       <span>Form: <strong>{item.historyHomeN}</strong>/<strong>{item.historyAwayN}</strong> maç</span>
@@ -96,7 +96,7 @@ export function H1UpcomingPage({ navigate }: { navigate: (path: string) => void 
   const groups = useMemo(() => leagues
     .map((league) => ({ ...league, items: filtered.filter((item) => item.competitionId === league.competitionId) }))
     .filter((group) => group.items.length > 0), [leagues, filtered]);
-  const strongCount = useMemo(() => filtered.filter((item) => item.h1.pGoal >= 0.75).length, [filtered]);
+  const strongCount = useMemo(() => filtered.filter((item) => item.h1.pGoal >= 0.78).length, [filtered]);
 
   return <div className="rc-page h1-page">
     <header className="rc-hero h1-hero">
@@ -108,7 +108,7 @@ export function H1UpcomingPage({ navigate }: { navigate: (path: string) => void 
       </div>
       {data && data.items.length > 0 ? <div className="h1-hero__stat" aria-label="Güçlü sinyal sayısı">
         <strong>{strongCount}</strong>
-        <span>güçlü sinyal<br />(%75+)</span>
+        <span>güçlü sinyal<br />(%78+)</span>
       </div> : null}
     </header>
 
