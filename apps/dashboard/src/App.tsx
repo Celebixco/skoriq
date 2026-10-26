@@ -19,14 +19,14 @@ import {
   fetchFootballPredictionDraft,
   fetchFootballPredictionDrafts,
   fetchFootballPredictionSettlement,
-  fetchFootballPredictionResults,
-  fetchFootballPredictionResultsSummary,
   fetchFootballPredictionSettlements,
   fetchFootballPublicEligibility,
   fetchFootballTeamAvailability,
   fetchFootballTeamPlayers,
   fetchFootballTeamProfile,
   fetchFootballTeams,
+  fetchRcPredictionResults,
+  fetchRcPredictionResultsSummary,
   fetchCurrentUser,
   logout as logoutRequest
 } from "./api";
@@ -4965,8 +4965,8 @@ export function PredictionResultsPage({ navigate }: { navigate: (path: string) =
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const requestFilters = useMemo(() => ({ ...filters, search: debouncedSearch }), [filters, debouncedSearch]);
-  const { data, loading, error } = useLoad(() => fetchFootballPredictionResults(requestFilters), [requestFilters]);
-  const { data: summary } = useLoad(() => fetchFootballPredictionResultsSummary(requestFilters), [requestFilters]);
+  const { data, loading, error } = useLoad(() => fetchRcPredictionResults(requestFilters), [requestFilters]);
+  const { data: summary } = useLoad(() => fetchRcPredictionResultsSummary(requestFilters), [requestFilters]);
 
   const filteredItems = useMemo(() => {
     if (!data) return [];
@@ -4982,10 +4982,6 @@ export function PredictionResultsPage({ navigate }: { navigate: (path: string) =
   }, [data, debouncedSearch]);
 
   const groupedLeagues = useMemo(() => groupResultsByLeague(filteredItems), [filteredItems]);
-  const notSettleableCount = useMemo(
-    () => filteredItems.filter(item => ["not_settleable", "missing_score", "unsupported_market", "void", "push"].includes(item.settlement.status)).length,
-    [filteredItems]
-  );
 
   useEffect(() => {
     if (groupedLeagues.length > 0) {
@@ -5044,6 +5040,7 @@ export function PredictionResultsPage({ navigate }: { navigate: (path: string) =
           <h1>Sonuçlar</h1>
           <p>SkorIQ tahminlerinin maç sonuçlarına göre değerlendirmesini incele.</p>
           <p className="results-helper-note">Bu sayfada yalnızca sonuçlanmış veya değerlendirilmeyi bekleyen tahminler gösterilir.</p>
+          <p className="results-helper-note">Tahminler deneysel {summary?.modelLabel ?? "R-C • Beta"} modeli tarafından üretilir; sonuç garantisi değildir.</p>
         </div>
       </header>
 
@@ -5051,7 +5048,7 @@ export function PredictionResultsPage({ navigate }: { navigate: (path: string) =
         <div className="results-summary-grid">
           <div className="results-summary-card">
             <span>Toplam tahmin</span>
-            <strong>{summary ? data?.total ?? summary.totalSettled : "—"}</strong>
+            <strong>{summary ? data?.total ?? summary.total : "—"}</strong>
           </div>
           <div className="results-summary-card results-won">
             <span>Başarılı</span>
@@ -5067,7 +5064,7 @@ export function PredictionResultsPage({ navigate }: { navigate: (path: string) =
           </div>
           <div className="results-summary-card results-unsettleable">
             <span>Değerlendirilemedi</span>
-            <strong>{summary ? notSettleableCount : "—"}</strong>
+            <strong>{summary?.void ?? "—"}</strong>
           </div>
           {successRate !== null ? (
             <div className="results-summary-card results-rate">
@@ -5207,18 +5204,7 @@ export function ResultsFilterBar({
           <option value="won">Başarılı</option>
           <option value="lost">Başarısız</option>
           <option value="pending">Bekliyor</option>
-          <option value="not_settleable">Değerlendirilemedi</option>
-          <option value="missing_score">Skor bekleniyor</option>
-          <option value="unsupported_market">Desteklenmeyen tahmin tipi</option>
-        </select>
-      </label>
-      <label>
-        Kademe
-        <select value={filters.tier} onChange={(e) => update({ tier: e.target.value as FootballPredictionResultsFilters["tier"] })}>
-          <option value="">Tümü</option>
-          <option value="primary">Tahminim</option>
-          <option value="try">Denenir</option>
-          <option value="alternative">Alternatif</option>
+          <option value="void">Geçersiz</option>
         </select>
       </label>
       <label>

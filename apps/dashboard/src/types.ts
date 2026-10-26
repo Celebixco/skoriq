@@ -609,6 +609,25 @@ export interface FootballPredictionResultsSummary {
   byMarketType: Array<{ marketType: string; count: number }>;
 }
 
+export interface RcPredictionResultsResponse {
+  items: FootballPredictionResultItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface RcPredictionResultsSummary {
+  modelLabel: string;
+  total: number;
+  totalSettled: number;
+  won: number;
+  lost: number;
+  pending: number;
+  void: number;
+  byCountry: Array<{ id: string | null; name: string | null; count: number }>;
+  byLeague: Array<{ id: string; name: string; count: number }>;
+}
+
 export interface FootballPublicEligibilityFilters {
   matchId?: string;
   predictionId?: string;

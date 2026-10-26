@@ -15,6 +15,8 @@ import { FootballMemberPredictionPreviewController } from "./routes/football-mem
 import { FootballMemberPredictionPreviewService } from "./routes/football-member-prediction-preview.service.js";
 import { FootballRcPrematchController } from "./routes/football-rc-prematch.controller.js";
 import { FootballRcPrematchService } from "./routes/football-rc-prematch.service.js";
+import { FootballRcResultsController } from "./routes/football-rc-results.controller.js";
+import { FootballRcResultsService } from "./routes/football-rc-results.service.js";
 import { FootballPredictionDraftsController } from "./routes/football-prediction-drafts.controller.js";
 import { FootballPredictionDraftsService } from "./routes/football-prediction-drafts.service.js";
 import { FootballPublicEligibilityController } from "./routes/football-public-eligibility.controller.js";
@@ -34,6 +36,7 @@ import { SyncStatusController } from "./routes/sync-status.controller.js";
     FootballMatchAnalyticsController,
     FootballMemberPredictionPreviewController,
     FootballRcPrematchController,
+    FootballRcResultsController,
     FootballCatalogController,
     FootballPredictionDraftsController,
     FootballPublicEligibilityController,
@@ -53,6 +56,7 @@ import { SyncStatusController } from "./routes/sync-status.controller.js";
     FootballMatchAnalyticsService,
     FootballMemberPredictionPreviewService,
     FootballRcPrematchService,
+    FootballRcResultsService,
     FootballCatalogService,
     FootballPredictionDraftsService,
     FootballPublicEligibilityService,

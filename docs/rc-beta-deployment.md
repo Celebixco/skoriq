@@ -93,6 +93,26 @@ Validation: 71 targeted tests pass; build and typecheck pass. Browser evidence i
 `.research/stage12_deploy/design-verification.json` and the `design-*.png` files.
 Runtime: dashboard `284b166`, API/analytics `9acee9a`.
 
+## Member results surface (2026-10-26)
+
+The member `Sonuçlar` page (`/football/prediction-results`) is now powered by the R-C
+beta system instead of the internal goal-profile draft pipeline:
+
+- API: `GET /api/member/football/prediction-results` and `.../summary`
+  (`FootballRcResultsController` + `FootballRcResultsService`) join
+  `football_rc_prematch_predictions` (R-C rows, kickoff passed) with
+  `football_rc_prematch_results` and return member-safe items.
+- Settlement status mapping: `verified_normal_time` + `pick === result_label` -> won,
+  otherwise lost; non-normal-time finishes -> void; missing result rows -> pending.
+  Probabilities/confidence are not rendered; the hero carries the beta disclaimer.
+- `football-rc-settle.ts` moved from the daily 09:35 slot to the 15-minute
+  `INTERVAL_JOBS` loop of the analytics service, so finished matches resolve without
+  waiting for the next morning run (final-score availability still depends on the
+  SofaScore finished-matches sync cadence).
+- The old `/api/football/prediction-results` endpoints remain unchanged for
+  compatibility; the internal goal-profile pipeline keeps its own admin settlement
+  screens.
+
 ## Kill switch
 
 Set `RC_PREMATCH_ENABLED=false` for `api` and `analytics`, then restart those services. API returns 503 and the generator exits without writing. The deployed containers currently carry `RC_PREMATCH_ENABLED=true`; default is `true`.

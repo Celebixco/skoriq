@@ -16,10 +16,12 @@ describe("PredictionResultsPage", () => {
     expect(html).toContain("Sonuçlar");
     expect(html).toContain("SkorIQ tahminlerinin maç sonuçlarına göre değerlendirmesini incele.");
     expect(html).toContain("Bu sayfada yalnızca sonuçlanmış veya değerlendirilmeyi bekleyen tahminler gösterilir.");
+    expect(html).toContain("deneysel R-C • Beta modeli");
     expect(html).toContain("Toplam tahmin");
     expect(html).toContain("Değerlendirilemedi");
     expect(html).toContain("Takım, lig veya maç ara…");
-    expect(html).toContain("Kademe");
+    expect(html).toContain("Durum");
+    expect(html).not.toContain("Kademe");
     expect(html).not.toContain("provider_entity_id");
     expect(html).not.toContain("raw_provider_payload");
     expect(html).not.toContain("DATABASE_URL");

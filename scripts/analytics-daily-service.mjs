@@ -43,14 +43,6 @@ const JOBS = [
     timeoutSeconds: 900
   },
   {
-    key: "rc-settlement",
-    hour: 9,
-    minute: 35,
-    script: "scripts/football-rc-settle.ts",
-    args: [],
-    timeoutSeconds: 300
-  },
-  {
     key: "model-shadow",
     hour: 9,
     minute: 45,
@@ -66,6 +58,13 @@ const INTERVAL_JOBS = [
     intervalMinutes: 15,
     script: "scripts/analytics-football-predictions-settle.ts",
     args: ["--all-competitions", "--lookback-hours=48", "--execute"],
+    timeoutSeconds: 300
+  },
+  {
+    key: "rc-settlement",
+    intervalMinutes: 15,
+    script: "scripts/football-rc-settle.ts",
+    args: [],
     timeoutSeconds: 300
   }
 ];
