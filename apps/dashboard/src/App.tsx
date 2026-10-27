@@ -1197,8 +1197,10 @@ export function MatchDetailReportView({
       {/* 1. OVERVIEW TAB */}
       {activeTab === "overview" && (
         <>
-          <RcMatchPrediction matchId={matchId} />
-          <H1MatchPrediction matchId={matchId} />
+          <div className="engine-cards-grid">
+            <RcMatchPrediction matchId={matchId} />
+            <H1MatchPrediction matchId={matchId} />
+          </div>
 
 
 
