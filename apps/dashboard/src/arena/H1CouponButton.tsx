@@ -42,7 +42,7 @@ export function H1CouponButton({ item }: { item: H1PrematchItem }) {
   return <div className="rc-coupon-action">
     <button type="button" className={`rc-coupon-button${selected ? " is-selected" : ""}`} aria-pressed={Boolean(selected)} onClick={add}>
       <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d={selection ? "m4 10 4 4 8-8" : "M10 4v12M4 10h12"} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
-      {selected ? "Kupondan çıkar" : "Kupona ekle"}
+      {selected ? "Kupondan çıkar" : "Tahminleri gör"}
     </button>
     {message ? <span className="rc-coupon-message" role="status">{message}</span> : null}
   </div>;
