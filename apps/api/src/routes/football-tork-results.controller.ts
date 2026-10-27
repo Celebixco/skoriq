@@ -29,7 +29,7 @@ export class FootballTorkResultsController {
     return this.service.listResults(parseTorkResultsQuery(query));
   }
 
-  @Get("h1-prediction-results/summary")
+  @Get("tork-prediction-results/summary")
   async predictionResultsSummary(@Query() query: TorkResultsQuery) {
     return this.service.getResultsSummary(parseTorkResultsQuery(query));
   }
