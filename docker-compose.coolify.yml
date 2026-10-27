@@ -187,7 +187,7 @@ services:
       SYNC_CAPTURE_DIR: /tmp/skoriq-sync-captures
       TZ: Europe/Istanbul
     volumes:
-      - sync_state:/var/lib/skoriq-sync
+      - sync_state_v2:/var/lib/skoriq-sync
     depends_on:
       postgres:
         condition: service_healthy
@@ -367,7 +367,7 @@ services:
 volumes:
   postgres_data:
   dragonfly_data:
-  sync_state:
+  sync_state_v2:
   analytics_state_v4:
   match_statistics_state:
   lineups_state:
