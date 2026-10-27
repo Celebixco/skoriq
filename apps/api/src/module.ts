@@ -18,6 +18,10 @@ import { FootballRcPrematchService } from "./routes/football-rc-prematch.service
 import { FootballRcResultsController } from "./routes/football-rc-results.controller.js";
 import { FootballRcResultsService } from "./routes/football-rc-results.service.js";
 import { FootballH1PrematchController } from "./routes/football-h1-prematch.controller.js";
+import { FootballTorkPrematchController } from "./routes/football-tork-prematch.controller.js";
+import { FootballTorkPrematchService } from "./routes/football-tork-prematch.service.js";
+import { FootballTorkResultsController } from "./routes/football-tork-results.controller.js";
+import { FootballTorkResultsService } from "./routes/football-tork-results.service.js";
 import { FootballH1PrematchService } from "./routes/football-h1-prematch.service.js";
 import { FootballH1ResultsController } from "./routes/football-h1-results.controller.js";
 import { FootballH1ResultsService } from "./routes/football-h1-results.service.js";
@@ -43,6 +47,8 @@ import { SyncStatusController } from "./routes/sync-status.controller.js";
     FootballRcResultsController,
     FootballH1PrematchController,
     FootballH1ResultsController,
+    FootballTorkPrematchController,
+    FootballTorkResultsController,
     FootballCatalogController,
     FootballPredictionDraftsController,
     FootballPublicEligibilityController,
@@ -65,6 +71,8 @@ import { SyncStatusController } from "./routes/sync-status.controller.js";
     FootballRcResultsService,
     FootballH1PrematchService,
     FootballH1ResultsService,
+    FootballTorkPrematchService,
+    FootballTorkResultsService,
     FootballCatalogService,
     FootballPredictionDraftsService,
     FootballPublicEligibilityService,

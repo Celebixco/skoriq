@@ -14,6 +14,7 @@ export function appRouteContext(path: string): { section: AppSection; label: str
   if (route === "/football/analytics") return { section: "matches", label: "Maç merkezi" };
   if (route === "/football/predictions/upcoming") return { section: "predictions", label: "Yaklaşan tahminler" };
   if (route === "/football/h1-predictions/upcoming") return { section: "predictions", label: "İlk yarı gol tahminleri" };
+  if (route === "/football/tork-predictions/upcoming") return { section: "predictions", label: "Karşılıklı gol tahminleri" };
   if (route.startsWith("/football/analytics/")) return { section: "matches", label: "Maç analizi", parent: { label: "Maçlar", path: "/football/analytics" } };
   if (route.startsWith("/football/prediction-results")) return { section: "results", label: "Tahmin sonuçları" };
   if (route.startsWith("/football/players/")) return { section: "discover", label: "Oyuncu profili", parent: { label: "Takımlar", path: "/football/teams" } };

@@ -29,6 +29,8 @@ import {
   fetchRcPredictionResultsSummary,
   fetchH1PredictionResults,
   fetchH1PredictionResultsSummary,
+  fetchTorkPredictionResults,
+  fetchTorkPredictionResultsSummary,
   fetchCurrentUser,
   logout as logoutRequest
 } from "./api";
@@ -76,6 +78,7 @@ import { LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage } from "
 import { ArenaHome } from "./arena/ArenaHome";
 import { RcMatchPrediction, RcUpcomingPage } from "./arena/RcPrematchPage";
 import { H1MatchPrediction, H1UpcomingPage } from "./arena/H1PrematchPage";
+import { TorkMatchPrediction, TorkUpcomingPage } from "./arena/TorkPrematchPage";
 import { SkorIQMark } from "./arena/SkorIQMark";
 import "./arena/theme.css";
 import { FilterDisclosure, SectionTabs } from "./arena/SectionTabs";
@@ -536,6 +539,7 @@ export function App() {
       {route.kind === "prediction-results" ? <PredictionResultsPage navigate={navigate} /> : null}
       {route.kind === "upcoming-predictions" ? <RcUpcomingPage navigate={navigate} /> : null}
       {route.kind === "upcoming-h1-predictions" ? <H1UpcomingPage navigate={navigate} /> : null}
+      {route.kind === "upcoming-tork-predictions" ? <TorkUpcomingPage navigate={navigate} /> : null}
       {route.kind === "settlement-list" ? <SettlementListPage navigate={navigate} /> : null}
       {route.kind === "settlement-detail" ? <SettlementDetailPage settlementId={route.id} navigate={navigate} /> : null}
       {route.kind === "match-settlements" ? <MatchSettlementsPage matchId={route.id} navigate={navigate} /> : null}
@@ -1200,6 +1204,7 @@ export function MatchDetailReportView({
           <div className="engine-cards-grid">
             <RcMatchPrediction matchId={matchId} />
             <H1MatchPrediction matchId={matchId} />
+            <TorkMatchPrediction matchId={matchId} />
           </div>
 
 
@@ -4965,7 +4970,7 @@ const initialPredictionResultsFilters: FootballPredictionResultsFilters = {
 };
 
 export function PredictionResultsPage({ navigate }: { navigate: (path: string) => void }) {
-  const [engine, setEngine] = useState<"trey" | "volt">("trey");
+  const [engine, setEngine] = useState<"trey" | "volt" | "tork">("trey");
   const [filters, setFilters] = useState<FootballPredictionResultsFilters>(initialPredictionResultsFilters);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedLeagues, setExpandedLeagues] = useState<Set<string>>(new Set());
@@ -4974,11 +4979,11 @@ export function PredictionResultsPage({ navigate }: { navigate: (path: string) =
 
   const requestFilters = useMemo(() => ({ ...filters, search: debouncedSearch }), [filters, debouncedSearch]);
   const { data, loading, error } = useLoad(
-    () => (engine === "volt" ? fetchH1PredictionResults(requestFilters) : fetchRcPredictionResults(requestFilters)),
+    () => (engine === "volt" ? fetchH1PredictionResults(requestFilters) : engine === "tork" ? fetchTorkPredictionResults(requestFilters) : fetchRcPredictionResults(requestFilters)),
     [engine, requestFilters]
   );
   const { data: summary } = useLoad(
-    () => (engine === "volt" ? fetchH1PredictionResultsSummary(requestFilters) : fetchRcPredictionResultsSummary(requestFilters)),
+    () => (engine === "volt" ? fetchH1PredictionResultsSummary(requestFilters) : engine === "tork" ? fetchTorkPredictionResultsSummary(requestFilters) : fetchRcPredictionResultsSummary(requestFilters)),
     [engine, requestFilters]
   );
 
@@ -5054,7 +5059,7 @@ export function PredictionResultsPage({ navigate }: { navigate: (path: string) =
           <h1>Sonuçlar</h1>
           <p>SkorIQ tahminlerinin maç sonuçlarına göre değerlendirmesini incele.</p>
           <p className="results-helper-note">Bu sayfada yalnızca sonuçlanmış veya değerlendirilmeyi bekleyen tahminler gösterilir.</p>
-          <p className="results-helper-note">Tahminler deneysel {summary?.modelLabel ?? (engine === "volt" ? "Volt" : "Trey")} tahmin motoru tarafından üretilir; sonuç garantisi değildir.</p>
+          <p className="results-helper-note">Tahminler deneysel {summary?.modelLabel ?? (engine === "volt" ? "Volt" : engine === "tork" ? "Tork" : "Trey")} tahmin motoru tarafından üretilir; sonuç garantisi değildir.</p>
         </div>
         <div className="results-engine-switch" role="group" aria-label="Tahmin motoru seçimi">
           <button type="button" aria-pressed={engine === "trey"} onClick={() => { setEngine("trey"); setFilters(prev => ({ ...prev, offset: 0 })); }}>
@@ -5062,6 +5067,9 @@ export function PredictionResultsPage({ navigate }: { navigate: (path: string) =
           </button>
           <button type="button" aria-pressed={engine === "volt"} onClick={() => { setEngine("volt"); setFilters(prev => ({ ...prev, offset: 0 })); }}>
             <span className="results-engine-dot results-engine-dot--volt" aria-hidden="true" />Volt <small>İlk yarı gol</small>
+          </button>
+          <button type="button" aria-pressed={engine === "tork"} onClick={() => { setEngine("tork"); setFilters(prev => ({ ...prev, offset: 0 })); }}>
+            <span className="results-engine-dot results-engine-dot--tork" aria-hidden="true" />Tork <small>Karşılıklı gol</small>
           </button>
         </div>
       </header>
@@ -6542,6 +6550,7 @@ function resolveRoute(path: string):
   | { kind: "prediction-results" }
   | { kind: "upcoming-predictions" }
   | { kind: "upcoming-h1-predictions" }
+  | { kind: "upcoming-tork-predictions" }
   | { kind: "settlement-list" }
   | { kind: "settlement-detail"; id: string }
   | { kind: "match-settlements"; id: string }
@@ -6576,6 +6585,7 @@ function resolveRoute(path: string):
   if (path === "/football/prediction-results") return { kind: "prediction-results" };
   if (path === "/football/predictions/upcoming") return { kind: "upcoming-predictions" };
   if (path === "/football/h1-predictions/upcoming") return { kind: "upcoming-h1-predictions" };
+  if (path === "/football/tork-predictions/upcoming") return { kind: "upcoming-tork-predictions" };
   if (path === "/football/predictions/drafts") return { kind: "draft-list" };
   if (path === "/football/predictions/settlements") return { kind: "settlement-list" };
   if (path === "/football/public-eligibility") return { kind: "public-eligibility-list" };

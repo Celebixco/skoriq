@@ -20,6 +20,10 @@ import type {
   H1PrematchResponse,
   H1PredictionResultsResponse,
   H1PredictionResultsSummary,
+  TorkPrematchItem,
+  TorkPrematchResponse,
+  TorkPredictionResultsResponse,
+  TorkPredictionResultsSummary,
   FootballPlayerProfileResponse,
   FootballMatchPublicEligibilityResponse,
   FootballMatchPredictionSettlementsResponse,
@@ -424,4 +428,41 @@ async function readApiErrorMessage(response: Response) {
     // Keep API errors safe even when the response body is empty or not JSON.
   }
   return `API request failed with status ${response.status}.`;
+}
+
+
+export async function fetchTorkUpcomingPredictions(): Promise<TorkPrematchResponse> {
+  return requestJson<TorkPrematchResponse>("/member/football/tork-predictions/upcoming");
+}
+
+export async function fetchTorkMatchPrediction(matchId: string): Promise<TorkPrematchItem> {
+  return requestJson<TorkPrematchItem>(`/member/football/matches/${encodeURIComponent(matchId)}/tork-prediction`);
+}
+
+export async function fetchTorkPredictionResults(filters: FootballPredictionResultsFilters = {}): Promise<TorkPredictionResultsResponse> {
+  const params = new URLSearchParams();
+  params.set("limit", String(filters.limit ?? 50));
+  params.set("offset", String(filters.offset ?? 0));
+  if (filters.countryId) params.set("countryId", filters.countryId);
+  if (filters.competitionId) params.set("competitionId", filters.competitionId);
+  if (filters.teamId) params.set("teamId", filters.teamId);
+  if (filters.matchId) params.set("matchId", filters.matchId);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.search?.trim()) params.set("search", filters.search.trim());
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  return requestJson<TorkPredictionResultsResponse>(`/member/football/tork-prediction-results?${params.toString()}`);
+}
+
+export async function fetchTorkPredictionResultsSummary(filters: FootballPredictionResultsFilters = {}): Promise<TorkPredictionResultsSummary> {
+  const params = new URLSearchParams();
+  if (filters.countryId) params.set("countryId", filters.countryId);
+  if (filters.competitionId) params.set("competitionId", filters.competitionId);
+  if (filters.teamId) params.set("teamId", filters.teamId);
+  if (filters.matchId) params.set("matchId", filters.matchId);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.search?.trim()) params.set("search", filters.search.trim());
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  return requestJson<TorkPredictionResultsSummary>(`/member/football/tork-prediction-results/summary?${params.toString()}`);
 }

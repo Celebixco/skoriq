@@ -1,0 +1,55 @@
+/* Tork BTTS engine — shares the Trey card skeleton (rc-simple-card).
+   Accent: cyan-teal for a safe BTTS call, amber for the risky band. */
+
+.tork-page .rc-hero {
+  background:
+    radial-gradient(900px 260px at 0% 0%, rgba(90, 209, 230, .09), transparent 55%),
+    linear-gradient(135deg, #0e161a 0%, #081012 70%);
+}
+
+.tork-eyebrow { color: #5ad1e6; }
+
+.tork-hero__stat {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 14px 22px;
+  border: 1px solid rgba(90, 209, 230, .22);
+  border-radius: 16px;
+  background: rgba(90, 209, 230, .06);
+  text-align: center;
+}
+.tork-hero__stat strong { color: #b8f0fa; font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+.tork-hero__stat span { color: #7fa3ab; font-size: 10px; line-height: 1.35; letter-spacing: .08em; text-transform: uppercase; }
+
+.tork-switch-row { display: inline-flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+.tork-card__league { color: #5ad1e6; }
+
+.tork-card__pick {
+  border-left-color: #5ad1e6;
+  color: #c9f2fb;
+  background: rgba(90, 209, 230, .07);
+}
+.tork-card__pick--risky,
+.tork-card--risky .tork-card__pick {
+  border-left-color: #e8963f;
+  color: #ffd9b0;
+  background: rgba(232, 150, 63, .08);
+}
+.tork-card--risky .tork-card__league { color: #e8a96a; }
+
+.tork-perf {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px dashed rgba(90, 209, 230, .22);
+  border-radius: 12px;
+  color: #8ba7ad;
+  background: rgba(90, 209, 230, .04);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .tork-hero__stat { display: none; }
+}

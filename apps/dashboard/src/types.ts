@@ -446,7 +446,7 @@ export interface FootballMemberPredictionPreviewCandidate {
   kickoffAt: string;
   isFresh: boolean;
   analysisWindowStatus: string | null;
-  selectionSource?: "rc_beta" | "h1_beta";
+  selectionSource?: "rc_beta" | "h1_beta" | "tork_beta";
 }
 
 export interface H1PrematchPrediction {
@@ -661,6 +661,68 @@ export interface RcPredictionResultsResponse {
 }
 
 export interface RcPredictionResultsSummary {
+  modelLabel: string;
+  total: number;
+  totalSettled: number;
+  won: number;
+  lost: number;
+  pending: number;
+  void: number;
+  byCountry: Array<{ id: string | null; name: string | null; count: number }>;
+  byLeague: Array<{ id: string; name: string; count: number }>;
+}
+
+export interface TorkPrematchPrediction {
+  predictionId: string;
+  predictionText: string;
+  pBtts: number;
+  expectedBttsGoals: number;
+  pick: "btts_yes" | "btts_no";
+  pickLabel: string;
+  modelId: "TORK-A";
+  modelVersion: string;
+  modelLabel: string;
+  generatedAt: string;
+  publishedAt: string;
+}
+
+export interface TorkPrematchItem {
+  matchId: string;
+  competitionId: string;
+  league: string;
+  kickoffAt: string;
+  homeTeam: string;
+  awayTeam: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  homeTeamLogoUrl: string | null;
+  awayTeamLogoUrl: string | null;
+  tork: TorkPrematchPrediction;
+  historyHomeN: number;
+  historyAwayN: number;
+  scopeLevel: string;
+  historyCompleteness: string;
+  evaluationGroup: string;
+  performanceNote: string | null;
+  disclaimer: string;
+}
+
+export interface TorkPrematchResponse {
+  modelVersion: string;
+  modelLabel: string;
+  count: number;
+  disclaimer: string;
+  items: TorkPrematchItem[];
+}
+
+export interface TorkPredictionResultsResponse {
+  items: FootballPredictionResultItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface TorkPredictionResultsSummary {
   modelLabel: string;
   total: number;
   totalSettled: number;

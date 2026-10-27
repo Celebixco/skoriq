@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { fetchFootballMemberPredictionPreview, fetchH1MatchPrediction, fetchRcMatchPrediction } from "../api";
+import { fetchFootballMemberPredictionPreview, fetchH1MatchPrediction, fetchRcMatchPrediction, fetchTorkMatchPrediction } from "../api";
 import type { FootballMemberPredictionPreviewCandidate } from "../types";
 import {
   addCouponSelection, couponSelectionDeadline, couponStorageKey, expireCouponSelections,
@@ -85,7 +85,7 @@ function CouponScope({ userId, children }: { userId: string; children: ReactNode
     const startedAtRevision = revision.current;
     setChecking(true);
     setValidationError(null);
-    const results = await validateCouponSelections(snapshot, fetchFootballMemberPredictionPreview, fetchRcMatchPrediction, fetchH1MatchPrediction);
+    const results = await validateCouponSelections(snapshot, fetchFootballMemberPredictionPreview, fetchRcMatchPrediction, fetchH1MatchPrediction, fetchTorkMatchPrediction);
     if (!mounted.current || id !== requestId.current) return false;
     const editedDuringRequest = revision.current !== startedAtRevision;
     const reconciled = reconcileCouponValidation(current.current, results);

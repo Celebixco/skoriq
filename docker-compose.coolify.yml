@@ -154,13 +154,13 @@ services:
       AUTH_ENABLED: "true"
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Set a random AUTH_JWT_SECRET of at least 32 characters}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set the deployed frontend origin}
-      # v3 volume: fresh bootstrap after the H1 (Volt) engine rollout so the
+      # v4 volume: fresh bootstrap after the Tork (BTTS) engine rollout so the
       # daily jobs (finished-sync, rc/h1 prematch, settlement) run once at
       # startup instead of waiting for the next 09:xx window.
-      ANALYTICS_STATE_DIR: /var/lib/skoriq-analytics-v3
+      ANALYTICS_STATE_DIR: /var/lib/skoriq-analytics-v4
       TZ: Europe/Istanbul
     volumes:
-      - analytics_state_v3:/var/lib/skoriq-analytics-v3
+      - analytics_state_v4:/var/lib/skoriq-analytics-v4
     depends_on:
       postgres:
         condition: service_healthy
@@ -365,7 +365,7 @@ volumes:
   postgres_data:
   dragonfly_data:
   sync_state:
-  analytics_state_v3:
+  analytics_state_v4:
   match_statistics_state:
   lineups_state:
   historical_backfill_state:

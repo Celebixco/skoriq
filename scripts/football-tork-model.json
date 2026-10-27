@@ -1,0 +1,153 @@
+{
+  "modelId": "TORK-A",
+  "modelVersion": "tork-stage1-logistic-blend",
+  "displayVersion": "Tork • Beta",
+  "features": [
+    "logit_league",
+    "logit_poisson",
+    "btts_season",
+    "cross_score",
+    "cross_emp",
+    "h2h",
+    "log_asym"
+  ],
+  "weights": {
+    "logit_league": 0.74415,
+    "logit_poisson": 0.23919,
+    "btts_season": 0.18134,
+    "cross_score": -0.11643,
+    "cross_emp": -0.06965,
+    "h2h": 0.22956,
+    "log_asym": -0.01334
+  },
+  "leagueConstants": {
+    "2bundesliga": {
+      "label": "2. Bundesliga",
+      "gfHome": 1.605263157894737,
+      "gfAway": 1.2543859649122806,
+      "btts": 0.5197368421052632,
+      "n": 456
+    },
+    "laliga": {
+      "label": "La Liga",
+      "gfHome": 1.4684210526315788,
+      "gfAway": 1.1631578947368422,
+      "btts": 0.5184210526315789,
+      "n": 760
+    },
+    "eredivisie": {
+      "label": "Eredivisie",
+      "gfHome": 1.7320261437908497,
+      "gfAway": 1.3823529411764706,
+      "btts": 0.5604575163398693,
+      "n": 612
+    },
+    "superlig": {
+      "label": "Super Lig",
+      "gfHome": 1.6213592233009708,
+      "gfAway": 1.2399445214979194,
+      "btts": 0.5575589459084604,
+      "n": 721
+    },
+    "premierleague": {
+      "label": "Premier League",
+      "gfHome": 1.6565789473684212,
+      "gfAway": 1.45,
+      "btts": 0.5947368421052631,
+      "n": 760
+    },
+    "ligue1": {
+      "label": "Ligue 1",
+      "gfHome": 1.5277777777777777,
+      "gfAway": 1.3104575163398693,
+      "btts": 0.553921568627451,
+      "n": 612
+    },
+    "bundesliga": {
+      "label": "Bundesliga",
+      "gfHome": 1.7205882352941178,
+      "gfAway": 1.4558823529411764,
+      "btts": 0.5947712418300654,
+      "n": 612
+    },
+    "seriea": {
+      "label": "Serie A",
+      "gfHome": 1.3868421052631579,
+      "gfAway": 1.1986842105263158,
+      "btts": 0.5197368421052632,
+      "n": 760
+    }
+  },
+  "globalFallback": {
+    "label": "global",
+    "gfHome": 1.582845267334215,
+    "gfAway": 1.3039863971282826,
+    "btts": 0.552805592291706,
+    "n": 0
+  },
+  "tuning": {
+    "recentWindow": 10,
+    "venueWindow": 14,
+    "h2hWindow": 4,
+    "shrinkAlpha": 6.0,
+    "bttsShrinkAlpha": 4.0,
+    "seasonShrinkAlpha": 3.0,
+    "venueShrinkAlpha": 2.0,
+    "venueBlend": 0.3,
+    "lambdaAsymFloor": 0.05,
+    "minPriorMatches": 3,
+    "pickThreshold": 0.5,
+    "verdictThreshold": 0.58,
+    "globalHomeScoredPrior": 0.78,
+    "globalAwayScoredPrior": 0.71
+  },
+  "training": {
+    "trainValMatches": null,
+    "leagues": 8,
+    "seasons": [
+      "2023/24",
+      "2024/25"
+    ],
+    "test": {
+      "matches": 2553,
+      "season": "2025/26",
+      "logLoss": 0.68406,
+      "auc": 0.55242,
+      "brier": 0.24548,
+      "accuracy05": 0.5621,
+      "thresholdSweep": [
+        {
+          "threshold": 0.55,
+          "n": 1185,
+          "coverage": 0.464,
+          "hitRate": 0.5857
+        },
+        {
+          "threshold": 0.58,
+          "n": 457,
+          "coverage": 0.179,
+          "hitRate": 0.5996
+        },
+        {
+          "threshold": 0.6,
+          "n": 165,
+          "coverage": 0.065,
+          "hitRate": 0.6303
+        },
+        {
+          "threshold": 0.63,
+          "n": 11,
+          "coverage": 0.004,
+          "hitRate": 0.5455
+        },
+        {
+          "threshold": 0.65,
+          "n": 1,
+          "coverage": 0.0,
+          "hitRate": 1.0
+        }
+      ]
+    }
+  },
+  "evaluationGroup": "tork_stage1_retrospective"
+}

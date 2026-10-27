@@ -82,7 +82,10 @@ export function H1UpcomingPage({ navigate }: { navigate: (path: string) => void 
         <span className="rc-eyebrow h1-eyebrow">SkorIQ • Volt ilk yarı gol motoru</span>
         <h1>İlk Yarı Gol Tahminleri</h1>
         <p>Volt'un her maç için ilk yarı gol olasılığı. Beğendiğin seçimi kuponuna ekle.</p>
-        {navigate ? <button type="button" className="h1-engine-switch" onClick={() => navigate("/football/predictions/upcoming")}>Trey maç sonucu tahminleri <span aria-hidden="true">→</span></button> : null}
+        {navigate ? <span className="tork-switch-row">
+          <button type="button" className="h1-engine-switch" onClick={() => navigate("/football/predictions/upcoming")}>Trey maç sonucu <span aria-hidden="true">→</span></button>
+          <button type="button" className="h1-engine-switch" onClick={() => navigate("/football/tork-predictions/upcoming")}>Tork karşılıklı gol <span aria-hidden="true">→</span></button>
+        </span> : null}
       </div>
       {data && data.items.length > 0 ? <div className="h1-hero__stat" aria-label="Güçlü sinyal sayısı">
         <strong>{strongCount}</strong>

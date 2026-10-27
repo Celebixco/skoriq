@@ -79,7 +79,10 @@ export function RcUpcomingPage({ navigate }: { navigate: (path: string) => void 
         <span className="rc-eyebrow">SkorIQ • Trey tahmin motoru</span>
         <h1>Yaklaşan Tahminler</h1>
         <p>Trey'in her maç için tek ön tahmini. Beğendiğin seçimi kuponuna ekle.</p>
-        {navigate ? <button type="button" className="h1-engine-switch" onClick={() => navigate("/football/h1-predictions/upcoming")}>Volt ilk yarı gol tahminleri <span aria-hidden="true">→</span></button> : null}
+        {navigate ? <span className="tork-switch-row">
+          <button type="button" className="h1-engine-switch" onClick={() => navigate("/football/h1-predictions/upcoming")}>Volt ilk yarı gol <span aria-hidden="true">→</span></button>
+          <button type="button" className="h1-engine-switch" onClick={() => navigate("/football/tork-predictions/upcoming")}>Tork karşılıklı gol <span aria-hidden="true">→</span></button>
+        </span> : null}
       </div>
     </header>
 

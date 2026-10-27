@@ -51,6 +51,14 @@ const JOBS = [
     timeoutSeconds: 600
   },
   {
+    key: "tork-prematch",
+    hour: 9,
+    minute: 35,
+    script: "scripts/football-tork-prematch.ts",
+    args: ["--execute"],
+    timeoutSeconds: 600
+  },
+  {
     key: "settlement",
     hour: 9,
     minute: 30,
@@ -87,6 +95,13 @@ const INTERVAL_JOBS = [
     key: "h1-settlement",
     intervalMinutes: 15,
     script: "scripts/football-h1-settle.ts",
+    args: [],
+    timeoutSeconds: 300
+  },
+  {
+    key: "tork-settlement",
+    intervalMinutes: 15,
+    script: "scripts/football-tork-settle.ts",
     args: [],
     timeoutSeconds: 300
   }

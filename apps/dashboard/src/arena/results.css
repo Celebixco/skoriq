@@ -132,3 +132,6 @@
   .arena-shell .results-engine-switch { width: 100%; }
   .arena-shell .results-engine-switch button { flex: 1; justify-content: center; }
 }
+
+.arena-shell .results-engine-dot--tork { background: #5ad1e6; }
+.arena-shell .results-engine-switch button[aria-pressed="true"] .results-engine-dot--tork { box-shadow: 0 0 8px #5ad1e690; }
