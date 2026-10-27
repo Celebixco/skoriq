@@ -19,53 +19,31 @@ function istanbul(value: string): string {
   }).format(new Date(value));
 }
 
-function probabilityTone(pGoal: number): "high" | "mid" | "low" {
-  if (pGoal >= 0.75) return "high";
-  if (pGoal >= 0.6) return "mid";
-  return "low";
-}
-
 export function H1PredictionCard({ item, navigate }: { item: H1PrematchItem; navigate?: (path: string) => void }) {
-  const percent = Math.round(item.h1.pGoal * 100);
-  const tone = probabilityTone(item.h1.pGoal);
   const isSafe = item.h1.pGoal >= 0.75;
-  return <article className="h1-card" data-tone={tone}>
-    <header className="h1-card__head">
-      <span className="h1-card__league">{item.league}</span>
+  return <article className={`rc-simple-card h1-card${isSafe ? "" : " h1-card--risky"}`}>
+    <header className="rc-simple-card__head">
+      <span className="rc-simple-card__league h1-card__league">{item.league}</span>
       <time dateTime={item.kickoffAt}>{istanbul(item.kickoffAt)} <small>TSİ</small></time>
     </header>
 
-    <div className="h1-teams">
-      <div className="h1-team">
+    <div className="rc-simple-teams">
+      <div className="rc-simple-team">
         <TeamLogo name={item.homeTeam} logoUrl={item.homeTeamLogoUrl} size="sm" />
         <strong>{item.homeTeam}</strong>
       </div>
-      <span className="h1-vs" aria-hidden="true">–</span>
-      <div className="h1-team h1-team--away">
+      <span className="rc-simple-vs" aria-hidden="true">–</span>
+      <div className="rc-simple-team rc-simple-team--away">
         <TeamLogo name={item.awayTeam} logoUrl={item.awayTeamLogoUrl} size="sm" />
         <strong>{item.awayTeam}</strong>
       </div>
     </div>
 
-    <div className="h1-prob" role="img" aria-label={`İlk yarıda gol olasılığı yüzde ${percent}`}>
-      <div className="h1-prob__track"><span className="h1-prob__fill" style={{ width: `${Math.round(item.h1.pGoal * 100)}%` }} /></div>
-      <div className="h1-prob__labels">
-        <span className="h1-prob__value">%{percent}</span>
-        <span className="h1-prob__caption">İlk yarıda gol olasılığı</span>
-      </div>
-    </div>
+    <p className={`rc-simple-pick h1-card__pick${isSafe ? "" : " h1-card__pick--risky"}`}>{item.h1.predictionText}</p>
 
-    <p className={`h1-pick${isSafe ? "" : " h1-pick--risky"}`}>{item.h1.predictionText}</p>
-    <div className="h1-meta">
-      <span className={`h1-verdict${isSafe ? " h1-verdict--safe" : ""}`}>{isSafe ? "En az 1 gol" : "Tehlikeli"}</span>
-      <span>Beklenen İY golü: <strong>{item.h1.expectedH1Goals.toFixed(2)}</strong></span>
-      <span className="h1-meta__spacer" aria-hidden="true" />
-      <span>Form: <strong>{item.historyHomeN}</strong>/<strong>{item.historyAwayN}</strong> maç</span>
-    </div>
-
-    <footer className="h1-card__foot">
+    <footer className="rc-simple-card__foot">
       <H1CouponButton item={item} />
-      {navigate ? <button className="h1-detail" type="button" onClick={() => navigate(`/football/analytics/${item.matchId}`)}>Maç detayı <span aria-hidden="true">→</span></button> : null}
+      {navigate ? <button className="rc-simple-detail" type="button" onClick={() => navigate(`/football/analytics/${item.matchId}`)}>Maç detayı <span aria-hidden="true">→</span></button> : null}
     </footer>
   </article>;
 }

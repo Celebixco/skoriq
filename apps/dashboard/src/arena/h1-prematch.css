@@ -1,5 +1,7 @@
-/* Volt first-half goal engine — shares the Trey page rhythm with a
-   broadcast-volt accent and a telemetry probability bar. */
+/* Volt first-half goal engine.
+   Cards deliberately reuse the Trey card skeleton (rc-simple-card) so both
+   engines render identically; only the accent differs: volt-lime for a safe
+   goal call, amber for the risky band. */
 
 .h1-page .rc-hero {
   background:
@@ -22,137 +24,21 @@
 .h1-hero__stat strong { color: #d9ff8a; font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
 .h1-hero__stat span { color: #93a37c; font-size: 10px; line-height: 1.35; letter-spacing: .08em; text-transform: uppercase; }
 
-.h1-card {
-  display: grid;
-  gap: 12px;
-  padding: 15px;
-  border: 1px solid rgba(241, 237, 224, .13);
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(18, 28, 16, .96), rgba(10, 17, 10, .98));
-  box-shadow: 0 14px 34px rgba(0, 0, 0, .20);
-  min-width: 0;
-}
-.h1-card[data-tone="high"] { border-color: rgba(181, 244, 74, .30); }
+/* Card accents on top of the shared Trey skeleton. */
+.h1-card__league { color: #b5f44a; }
 
-.h1-card__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-width: 0;
-}
-.h1-card__league {
-  overflow: hidden;
-  color: #b5f44a;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.h1-card__head time { flex: 0 0 auto; color: #9ca294; font-size: 11px; font-variant-numeric: tabular-nums; }
-.h1-card__head time small { color: #697266; font-size: 9px; }
-
-.h1-teams {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.h1-team { display: flex; align-items: center; gap: 9px; min-width: 0; }
-.h1-team--away { flex-direction: row-reverse; text-align: right; }
-.h1-team .team-logo { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 12px; }
-.h1-team strong { min-width: 0; color: #f5f2e7; font-size: 14px; line-height: 1.2; overflow-wrap: anywhere; }
-.h1-vs { color: #6f776b; font-size: 14px; text-align: center; }
-
-.h1-prob { display: grid; gap: 7px; }
-.h1-prob__track {
-  position: relative;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(241, 237, 224, .10);
-  overflow: hidden;
-}
-.h1-prob__fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #6f9e2f, #b5f44a);
-  transition: width .45s cubic-bezier(.2, .8, .2, 1);
-}
-.h1-card[data-tone="mid"] .h1-prob__fill { background: linear-gradient(90deg, #8f8a2f, #e8dd6a); }
-.h1-card[data-tone="low"] .h1-prob__fill { background: linear-gradient(90deg, #8a5a2f, #e8a96a); }
-.h1-prob__labels { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.h1-prob__value { color: #eeffce; font-size: 22px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.h1-prob__caption { color: #8d9681; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
-
-.h1-pick {
-  margin: 0;
-  padding: 10px 12px;
-  border-left: 2px solid #b5f44a;
-  border-radius: 0 10px 10px 0;
+.h1-card__pick {
+  border-left-color: #b5f44a;
   color: #e2ffb0;
   background: rgba(181, 244, 74, .07);
-  font-size: 14px;
-  font-weight: 750;
-  line-height: 1.35;
 }
-.h1-pick--risky,
-.h1-pick--under {
+.h1-card__pick--risky,
+.h1-card--risky .h1-card__pick {
   border-left-color: #e8963f;
   color: #ffd9b0;
   background: rgba(232, 150, 63, .08);
 }
-
-.h1-verdict {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border: 1px solid rgba(232, 150, 63, .35);
-  border-radius: 999px;
-  color: #ffb877;
-  background: rgba(232, 150, 63, .10);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-}
-.h1-verdict--safe {
-  border-color: rgba(181, 244, 74, .40);
-  color: #d9ff8a;
-  background: rgba(181, 244, 74, .12);
-}
-
-.h1-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #8b947f;
-  font-size: 11px;
-}
-.h1-meta strong { color: #d6dcc7; font-variant-numeric: tabular-nums; }
-.h1-meta__spacer { flex: 1; }
-
-.h1-card__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  border-top: 1px solid rgba(241, 237, 224, .10);
-  padding-top: 10px;
-}
-.h1-detail {
-  border: 0;
-  color: #aaa99b;
-  background: transparent;
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.h1-detail:hover { color: #d9ff8a; }
+.h1-card--risky .h1-card__league { color: #e8a96a; }
 
 .h1-perf {
   margin: 0;
@@ -167,6 +53,4 @@
 
 @media (max-width: 760px) {
   .h1-hero__stat { display: none; }
-  .h1-team .team-logo { width: 38px; height: 38px; }
-  .h1-team strong { font-size: 13px; }
 }

@@ -26,48 +26,31 @@ const item: H1PrematchItem = {
 };
 
 describe("first-half goal prediction card", () => {
-  it("shows teams, logos, time, probability and expectation", () => {
+  it("shows teams, logos, time and the prediction strip on the Trey card skeleton", () => {
     const html = renderToStaticMarkup(<H1PredictionCard item={item} navigate={() => {}} />);
+    expect(html).toContain("rc-simple-card");
     expect(html).toContain("Alanyaspor");
     expect(html).toContain("Kocaelispor");
     expect(html).toContain('alt="Alanyaspor logo"');
     expect(html).toContain("%78");
     expect(html).toContain("İlk yarıda en az 1 gol");
-    expect(html).toContain("1.52");
     expect(html).toContain("TSİ");
     expect(html).toContain("Maç detayı");
   });
 
-  it("marks strong signals with the high tone", () => {
-    const html = renderToStaticMarkup(<H1PredictionCard item={item} navigate={() => {}} />);
-    expect(html).toContain('data-tone="high"');
-  });
+  it("styles risky calls with the amber strip, safe calls with the volt strip", () => {
+    const safeHtml = renderToStaticMarkup(<H1PredictionCard item={item} navigate={() => {}} />);
+    expect(safeHtml).toContain("h1-card__pick");
+    expect(safeHtml).not.toContain("h1-card__pick--risky");
+    expect(safeHtml).not.toContain("h1-card--risky");
 
-  it("marks low probabilities with the low tone and risky verdict styling", () => {
-    const low: H1PrematchItem = {
+    const risky: H1PrematchItem = {
       ...item,
       h1: { ...item.h1, pGoal: 0.44, pick: "under_0_5", predictionText: "Tehlikeli — İY gol olasılığı %44" }
     };
-    const html = renderToStaticMarkup(<H1PredictionCard item={low} navigate={() => {}} />);
-    expect(html).toContain('data-tone="low"');
-    expect(html).toContain("h1-pick--risky");
-    expect(html).toContain("Tehlikeli");
-  });
-
-  it("labels 75%+ matches as a safe goal call and below as dangerous", () => {
-    const mid: H1PrematchItem = {
-      ...item,
-      h1: { ...item.h1, pGoal: 0.729, predictionText: "Tehlikeli — İY gol olasılığı %73" }
-    };
-    const riskyHtml = renderToStaticMarkup(<H1PredictionCard item={mid} navigate={() => {}} />);
+    const riskyHtml = renderToStaticMarkup(<H1PredictionCard item={risky} navigate={() => {}} />);
+    expect(riskyHtml).toContain("h1-card--risky");
     expect(riskyHtml).toContain("Tehlikeli");
-    expect(riskyHtml).toContain("h1-pick--risky");
-    expect(riskyHtml).not.toContain('data-tone="high"');
-
-    const safeHtml = renderToStaticMarkup(<H1PredictionCard item={item} navigate={() => {}} />);
-    expect(safeHtml).toContain("En az 1 gol");
-    expect(safeHtml).not.toContain("Tehlikeli");
-    expect(safeHtml).toContain('data-tone="high"');
   });
 
   it("never leaks the internal threshold value to members", () => {
