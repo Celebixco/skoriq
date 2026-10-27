@@ -158,8 +158,6 @@ export class FootballTorkResultsService {
           p.p_btts,
           r.fulltime_status,
           r.result_label,
-          r.home_score_fulltime as home_score_90,
-          r.away_score_fulltime as away_score_90,
           r.resolved_at
         from football_tork_prematch_predictions p
         inner join matches m on m.id = p.match_id
