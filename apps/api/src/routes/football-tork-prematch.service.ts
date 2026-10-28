@@ -74,7 +74,7 @@ interface TorkRow {
 
 const DISCLAIMER = "Deneysel model olasılıklarıdır; sonuç garantisi değildir.";
 const MODEL_LABEL = "Tork";
-const VERDICT_THRESHOLD = 0.76;
+const VERDICT_THRESHOLD = 0.55;
 const PERFORMANCE_NOTE = "Geriye dönük testlerde yüksek olasılıklı maçlarda karşılıklı gol görülme sıklığı belirgin şekilde artmıştır.";
 
 function pickLabel(pBtts: number): string {

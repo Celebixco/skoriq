@@ -196,7 +196,7 @@ export function torkCouponCandidate(item: TorkPrematchItem): FootballMemberPredi
     predictionValue: item.tork.pick,
     recommendationTier: "primary",
     confidenceScore: Math.round(item.tork.pBtts * 100),
-    riskLevel: item.tork.pBtts >= 0.76 ? "low" : "medium",
+    riskLevel: item.tork.pBtts >= 0.55 ? "low" : "medium",
     reasoningSummary: null,
     generatedAt: item.tork.generatedAt,
     kickoffAt: item.kickoffAt,
