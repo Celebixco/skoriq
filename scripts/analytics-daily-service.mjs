@@ -39,7 +39,7 @@ const JOBS = [
     hour: 9,
     minute: 5,
     script: "scripts/football-engines-backfill.ts",
-    args: ["--execute"],
+    args: ["--execute", "--tork-only"],
     timeoutSeconds: 1800
   },
   {

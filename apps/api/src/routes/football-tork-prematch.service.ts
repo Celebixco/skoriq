@@ -74,18 +74,18 @@ interface TorkRow {
 
 const DISCLAIMER = "Deneysel model olasılıklarıdır; sonuç garantisi değildir.";
 const MODEL_LABEL = "Tork";
-const VERDICT_THRESHOLD = 0.58;
+const VERDICT_THRESHOLD = 0.76;
 const PERFORMANCE_NOTE = "Geriye dönük testlerde yüksek olasılıklı maçlarda karşılıklı gol görülme sıklığı belirgin şekilde artmıştır.";
 
 function pickLabel(pBtts: number): string {
-  return pBtts >= VERDICT_THRESHOLD ? "Her iki takım da gol atar" : "Tehlikeli";
+  return pBtts >= VERDICT_THRESHOLD ? "Her iki takım da gol atar" : "İki takım da gol atmaz";
 }
 
 function predictionText(pBtts: number): string {
   const percent = Math.round(pBtts * 100);
   return pBtts >= VERDICT_THRESHOLD
     ? `Her iki takım da gol atar (%${percent} olasılık)`
-    : `Tehlikeli — karşılıklı gol olasılığı %${percent}`;
+    : `İki takım da gol atmaz (%${100 - percent} olasılık)`;
 }
 
 function iso(value: Date | string): string {

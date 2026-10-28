@@ -94,11 +94,13 @@ describe("football-tork-prematch parity with validated experiment", () => {
 
   it("derives pick from the probability threshold", async () => {
     const model = await loadModel();
-    const yes = predictTork(model, { logit_league: 0.2, logit_poisson: 0.4, btts_season: 0.15, cross_score: 0.1, cross_emp: 0.1, h2h: 0.1, log_asym: 0.0 });
+    const yes = predictTork(model, { logit_league: 1.2, logit_poisson: 1.5, btts_season: 0.3, cross_score: 0.1, cross_emp: 0.1, h2h: 0.1, log_asym: 0.0 });
     expect(yes.pick).toBe("btts_yes");
+    expect(yes.pBtts).toBeGreaterThan(0.76);
     expect(yes.pBtts).toBeGreaterThan(0.5);
     const no = predictTork(model, { logit_league: -0.4, logit_poisson: -0.6, btts_season: -0.3, cross_score: -0.2, cross_emp: -0.2, h2h: -0.2, log_asym: 0.9 });
     expect(no.pick).toBe("btts_no");
+    expect(no.pBtts).toBeLessThan(0.76);
     expect(no.pBtts).toBeLessThan(0.5);
   });
 

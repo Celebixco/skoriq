@@ -15,7 +15,7 @@ const item: TorkPrematchItem = {
   awayTeamId: "team-away",
   homeTeamLogoUrl: "https://img.example.test/alanyaspor.png",
   awayTeamLogoUrl: null,
-  tork: { predictionId: "prediction-tork", predictionText: "Her iki takım da gol atar (%61 olasılık)", pBtts: 0.612, expectedBttsGoals: 1.22, pick: "btts_yes", pickLabel: "Her iki takım da gol atar", modelId: "TORK-A", modelVersion: "tork-stage1-logistic-blend", modelLabel: "Tork", generatedAt: "2026-10-21T15:26:45Z", publishedAt: "2026-10-21T18:40:00Z" },
+  tork: { predictionId: "prediction-tork", predictionText: "Her iki takım da gol atar (%80 olasılık)", pBtts: 0.802, expectedBttsGoals: 1.6, pick: "btts_yes", pickLabel: "Her iki takım da gol atar", modelId: "TORK-A", modelVersion: "tork-stage1-logistic-blend", modelLabel: "Tork", generatedAt: "2026-10-21T15:26:45Z", publishedAt: "2026-10-21T18:40:00Z" },
   historyHomeN: 10,
   historyAwayN: 9,
   scopeLevel: "last10_available_unverified",
@@ -31,7 +31,7 @@ describe("Tork BTTS prediction card", () => {
     expect(html).toContain("rc-simple-card");
     expect(html).toContain("Alanyaspor");
     expect(html).toContain("Kocaelispor");
-    expect(html).toContain("%61");
+    expect(html).toContain("%80");
     expect(html).toContain("Her iki takım da gol atar");
     expect(html).toContain("TSİ");
     expect(html).toContain("Maç detayı");
@@ -44,15 +44,15 @@ describe("Tork BTTS prediction card", () => {
 
     const risky: TorkPrematchItem = {
       ...item,
-      tork: { ...item.tork, pBtts: 0.41, pick: "btts_no", predictionText: "Tehlikeli — karşılıklı gol olasılığı %41" }
+      tork: { ...item.tork, pBtts: 0.41, pick: "btts_no", predictionText: "İki takım da gol atmaz (%59 olasılık)" }
     };
     const riskyHtml = renderToStaticMarkup(<TorkPredictionCard item={risky} navigate={() => {}} />);
     expect(riskyHtml).toContain("tork-card--risky");
-    expect(riskyHtml).toContain("Tehlikeli");
+    expect(riskyHtml).toContain("İki takım da gol atmaz");
   });
 
   it("never leaks the internal threshold value to members", () => {
-    for (const pBtts of [0.41, 0.55, 0.612]) {
+    for (const pBtts of [0.41, 0.55, 0.802]) {
       const variant: TorkPrematchItem = { ...item, tork: { ...item.tork, pBtts } };
       const html = renderToStaticMarkup(<TorkPredictionCard item={variant} navigate={() => {}} />);
       expect(html).not.toContain("eşik");
@@ -71,6 +71,6 @@ describe("Tork BTTS prediction card", () => {
     expect(candidate.selectionSource).toBe("tork_beta");
     expect(candidate.predictionType).toBe("tork_btts");
     expect(candidate.predictionValue).toBe("btts_yes");
-    expect(candidate.confidenceScore).toBe(61);
+    expect(candidate.confidenceScore).toBe(80);
   });
 });

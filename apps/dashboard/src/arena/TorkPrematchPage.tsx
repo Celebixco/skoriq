@@ -20,7 +20,7 @@ function istanbul(value: string): string {
 }
 
 export function TorkPredictionCard({ item, navigate }: { item: TorkPrematchItem; navigate?: (path: string) => void }) {
-  const isSafe = item.tork.pBtts >= 0.58;
+  const isSafe = item.tork.pBtts >= 0.76;
   return <article className={`rc-simple-card tork-card${isSafe ? "" : " tork-card--risky"}`}>
     <header className="rc-simple-card__head">
       <span className="rc-simple-card__league tork-card__league">{item.league}</span>
@@ -74,7 +74,7 @@ export function TorkUpcomingPage({ navigate }: { navigate: (path: string) => voi
   const groups = useMemo(() => leagues
     .map((league) => ({ ...league, items: filtered.filter((item) => item.competitionId === league.competitionId) }))
     .filter((group) => group.items.length > 0), [leagues, filtered]);
-  const strongCount = useMemo(() => filtered.filter((item) => item.tork.pBtts >= 0.58).length, [filtered]);
+  const strongCount = useMemo(() => filtered.filter((item) => item.tork.pBtts >= 0.76).length, [filtered]);
 
   return <div className="rc-page tork-page">
     <header className="rc-hero tork-hero">

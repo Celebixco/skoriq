@@ -298,7 +298,7 @@ export function predictTork(model: TorkModelDefinition, features: TorkFeatures):
   return { pBtts, expectedBttsGoals: expected, pick };
 }
 
-function scopeLevelFor(homeN: number, awayN: number): string {
+export function scopeLevelFor(homeN: number, awayN: number): string {
   if (homeN >= 8 && awayN >= 8) return "last10_available_unverified";
   if (homeN >= 5 && awayN >= 5) return "last5_available_unverified";
   if (homeN > 0 && awayN > 0) return "partial_history_unverified";

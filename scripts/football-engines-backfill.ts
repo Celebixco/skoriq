@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import pg from "pg";
 import { resolveCompetitionScope } from "./football-rc-scope.js";
 import { applyPreprocessor, featureVector, pick, predict, validateModelArtifact, type MatchRow, type ModelDefinition } from "./football-rc-prematch.js";
-import { leagueKeyFor, predictTork, torkFeaturesFor, validateModelArtifact as validateTorkModel, type TorkMatchRow, type TorkModelDefinition } from "./football-tork-prematch.js";
+import { leagueKeyFor, predictTork, scopeLevelFor as torkScopeLevel, torkFeaturesFor, validateModelArtifact as validateTorkModel, type TorkMatchRow, type TorkModelDefinition } from "./football-tork-prematch.js";
 
 const dir = dirname(fileURLToPath(import.meta.url));
 const HORIZON_SECONDS = 86_400;
@@ -56,6 +56,7 @@ const BASE_QUERY = `
 
 async function main() {
   const execute = process.argv.includes("--execute");
+  const torkOnly = process.argv.includes("--tork-only");
   if (!execute) throw new Error("--execute is required; this job never writes in dry-run mode.");
   const rcModel = JSON.parse(await readFile(join(dir, "football-rc-model.json"), "utf8")) as ModelDefinition;
   validateModelArtifact(rcModel);
@@ -71,16 +72,23 @@ async function main() {
     const scope = await resolveCompetitionScope(client);
     const approvedIds = scope.approved.map((c) => c.competitionId);
 
-    const already = await client.query<{ n: string }>(`select count(*)::text as n from football_rc_prematch_predictions where evaluation_group = $1`, [BACKFILL_GROUP]);
-    if (Number(already.rows[0]?.n ?? 0) > 0) {
-      await client.query("rollback");
-      console.log(JSON.stringify({ mode: "engines-backfill", skipped: "already_backfilled", existing: Number(already.rows[0]!.n), at: now.toISOString() }));
-      return;
+    if (!torkOnly) {
+      const already = await client.query<{ n: string }>(`select count(*)::text as n from football_rc_prematch_predictions where evaluation_group = $1`, [BACKFILL_GROUP]);
+      if (Number(already.rows[0]?.n ?? 0) > 0) {
+        await client.query("rollback");
+        console.log(JSON.stringify({ mode: "engines-backfill", skipped: "already_backfilled", existing: Number(already.rows[0]!.n), at: now.toISOString() }));
+        return;
+      }
+    }
+    if (torkOnly) {
+      // Rebuild ONLY the Tork history under the current pick rule; Trey stays untouched.
+      await client.query("delete from football_tork_prematch_results");
+      await client.query("delete from football_tork_prematch_predictions");
     }
 
-    // Wipe ALL Trey (R-C) predictions + results as requested, then rebuild from simulations.
-    const deletedResults = await client.query("delete from football_rc_prematch_results");
-    const deletedPredictions = await client.query("delete from football_rc_prematch_predictions");
+    // Wipe ALL Trey (R-C) predictions + results (full mode only), then rebuild from simulations.
+    const deletedResults = torkOnly ? { rowCount: 0 } : await client.query("delete from football_rc_prematch_results");
+    const deletedPredictions = torkOnly ? { rowCount: 0 } : await client.query("delete from football_rc_prematch_predictions");
 
     const rows = (await client.query<MatchRow & TorkMatchRow>(BASE_QUERY, [approvedIds, "2025-08-01"])).rows;
     const rcHistory = new Map<string, MatchRow[]>();
@@ -108,6 +116,9 @@ async function main() {
     let torkInserted = 0;
     const blockedRc: string[] = [];
     for (const target of finished) {
+      const generatedAt = new Date(target.kickoff_at.getTime() - (HORIZON_SECONDS + 60) * 1000);
+      const cutoff = new Date(target.kickoff_at.getTime() - HORIZON_SECONDS * 1000);
+      if (!torkOnly) {
       const history = rcHistory.get(target.competition_id) ?? [];
       const f = featureVector(target, history, rcModel);
       if (f.homeN < 3 || f.awayN < 3) { blockedRc.push(target.match_id); continue; }
@@ -116,8 +127,6 @@ async function main() {
         const x = applyPreprocessor(f.features, rcModel);
         probabilities = predict(rcModel, x, "R-C");
       } catch { blockedRc.push(target.match_id); continue; }
-      const generatedAt = new Date(target.kickoff_at.getTime() - (HORIZON_SECONDS + 60) * 1000);
-      const cutoff = new Date(target.kickoff_at.getTime() - HORIZON_SECONDS * 1000);
       const result = await client.query(`insert into football_rc_prematch_predictions
         (match_id, competition_id, model_id, model_version, kickoff_at, prediction_generated_at, published_at,
          prediction_cutoff_at, feature_as_of_at, actual_lead_seconds, p1, px, p2, pick,
@@ -131,6 +140,7 @@ async function main() {
          sha(stable({ backfill: now.toISOString() })), BACKFILL_GROUP,
          JSON.stringify({ displayVersion: rcModel.displayVersion, simulation: true, backfilledAt: now.toISOString(), competitionName: target.competition_name })]);
       rcInserted += result.rowCount ?? 0;
+      }
 
       const { key: leagueKey, constants } = leagueKeyFor(target.competition_name, torkModel);
       const tf = torkFeaturesFor(target, torkHistory.get(target.competition_id) ?? [], pairIndex.get([target.home_id, target.away_id].sort().join("|")) ?? [],
@@ -151,7 +161,7 @@ async function main() {
             on conflict (match_id, model_id, model_version) do nothing`,
             [target.match_id, target.competition_id, torkModel.modelVersion, target.kickoff_at, generatedAt, cutoff,
              HORIZON_SECONDS + 60, prediction.pBtts, prediction.expectedBttsGoals, prediction.pick,
-             tf.homeN, tf.awayN, f.scope, featureHash, modelHash,
+             tf.homeN, tf.awayN, torkScopeLevel(tf.homeN, tf.awayN), featureHash, modelHash,
              sha(stable({ backfill: now.toISOString() })), BACKFILL_GROUP,
              JSON.stringify({ displayVersion: torkModel.displayVersion, simulation: true, backfilledAt: now.toISOString(), leagueKey, competitionName: target.competition_name })]);
           torkInserted += t.rowCount ?? 0;
@@ -159,7 +169,7 @@ async function main() {
       }
     }
     await client.query("commit");
-    console.log(JSON.stringify({ mode: "engines-backfill", execute, finishedTargets: finished.length,
+    console.log(JSON.stringify({ mode: "engines-backfill", execute, torkOnly, finishedTargets: finished.length,
       deleted: { rcResults: deletedResults.rowCount ?? 0, rcPredictions: deletedPredictions.rowCount ?? 0 },
       inserted: { rc: rcInserted, tork: torkInserted }, blockedRc: blockedRc.length, at: now.toISOString() }));
   } catch (error) {

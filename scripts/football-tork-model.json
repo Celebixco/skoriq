@@ -96,8 +96,8 @@
     "venueBlend": 0.3,
     "lambdaAsymFloor": 0.05,
     "minPriorMatches": 3,
-    "pickThreshold": 0.5,
-    "verdictThreshold": 0.58,
+    "pickThreshold": 0.76,
+    "verdictThreshold": 0.76,
     "globalHomeScoredPrior": 0.78,
     "globalAwayScoredPrior": 0.71
   },
