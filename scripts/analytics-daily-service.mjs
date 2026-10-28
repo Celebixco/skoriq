@@ -35,6 +35,14 @@ const JOBS = [
     timeoutSeconds: 900
   },
   {
+    key: "engines-backfill",
+    hour: 9,
+    minute: 5,
+    script: "scripts/football-engines-backfill.ts",
+    args: ["--execute"],
+    timeoutSeconds: 1800
+  },
+  {
     key: "rc-prematch",
     hour: 9,
     minute: 20,

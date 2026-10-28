@@ -14,7 +14,7 @@ const CLASSES = ["1", "X", "2"] as const;
 
 type ClassLabel = (typeof CLASSES)[number];
 
-interface ModelDefinition {
+export interface ModelDefinition {
   modelVersion: string;
   displayVersion: string;
   features: string[];
@@ -24,7 +24,7 @@ interface ModelDefinition {
   models: Record<"R-A" | "R-C", { trainingExamples: number; weights: number[][]; modelHash: string }>;
 }
 
-interface MatchRow {
+export interface MatchRow {
   match_id: string;
   competition_id: string;
   competition_name: string;
