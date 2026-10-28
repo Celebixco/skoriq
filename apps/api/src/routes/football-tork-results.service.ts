@@ -234,7 +234,7 @@ export class FootballTorkResultsService {
 
 export function resolveTorkSettlementStatus(row: Pick<TorkResultRow, "fulltime_status" | "result_label" | "pick">): TorkResultStatus {
   if (!row.fulltime_status) return "pending";
-  if (row.halftime_status !== "verified_halftime" || !row.result_label) return "void";
+  if (row.fulltime_status !== "verified_normal_time" || !row.result_label) return "void";
   return row.pick === row.result_label ? "won" : "lost";
 }
 
@@ -257,7 +257,7 @@ function mapResultRow(row: TorkResultRow): TorkPredictionResultItem {
       selection: row.pick,
       displayLabel: `${MODEL_LABEL} — ${row.pick === "btts_yes" ? "Her iki takım da gol atar" : "Karşılıklı gol yok"}`,
       tier: "primary",
-      probability: Number(row.p_goal)
+      probability: Number(row.p_btts)
     },
     settlement: {
       status,
@@ -267,7 +267,7 @@ function mapResultRow(row: TorkResultRow): TorkPredictionResultItem {
   };
 }
 
-function settlementExplanation(status: TorkResultStatus, halftimeScore: string | null): string {
+function settlementExplanation(status: TorkResultStatus, normalTimeScore: string | null): string {
   if (status === "won") return `Maç sonucu ${normalTimeScore ?? "?"}: tahmin tuttu.`;
   if (status === "lost") return `Maç sonucu ${normalTimeScore ?? "?"}: tahmin tutmadı.`;
   if (status === "void") return "Normal süre skoru doğrulanamadığı için tahmin değerlendirilemedi.";
