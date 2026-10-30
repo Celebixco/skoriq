@@ -1,13 +1,19 @@
-import { Inject, Injectable, Optional, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
+import { Inject, Injectable, Logger, Optional, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { loadConfig } from "@sports-data/config";
 import { createDatabase } from "@sports-data/database";
 import type { Database } from "@sports-data/database";
 import { sql } from "drizzle-orm";
+import { formatTorkSelection, TORK_MODEL_VERSION } from "@sports-data/shared";
+import { canonicalTorkPublicationSql, torkPublicationMetadata } from "./football-tork-publication.js";
 
 export interface TorkPrematchPrediction {
   predictionId: string;
   predictionText: string;
   pBtts: number;
+  selectionProbability: number;
+  decisionPolicyVersion: string | null;
+  decisionThreshold: number | null;
+  modelHash: string | null;
   expectedBttsGoals: number;
   pick: "btts_yes" | "btts_no";
   pickLabel: string;
@@ -62,9 +68,11 @@ interface TorkRow {
   model_version: string;
   prediction_generated_at: Date | string;
   published_at: Date | string;
-  p_btts: number | string;
+  p_btts: unknown;
   expected_btts_goals: number | string;
-  pick: "btts_yes" | "btts_no";
+  pick: unknown;
+  model_hash: unknown;
+  metadata_json: unknown;
   history_home_n: number;
   history_away_n: number;
   scope_level: string;
@@ -74,20 +82,6 @@ interface TorkRow {
 
 const DISCLAIMER = "Deneysel model olasılıklarıdır; sonuç garantisi değildir.";
 const MODEL_LABEL = "Tork";
-const VERDICT_THRESHOLD = 0.55;
-const PERFORMANCE_NOTE = "Geriye dönük testlerde yüksek olasılıklı maçlarda karşılıklı gol görülme sıklığı belirgin şekilde artmıştır.";
-
-function pickLabel(pBtts: number): string {
-  return pBtts >= VERDICT_THRESHOLD ? "Her iki takım da gol atar" : "İki takım da gol atmaz";
-}
-
-function predictionText(pBtts: number): string {
-  const percent = Math.round(pBtts * 100);
-  return pBtts >= VERDICT_THRESHOLD
-    ? `Her iki takım da gol atar (%${percent} olasılık)`
-    : `İki takım da gol atmaz (%${100 - percent} olasılık)`;
-}
-
 function iso(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
@@ -95,6 +89,7 @@ function iso(value: Date | string): string {
 @Injectable()
 export class FootballTorkPrematchService {
   private readonly database: Database;
+  private readonly logger = new Logger(FootballTorkPrematchService.name);
   constructor(@Optional() @Inject("API_DATABASE") database?: Database) {
     this.database = database ?? createDatabase(loadConfig().DATABASE_URL);
   }
@@ -105,7 +100,9 @@ export class FootballTorkPrematchService {
       and m.scheduled_start_at > now()
       order by m.scheduled_start_at, m.id`));
     const items = this.mapRows(rows);
-    return { modelVersion: "tork-stage1-logistic-blend", modelLabel: MODEL_LABEL, count: items.length, disclaimer: DISCLAIMER, items };
+    const versions = [...new Set(items.map((item) => item.tork.modelVersion))];
+    const modelVersion = versions.length === 0 ? TORK_MODEL_VERSION : versions.length === 1 ? versions[0]! : "mixed";
+    return { modelVersion, modelLabel: MODEL_LABEL, count: items.length, disclaimer: DISCLAIMER, items };
   }
 
   async getMatch(matchId: string): Promise<TorkPrematchItem> {
@@ -134,44 +131,51 @@ export class FootballTorkPrematchService {
         p.id::text as prediction_id,
         p.model_version, p.prediction_generated_at, p.published_at,
         p.p_btts, p.expected_btts_goals, p.pick, p.history_home_n, p.history_away_n,
-        p.scope_level, p.history_completeness, p.evaluation_group
+        p.scope_level, p.history_completeness, p.evaluation_group, p.model_hash, p.metadata_json
       from football_tork_prematch_predictions p
       inner join matches m on m.id = p.match_id
       inner join competitions c on c.id = m.competition_id
       inner join teams ht on ht.id = m.home_team_id
       inner join teams at on at.id = m.away_team_id
-      where p.status = 'published'
-        and p.model_id = 'TORK-A'
+      where ${canonicalTorkPublicationSql()}
         and m.status in ('scheduled', 'not_started')
-        and p.prediction_generated_at < m.scheduled_start_at
         ${extra}`;
   }
 
   private mapRows(rows: TorkRow[]): TorkPrematchItem[] {
-    return rows.map((row) => ({
-      matchId: row.match_id, competitionId: row.competition_id, league: row.league, kickoffAt: iso(row.kickoff_at),
-      homeTeam: row.home_team, awayTeam: row.away_team,
-      homeTeamId: row.home_team_id, awayTeamId: row.away_team_id,
-      homeTeamLogoUrl: row.home_team_logo_url, awayTeamLogoUrl: row.away_team_logo_url,
-      tork: {
-        predictionId: row.prediction_id,
-        predictionText: predictionText(Number(row.p_btts)),
-        pBtts: Number(row.p_btts),
-        expectedBttsGoals: Number(row.expected_btts_goals),
-        pick: row.pick,
-        pickLabel: pickLabel(Number(row.p_btts)),
-        modelId: "TORK-A",
-        modelVersion: row.model_version,
-        modelLabel: MODEL_LABEL,
-        generatedAt: iso(row.prediction_generated_at),
-        publishedAt: iso(row.published_at)
-      },
-      historyHomeN: row.history_home_n, historyAwayN: row.history_away_n,
-      scopeLevel: row.scope_level, historyCompleteness: row.history_completeness,
-      evaluationGroup: row.evaluation_group,
-      performanceNote: PERFORMANCE_NOTE,
-      disclaimer: DISCLAIMER
-    }));
+    return rows.map((row) => {
+      let selection: ReturnType<typeof formatTorkSelection>;
+      try {
+        selection = formatTorkSelection(row.p_btts, row.pick);
+      } catch {
+        // SQL already excludes invalid publications. Never turn an unexpected
+        // malformed driver value into a plausible KG Yok prediction.
+        this.logger.warn("Invalid Tork publication rejected while mapping an API response.");
+        throw new ServiceUnavailableException("Karşılıklı gol tahmini doğrulanamadı.");
+      }
+      return {
+        matchId: row.match_id, competitionId: row.competition_id, league: row.league, kickoffAt: iso(row.kickoff_at),
+        homeTeam: row.home_team, awayTeam: row.away_team,
+        homeTeamId: row.home_team_id, awayTeamId: row.away_team_id,
+        homeTeamLogoUrl: row.home_team_logo_url, awayTeamLogoUrl: row.away_team_logo_url,
+        tork: {
+          predictionId: row.prediction_id,
+          ...selection,
+          ...torkPublicationMetadata(row.metadata_json, row.model_hash),
+          expectedBttsGoals: Number(row.expected_btts_goals),
+          modelId: "TORK-A",
+          modelVersion: row.model_version,
+          modelLabel: MODEL_LABEL,
+          generatedAt: iso(row.prediction_generated_at),
+          publishedAt: iso(row.published_at)
+        },
+        historyHomeN: row.history_home_n, historyAwayN: row.history_away_n,
+        scopeLevel: row.scope_level, historyCompleteness: row.history_completeness,
+        evaluationGroup: row.evaluation_group,
+        performanceNote: null,
+        disclaimer: DISCLAIMER
+      };
+    });
   }
 
   private async execute<T>(query: ReturnType<typeof sql>): Promise<T[]> {

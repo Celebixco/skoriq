@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import type { TorkPrematchItem, TorkPrematchResponse } from "../types";
+import { useCallback, useMemo, useState } from "react";
+import { formatTorkSelection } from "@sports-data/shared/dist/football-tork-policy.js";
+import type { TorkPrematchItem } from "../types";
 import { fetchTorkMatchPrediction, fetchTorkUpcomingPredictions } from "../api";
 import { TeamLogo } from "../components";
 import { TorkCouponButton } from "./TorkCouponButton";
+import { useTorkPublication } from "./use-tork-publication";
 import "./rc-prematch.css";
 import "./tork-prematch.css";
 
@@ -20,8 +22,12 @@ function istanbul(value: string): string {
 }
 
 export function TorkPredictionCard({ item, navigate }: { item: TorkPrematchItem; navigate?: (path: string) => void }) {
-  const isSafe = item.tork.pBtts >= 0.55;
-  return <article className={`rc-simple-card tork-card${isSafe ? "" : " tork-card--risky"}`}>
+  let selection: ReturnType<typeof formatTorkSelection>;
+  try { selection = formatTorkSelection(item.tork.pBtts, item.tork.pick); }
+  catch { return null; }
+  const isBttsNo = selection.pick === "btts_no";
+  // Legacy CSS tokens select the amber KG Yok accent, not a claim of safety/risk.
+  return <article data-tork-selection={selection.pick} className={`rc-simple-card tork-card${isBttsNo ? " tork-card--risky" : ""}`}>
     <header className="rc-simple-card__head">
       <span className="rc-simple-card__league tork-card__league">{item.league}</span>
       <time dateTime={item.kickoffAt}>{istanbul(item.kickoffAt)} <small>TSİ</small></time>
@@ -39,7 +45,7 @@ export function TorkPredictionCard({ item, navigate }: { item: TorkPrematchItem;
       </div>
     </div>
 
-    <p className={`rc-simple-pick tork-card__pick${isSafe ? "" : " tork-card__pick--risky"}`}>{item.tork.predictionText}</p>
+    <p className={`rc-simple-pick tork-card__pick${isBttsNo ? " tork-card__pick--risky" : ""}`}>{selection.predictionText}</p>
 
     <footer className="rc-simple-card__foot">
       <TorkCouponButton item={item} />
@@ -49,18 +55,8 @@ export function TorkPredictionCard({ item, navigate }: { item: TorkPrematchItem;
 }
 
 export function TorkUpcomingPage({ navigate }: { navigate: (path: string) => void }) {
-  const [data, setData] = useState<TorkPrematchResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, error, loading } = useTorkPublication(fetchTorkUpcomingPredictions);
   const [leagueFilter, setLeagueFilter] = useState("all");
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true); setError(null);
-    fetchTorkUpcomingPredictions().then((value) => { if (!cancelled) setData(value); })
-      .catch((err: unknown) => { if (!cancelled) setError(err instanceof Error ? err.message : "Tahminler yüklenemedi."); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
   const leagues = useMemo(() => {
     const byId = new Map<string, { competitionId: string; league: string; count: number }>();
     for (const item of data?.items ?? []) {
@@ -74,7 +70,7 @@ export function TorkUpcomingPage({ navigate }: { navigate: (path: string) => voi
   const groups = useMemo(() => leagues
     .map((league) => ({ ...league, items: filtered.filter((item) => item.competitionId === league.competitionId) }))
     .filter((group) => group.items.length > 0), [leagues, filtered]);
-  const strongCount = useMemo(() => filtered.filter((item) => item.tork.pBtts >= 0.55).length, [filtered]);
+  const bttsYesCount = useMemo(() => filtered.filter((item) => item.tork.pick === "btts_yes").length, [filtered]);
 
   return <div className="rc-page tork-page">
     <header className="rc-hero tork-hero">
@@ -87,9 +83,9 @@ export function TorkUpcomingPage({ navigate }: { navigate: (path: string) => voi
           <button type="button" className="h1-engine-switch" onClick={() => navigate("/football/h1-predictions/upcoming")}>Volt ilk yarı gol <span aria-hidden="true">→</span></button>
         </span> : null}
       </div>
-      {data && data.items.length > 0 ? <div className="tork-hero__stat" aria-label="Güçlü sinyal sayısı">
-        <strong>{strongCount}</strong>
-        <span>güçlü sinyal</span>
+      {data && data.items.length > 0 ? <div className="tork-hero__stat" aria-label="KG Var tahmin sayısı">
+        <strong>{bttsYesCount}</strong>
+        <span>KG Var tahmini</span>
       </div> : null}
     </header>
 
@@ -109,19 +105,14 @@ export function TorkUpcomingPage({ navigate }: { navigate: (path: string) => voi
         <div className="rc-league-group__head"><h2 id={`tork-league-${group.competitionId}`}>{group.league}</h2><span>{group.items.length} maç</span></div>
         <div className="rc-grid">{group.items.map((item) => <TorkPredictionCard key={item.matchId} item={item} navigate={navigate} />)}</div>
       </section>)}
-      {data.items[0]?.performanceNote ? <p className="tork-perf">{data.items[0].performanceNote}</p> : null}
     </> : null}
     <p className="rc-footnote">{DISCLAIMER}</p>
   </div>;
 }
 
 export function TorkMatchPrediction({ matchId }: { matchId: string }) {
-  const [item, setItem] = useState<TorkPrematchItem | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    fetchTorkMatchPrediction(matchId).then((value) => { if (!cancelled) setItem(value); }).catch(() => { if (!cancelled) setItem(null); });
-    return () => { cancelled = true; };
-  }, [matchId]);
-  if (!item) return null;
+  const load = useCallback(() => fetchTorkMatchPrediction(matchId), [matchId]);
+  const { data: item } = useTorkPublication(load);
+  if (!item || item.matchId !== matchId) return null;
   return <section className="rc-detail"><div className="rc-section-title"><span>Maç öncesi</span><h2>Karşılıklı gol tahmini</h2></div><TorkPredictionCard item={item} /></section>;
 }

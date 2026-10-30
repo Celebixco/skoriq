@@ -1,7 +1,13 @@
 {
   "modelId": "TORK-A",
-  "modelVersion": "tork-stage1-logistic-blend",
+  "modelVersion": "tork-stage1-logistic-blend-binary-v2",
   "displayVersion": "Tork • Beta",
+  "decisionPolicy": {
+    "version": "btts-binary-equal-cost-v1",
+    "objective": "binary_equal_cost",
+    "threshold": 0.5,
+    "calibrationStatus": "unverified"
+  },
   "features": [
     "logit_league",
     "logit_poisson",
@@ -96,12 +102,12 @@
     "venueBlend": 0.3,
     "lambdaAsymFloor": 0.05,
     "minPriorMatches": 3,
-    "pickThreshold": 0.55,
-    "verdictThreshold": 0.55,
     "globalHomeScoredPrior": 0.78,
     "globalAwayScoredPrior": 0.71
   },
   "training": {
+    "evidenceStatus": "legacy_research_not_live_validation",
+    "featureContract": "production_export_v1",
     "trainValMatches": null,
     "leagues": 8,
     "seasons": [
@@ -149,5 +155,5 @@
       ]
     }
   },
-  "evaluationGroup": "tork_stage1_retrospective"
+  "evaluationGroup": "tork_stage1_forward_binary_v2"
 }

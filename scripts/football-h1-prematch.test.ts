@@ -65,7 +65,7 @@ describe("football-h1-prematch model artifact", () => {
 describe("football-h1-prematch parity with validated experiment", () => {
   it("reproduces the Python feature vectors and probabilities", async () => {
     const model = await loadModel();
-    const fixtures = JSON.parse(await readFile(join(dir, "../.research/h1/data/parity_fixtures.json"), "utf8")) as {
+    const fixtures = JSON.parse(await readFile(join(dir, "fixtures/h1-parity.json"), "utf8")) as {
       fixtures: Array<{ target: { matchId: string; competitionName: string; season: string; kickoffAtMs: number; homeId: string; awayId: string };
         history: ParityFixtureRow[]; pairHistory: ParityFixtureRow[];
         expected: { features: Record<string, number>; pGoal: number; pLeague: number; lambdaTeam: number } }>;

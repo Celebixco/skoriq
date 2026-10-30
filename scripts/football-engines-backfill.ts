@@ -10,7 +10,6 @@ import { leagueKeyFor, predictTork, scopeLevelFor as torkScopeLevel, torkFeature
 
 const dir = dirname(fileURLToPath(import.meta.url));
 const HORIZON_SECONDS = 86_400;
-const SETTLE_SECONDS = 10_800;
 const BACKFILL_GROUP = "simulation_backfill";
 
 function sha(value: string): string {
@@ -80,15 +79,8 @@ async function main() {
         return;
       }
     }
-    if (torkOnly) {
-      // Rebuild ONLY the Tork history under the current pick rule; Trey stays untouched.
-      await client.query("delete from football_tork_prematch_results");
-      await client.query("delete from football_tork_prematch_predictions");
-    }
-
-    // Wipe ALL Trey (R-C) predictions + results (full mode only), then rebuild from simulations.
-    const deletedResults = torkOnly ? { rowCount: 0 } : await client.query("delete from football_rc_prematch_results");
-    const deletedPredictions = torkOnly ? { rowCount: 0 } : await client.query("delete from football_rc_prematch_predictions");
+    // Historical simulations are append-only. Preserve published predictions and
+    // settlements in both modes; the unique-key conflicts below must never update them.
 
     const rows = (await client.query<MatchRow & TorkMatchRow>(BASE_QUERY, [approvedIds, "2025-08-01"])).rows;
     const rcHistory = new Map<string, MatchRow[]>();
@@ -170,7 +162,7 @@ async function main() {
     }
     await client.query("commit");
     console.log(JSON.stringify({ mode: "engines-backfill", execute, torkOnly, finishedTargets: finished.length,
-      deleted: { rcResults: deletedResults.rowCount ?? 0, rcPredictions: deletedPredictions.rowCount ?? 0 },
+      deleted: { rcResults: 0, rcPredictions: 0 },
       inserted: { rc: rcInserted, tork: torkInserted }, blockedRc: blockedRc.length, at: now.toISOString() }));
   } catch (error) {
     await client.query("rollback");
@@ -179,6 +171,8 @@ async function main() {
     client.release(); await pool.end();
   }
 }
+
+export { main as runEnginesBackfill };
 
 const isMain = Boolean(process.argv[1]) && pathToFileURL(process.argv[1]!).href === import.meta.url;
 if (isMain) main().catch((error) => { console.error(error); process.exit(1); });

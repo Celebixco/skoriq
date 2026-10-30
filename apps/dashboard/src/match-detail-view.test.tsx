@@ -163,9 +163,10 @@ describe("MatchDetailReportView", () => {
 
     expect(html).toContain("Analiz Durumu");
     expect(html).toContain("Tahmine Uygunluk");
-    expect(html).toContain("Güven Tavanı");
+    expect(html).not.toContain("Güven Tavanı"); // The ceiling belongs to the signals tab, not the overview.
     expect(html).toContain("Veri Kapsamı");
-    expect(html).toContain("63");
+    expect(html).toContain("Analiz için yeterli veri var");
+    expect(html).toContain("Ön analiz üretilebilir");
     expect(html).toContain("72%");
     expect(html).toContain("Form &amp; H2H");
     expect(html).not.toContain("Sample");
@@ -261,13 +262,16 @@ describe("MatchDetailReportView", () => {
     expect(adminHtml).toContain("Sonuçları gör");
     expect(adminHtml).toContain("Public uygunluğu gör");
     expect(adminHtml).toContain("Bu alan yalnızca iç denetim içindir.");
-    expect(adminHtml).toContain("SkorIQ Tahmin Yorumu");
+    expect(adminHtml).toContain('class="engine-cards-grid"');
+    expect(adminHtml).not.toContain("SkorIQ Tahmin Yorumu");
   });
 
-  it("shows member-safe prediction preview shell on the analytics report", () => {
+  it("shows the member-safe model-card shell without inventing unloaded predictions", () => {
     const html = renderReport(mockReport(), memberUser);
 
-    expect(html).toContain("SkorIQ Tahmin Yorumu");
+    // Model cards fetch on mount; static rendering preserves the shell without fabricated picks.
+    expect(html).toContain('<div class="engine-cards-grid"></div>');
+    expect(html).not.toContain("SkorIQ Tahmin Yorumu");
     expect(html).not.toContain("MS 2.5 Üst");
     expect(html).not.toContain("İY 0.5 Üst");
     expect(html).not.toContain("Taslakları gör");

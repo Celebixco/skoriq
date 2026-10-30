@@ -1,4 +1,5 @@
 import type { FootballMemberPredictionPreviewCandidate, FootballMemberPredictionPreviewResponse, H1PrematchItem, RcPrematchItem, TorkPrematchItem } from "../types";
+import { formatTorkSelection } from "@sports-data/shared/dist/football-tork-policy.js";
 
 export interface CouponMatch {
   matchId: string;
@@ -189,14 +190,17 @@ export function h1CouponCandidate(item: H1PrematchItem): FootballMemberPredictio
 }
 
 export function torkCouponCandidate(item: TorkPrematchItem): FootballMemberPredictionPreviewCandidate {
+  // Published selection is authoritative, even when an older policy chose KG Yok
+  // above 50%. Confidence must refer to that selection, never automatically KG Var.
+  const selection = formatTorkSelection(item.tork.pBtts, item.tork.pick);
   return {
     predictionId: item.tork.predictionId,
-    displayLabel: item.tork.predictionText,
+    displayLabel: selection.predictionText,
     predictionType: "tork_btts",
-    predictionValue: item.tork.pick,
+    predictionValue: selection.pick,
     recommendationTier: "primary",
-    confidenceScore: Math.round(item.tork.pBtts * 100),
-    riskLevel: item.tork.pBtts >= 0.55 ? "low" : "medium",
+    confidenceScore: Math.round(selection.selectionProbability * 100),
+    riskLevel: selection.selectionProbability >= 0.6 ? "medium" : "high",
     reasoningSummary: null,
     generatedAt: item.tork.generatedAt,
     kickoffAt: item.kickoffAt,

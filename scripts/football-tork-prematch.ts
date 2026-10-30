@@ -5,9 +5,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import pg from "pg";
 import { resolveCompetitionScope, normalizeCompetitionText } from "./football-rc-scope.js";
+import {
+  classifyTorkProbability, TORK_MODEL_VERSION, TORK_DECISION_POLICY_VERSION, TORK_DECISION_THRESHOLD
+} from "../packages/shared/src/football-tork-policy.js";
 
 const dir = dirname(fileURLToPath(import.meta.url));
-const MODEL_VERSION = "tork-stage1-logistic-blend";
 const MODEL_ID = "TORK-A";
 const HORIZON_SECONDS = 86_400;
 const SETTLE_SECONDS = 10_800;
@@ -24,6 +26,12 @@ export interface TorkModelDefinition {
   modelId: string;
   modelVersion: string;
   displayVersion: string;
+  decisionPolicy: {
+    version: string;
+    objective: "binary_equal_cost";
+    threshold: number;
+    calibrationStatus: "unverified";
+  };
   features: string[];
   weights: Record<string, number>;
   leagueConstants: Record<string, TorkLeagueConstants>;
@@ -39,8 +47,6 @@ export interface TorkModelDefinition {
     venueBlend: number;
     lambdaAsymFloor: number;
     minPriorMatches: number;
-    pickThreshold: number;
-    verdictThreshold: number;
     globalHomeScoredPrior: number;
     globalAwayScoredPrior: number;
   };
@@ -86,6 +92,14 @@ export interface TorkPrediction {
 
 function sha(value: string): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+export function torkModelHash(model: TorkModelDefinition): string {
+  return sha(stable({
+    modelId: model.modelId, modelVersion: model.modelVersion, decisionPolicy: model.decisionPolicy,
+    features: model.features, weights: model.weights, leagueConstants: model.leagueConstants,
+    globalFallback: model.globalFallback, tuning: model.tuning
+  }));
 }
 
 function stable(value: unknown): string {
@@ -267,22 +281,40 @@ export function torkFeaturesFor(
 
 export function validateModelArtifact(model: TorkModelDefinition): void {
   const requiredFeatures = ["logit_league", "logit_poisson", "btts_season", "cross_score", "cross_emp", "h2h", "log_asym"];
-  if (model.modelId !== MODEL_ID || model.modelVersion !== MODEL_VERSION) throw new Error("invalid_model_identity");
+  if (model.modelId !== MODEL_ID || model.modelVersion !== TORK_MODEL_VERSION) throw new Error("invalid_model_identity");
+  if (model.decisionPolicy?.version !== TORK_DECISION_POLICY_VERSION ||
+      model.decisionPolicy.objective !== "binary_equal_cost" ||
+      model.decisionPolicy.threshold !== TORK_DECISION_THRESHOLD ||
+      model.decisionPolicy.calibrationStatus !== "unverified") throw new Error("invalid_decision_policy");
+  if (!Array.isArray(model.features) || model.features.length !== requiredFeatures.length || new Set(model.features).size !== requiredFeatures.length ||
+      requiredFeatures.some((feature) => !model.features.includes(feature))) throw new Error("invalid_feature_contract");
   for (const feature of requiredFeatures) {
     const weight = model.weights?.[feature];
     if (typeof weight !== "number" || !Number.isFinite(weight)) throw new Error(`invalid_weight:${feature}`);
   }
   const fallback = model.globalFallback;
-  for (const key of ["gfHome", "gfAway", "btts"] as const) {
-    if (!Number.isFinite(fallback?.[key]) || (fallback[key] as number) <= 0) throw new Error("invalid_global_fallback");
-  }
+  if (!Number.isFinite(fallback?.gfHome) || fallback.gfHome <= 0 ||
+      !Number.isFinite(fallback?.gfAway) || fallback.gfAway <= 0 ||
+      !Number.isFinite(fallback?.btts) || fallback.btts <= 0 || fallback.btts >= 1) throw new Error("invalid_global_fallback");
   for (const [key, constants] of Object.entries(model.leagueConstants ?? {})) {
-    if (!constants || [constants.gfHome, constants.gfAway, constants.btts].some((v) => !Number.isFinite(v) || v <= 0)) {
+    if (!constants || [constants.gfHome, constants.gfAway].some((v) => !Number.isFinite(v) || v <= 0) ||
+        !Number.isFinite(constants.btts) || constants.btts <= 0 || constants.btts >= 1 ||
+        !Number.isInteger(constants.n) || constants.n < 0) {
       throw new Error(`invalid_league_constants:${key}`);
     }
   }
   const t = model.tuning;
-  if (!t || t.recentWindow < 5 || t.minPriorMatches < 1 || t.pickThreshold <= 0 || t.pickThreshold >= 1) throw new Error("invalid_tuning");
+  if (!t || !Number.isInteger(t.recentWindow) || t.recentWindow < 5 ||
+      !Number.isInteger(t.venueWindow) || t.venueWindow < 1 ||
+      !Number.isInteger(t.h2hWindow) || t.h2hWindow < 1 ||
+      !Number.isInteger(t.minPriorMatches) || t.minPriorMatches < 1 ||
+      [t.shrinkAlpha, t.bttsShrinkAlpha, t.seasonShrinkAlpha, t.venueShrinkAlpha,
+        t.venueBlend, t.lambdaAsymFloor, t.globalHomeScoredPrior, t.globalAwayScoredPrior]
+        .some((value) => !Number.isFinite(value)) ||
+      t.shrinkAlpha < 0 || t.bttsShrinkAlpha < 0 || t.seasonShrinkAlpha < 0 ||
+      t.venueShrinkAlpha < 0 || t.venueBlend < 0 || t.venueBlend > 1 || t.lambdaAsymFloor < 0 ||
+      t.globalHomeScoredPrior <= 0 || t.globalHomeScoredPrior >= 1 ||
+      t.globalAwayScoredPrior <= 0 || t.globalAwayScoredPrior >= 1) throw new Error("invalid_tuning");
 }
 
 export function predictTork(model: TorkModelDefinition, features: TorkFeatures): TorkPrediction {
@@ -293,7 +325,7 @@ export function predictTork(model: TorkModelDefinition, features: TorkFeatures):
   }, 0);
   const pBtts = sigmoid(z);
   if (!Number.isFinite(pBtts) || pBtts <= 0 || pBtts >= 1) throw new Error("invalid_probability");
-  const pick = pBtts >= model.tuning.pickThreshold ? "btts_yes" : "btts_no";
+  const pick = classifyTorkProbability(pBtts);
   const expected = pBtts * 2;
   return { pBtts, expectedBttsGoals: expected, pick };
 }
@@ -332,7 +364,7 @@ async function main() {
   if (process.env.TORK_PREMATCH_ENABLED === "false") { console.log(JSON.stringify({ mode: "disabled", execute, at: new Date().toISOString() })); return; }
   const model = JSON.parse(await readFile(join(dir, "football-tork-model.json"), "utf8")) as TorkModelDefinition;
   validateModelArtifact(model);
-  const modelHash = sha(stable({ weights: model.weights, leagueConstants: model.leagueConstants, globalFallback: model.globalFallback, tuning: model.tuning }));
+  const modelHash = torkModelHash(model);
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL is required");
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 2 });
@@ -410,14 +442,19 @@ async function main() {
         (match_id, competition_id, model_id, model_version, kickoff_at, prediction_generated_at, published_at,
          prediction_cutoff_at, feature_as_of_at, actual_lead_seconds, p_btts, expected_btts_goals, pick,
          history_home_n, history_away_n, scope_level, history_completeness, feature_hash, model_hash,
-         source_snapshot_hash, evaluation_group, status, metadata_json)
-        values ($1,$2,$3,$4,$5,$6,now(),$7,$8,$9,$10,$11,$12,$13,$14,$15,'unverified',$16,$17,$18,$19,'published',$20)
+         source_snapshot_hash, evaluation_group, status, supersedes_id, metadata_json)
+        values ($1,$2,$3,$4,$5,$6,now(),$7,$8,$9,$10,$11,$12,$13,$14,$15,'unverified',$16,$17,$18,$19,'published',
+           (select previous.id from football_tork_prematch_predictions previous
+             where previous.match_id = $1 and previous.model_id = $3 and previous.model_version <> $4
+               and previous.status = 'published'
+             order by previous.published_at desc, previous.prediction_generated_at desc, previous.id desc
+             limit 1), $20)
         on conflict (match_id, model_id, model_version) do nothing`,
         [candidate.match_id, candidate.competition_id, MODEL_ID, model.modelVersion, candidate.kickoff_at, generatedAt, cutoff, startedAt,
          Math.round((candidate.kickoff_at.getTime() - generatedAt.getTime()) / 1000),
          prediction.pBtts, prediction.expectedBttsGoals, prediction.pick,
          f.homeN, f.awayN, scopeLevelFor(f.homeN, f.awayN), featureHash, modelHash, sourceHash, model.evaluationGroup,
-         JSON.stringify({ displayVersion: model.displayVersion, source: "production_db_read_only", leagueKey, pLeague: f.pLeague, lambdaHome: f.lambdaHome, lambdaAway: f.lambdaAway, competitionName: candidate.competition_name, training: model.training })]);
+         JSON.stringify({ displayVersion: model.displayVersion, decisionPolicy: { version: model.decisionPolicy.version, threshold: TORK_DECISION_THRESHOLD, objective: model.decisionPolicy.objective, calibrationStatus: model.decisionPolicy.calibrationStatus }, source: "production_db_read_only", leagueKey, pLeague: f.pLeague, lambdaHome: f.lambdaHome, lambdaAway: f.lambdaAway, competitionName: candidate.competition_name, training: model.training })]);
       inserted += result.rowCount ?? 0;
     }
     await client.query("commit");

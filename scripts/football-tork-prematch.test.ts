@@ -6,6 +6,7 @@ import {
   isTorkNormalResult, leagueKeyFor, predictTork, torkFeaturesFor, validateModelArtifact,
   type TorkMatchRow, type TorkModelDefinition
 } from "./football-tork-prematch.js";
+import { classifyTorkProbability, TORK_DECISION_POLICY_VERSION, TORK_DECISION_THRESHOLD, TORK_MODEL_VERSION } from "../packages/shared/src/football-tork-policy.js";
 
 const dir = dirname(fileURLToPath(import.meta.url));
 
@@ -37,15 +38,20 @@ describe("football-tork-prematch model artifact", () => {
   it("validates the shipped model artifact", async () => {
     const model = await loadModel();
     expect(model.modelId).toBe("TORK-A");
+    expect(model.modelVersion).toBe(TORK_MODEL_VERSION);
+    expect(model.decisionPolicy.version).toBe(TORK_DECISION_POLICY_VERSION);
+    expect(model.decisionPolicy.threshold).toBe(TORK_DECISION_THRESHOLD);
     expect(Object.keys(model.leagueConstants).length).toBe(8);
     expect(model.leagueConstants["bundesliga"]!.btts).toBeGreaterThan(0.57);
-    expect(model.tuning.verdictThreshold).toBeGreaterThan(0.5);
+    expect(model.tuning).not.toHaveProperty("pickThreshold");
   });
 
   it("rejects corrupted artifacts", async () => {
     const model = await loadModel();
     expect(() => validateModelArtifact({ ...model, modelId: "WRONG" })).toThrow(/invalid_model_identity/);
     expect(() => validateModelArtifact({ ...model, weights: { ...model.weights, h2h: Number.NaN } })).toThrow(/invalid_weight/);
+    expect(() => validateModelArtifact({ ...model, decisionPolicy: { ...model.decisionPolicy, threshold: Number.NaN } })).toThrow(/invalid_decision_policy/);
+    expect(() => validateModelArtifact({ ...model, features: [...model.features, model.features[0]!] })).toThrow(/invalid_feature_contract/);
   });
 
   it("maps production competition names to league constants", async () => {
@@ -59,7 +65,7 @@ describe("football-tork-prematch model artifact", () => {
 describe("football-tork-prematch parity with validated experiment", () => {
   it("reproduces the Python feature vectors and probabilities", async () => {
     const model = await loadModel();
-    const fixtures = JSON.parse(await readFile(join(dir, "../.research/tork/data/parity_fixtures.json"), "utf8")) as {
+    const fixtures = JSON.parse(await readFile(join(dir, "fixtures/tork-parity.json"), "utf8")) as {
       fixtures: Array<{ target: { matchId: string; competitionName: string; season: string; kickoffAtMs: number; homeId: string; awayId: string };
         history: ParityFixtureRow[]; pairHistory: ParityFixtureRow[];
         expected: { features: Record<string, number>; pBtts: number; pLeague: number; lambdaHome: number; lambdaAway: number } }>;
@@ -102,6 +108,17 @@ describe("football-tork-prematch parity with validated experiment", () => {
     expect(no.pick).toBe("btts_no");
     expect(no.pBtts).toBeLessThan(0.55);
     expect(no.pBtts).toBeLessThan(0.5);
+  });
+
+  it("uses the shared equal-cost binary threshold and rejects invalid probabilities", async () => {
+    expect(classifyTorkProbability(0.5)).toBe("btts_yes");
+    expect(classifyTorkProbability(0.499999)).toBe("btts_no");
+    expect(() => classifyTorkProbability(Number.NaN)).toThrow(/invalid_tork_probability/);
+    expect(() => classifyTorkProbability(0.5, Number.NaN)).toThrow(/invalid_tork_threshold/);
+    const model = await loadModel();
+    const balanced = predictTork(model, { logit_league: 0, logit_poisson: 0, btts_season: 0, cross_score: 0, cross_emp: 0, h2h: 0, log_asym: 0 });
+    expect(balanced.pBtts).toBe(0.5);
+    expect(balanced.pick).toBe("btts_yes");
   });
 
   it("requires fulltime-scored priors only from normal results", () => {

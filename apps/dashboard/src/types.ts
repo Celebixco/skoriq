@@ -676,6 +676,10 @@ export interface TorkPrematchPrediction {
   predictionId: string;
   predictionText: string;
   pBtts: number;
+  selectionProbability: number;
+  decisionPolicyVersion: string | null;
+  decisionThreshold: number | null;
+  modelHash: string | null;
   expectedBttsGoals: number;
   pick: "btts_yes" | "btts_no";
   pickLabel: string;
@@ -715,8 +719,20 @@ export interface TorkPrematchResponse {
   items: TorkPrematchItem[];
 }
 
+export interface TorkPredictionResultItem extends FootballPredictionResultItem {
+  prediction: FootballPredictionResultItem["prediction"] & {
+    pBtts: number;
+    selectionProbability: number;
+    predictionId: string;
+    modelVersion: string;
+    decisionPolicyVersion: string | null;
+    decisionThreshold: number | null;
+    modelHash: string | null;
+  };
+}
+
 export interface TorkPredictionResultsResponse {
-  items: FootballPredictionResultItem[];
+  items: TorkPredictionResultItem[];
   total: number;
   limit: number;
   offset: number;
