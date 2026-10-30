@@ -10,6 +10,7 @@ ENV VITE_APP_ENV=$VITE_APP_ENV
 COPY package.json package-lock.json* ./
 COPY . .
 RUN npm install --include=dev
+RUN npm run build -w @sports-data/shared
 RUN npm run build -w @sports-data/dashboard
 
 FROM nginx:1.27-alpine AS runtime
